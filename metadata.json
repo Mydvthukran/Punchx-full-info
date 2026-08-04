@@ -1,0 +1,6 @@
+{
+  "name": "PunchX Service Utility",
+  "description": "An ultra-premium interactive concierge and smart local service ecosystem for citizens, workers, and authorities.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

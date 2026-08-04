@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create, update: if isValidId(orderId) 
+        && incoming().category is string && incoming().category.size() <= 100
+        && incoming().price is number
+        && incoming().customerName is string && incoming().customerName.size() <= 100;
+      allow delete: if true;
+    }
+
+    // Customer Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create, update: if isValidId(reviewId)
+        && incoming().customer is string && incoming().customer.size() <= 100
+        && incoming().rating is number
+        && incoming().comment is string && incoming().comment.size() <= 500;
+      allow delete: if true;
+    }
+
+    // Field Emergency SOS Alerts
+    match /emergencyAlerts/{alertId} {
+      allow read: if true;
+      allow create, update: if isValidId(alertId)
+        && incoming().worker is string && incoming().worker.size() <= 100
+        && incoming().issue is string && incoming().issue.size() <= 500;
+      allow delete: if true;
+    }
+  }
+}

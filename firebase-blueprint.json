@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Service Order",
+      "description": "On-demand service booking created by customer or admin dispatch",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 64 },
+        "category": { "type": "string", "maxLength": 100 },
+        "workerName": { "type": "string", "maxLength": 100 },
+        "price": { "type": "number" },
+        "date": { "type": "string", "maxLength": 100 },
+        "time": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["In-Progress", "Completed", "Cancelled", "Pending"] },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "customerAddress": { "type": "string", "maxLength": 255 },
+        "customerPhone": { "type": "string", "maxLength": 30 },
+        "otpCode": { "type": "string", "maxLength": 10 },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "issueDescription": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "category", "price", "status", "customerName", "customerAddress"]
+    },
+    "Review": {
+      "title": "Customer Review",
+      "description": "Feedback and rating submitted for completed services",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 64 },
+        "customer": { "type": "string", "maxLength": 100 },
+        "rating": { "type": "number" },
+        "category": { "type": "string", "maxLength": 100 },
+        "comment": { "type": "string", "maxLength": 500 },
+        "date": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "customer", "rating", "category", "comment"]
+    },
+    "EmergencyAlert": {
+      "title": "Emergency SOS Alert",
+      "description": "Critical field safety escalation submitted by technician",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 64 },
+        "worker": { "type": "string", "maxLength": 100 },
+        "location": { "type": "string", "maxLength": 255 },
+        "time": { "type": "string", "maxLength": 50 },
+        "issue": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "worker", "location", "issue"]
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Collection of PunchX service bookings"
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Collection of customer ratings and feedback"
+    },
+    "/emergencyAlerts/{alertId}": {
+      "schema": { "$ref": "#/entities/EmergencyAlert" },
+      "description": "Collection of active field emergency alerts"
+    }
+  }
+}
