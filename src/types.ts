@@ -75,6 +75,23 @@ export interface OrderRecord {
   createdAt?: string;
 }
 
+export interface CustomerReview {
+  id: string;
+  orderId?: string;
+  customer: string;
+  workerName: string;
+  workerId?: string;
+  category: string;
+  rating: number;
+  comment: string;
+  punctuality?: string;
+  professionalism?: string;
+  cleanliness?: string;
+  tags?: string[];
+  date: string;
+  createdAt?: string;
+}
+
 export interface BookingDetails {
   date: string; // e.g., "MON 12"
   time: string; // e.g., "11:30 AM"

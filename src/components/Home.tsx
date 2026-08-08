@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen } from 'lucide-react';
-import { AppScreen, Worker, ServiceCategory } from '../types';
+import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
 import PUNCHX_LOGO from '../assets/logo';
+import PostServiceReviewModal from './PostServiceReviewModal';
 
 interface HomeProps {
   onTransition: (target: AppScreen) => void;
@@ -92,8 +93,12 @@ export default function HomeDashboard({
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
   const [tempRatingStars, setTempRatingStars] = useState<number>(5);
   const [tempBehaviourFeedback, setTempBehaviourFeedback] = useState<string>('');
+  const [reviewModalOrder, setReviewModalOrder] = useState<OrderRecord | null>(null);
 
   const [activeOrder, setActiveOrder] = useState<any | null>(null);
+
+  // Loading state for Firestore backend sync
+  const [isLoading, setIsLoading] = useState(true);
 
   // States for expandable profile policy/details sections
   const [isRefundOpen, setIsRefundOpen] = useState(false);
@@ -197,11 +202,11 @@ export default function HomeDashboard({
       {/* Top Android App Bar */}
       <header id="home-topappbar" className="sticky top-0 z-40 w-full bg-[#07122a]/95 backdrop-blur-md border-b border-[#c5a059]/20 shadow-md flex justify-between items-center px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-[#07122a] border border-[#c5a059]/60 flex items-center justify-center p-0.5 overflow-hidden flex-shrink-0 shadow-md">
+          <div className="w-8 h-8 rounded-full bg-white border border-[#c5a059]/60 flex items-center justify-center p-0.5 overflow-hidden flex-shrink-0 shadow-md">
             <img
               id="bar-brand-logo"
               alt="PunchX Logo"
-              className="w-full h-full object-cover rounded-full"
+              className="w-full h-full object-contain"
               src={PUNCHX_LOGO}
             />
           </div>
@@ -353,23 +358,34 @@ export default function HomeDashboard({
             </button>
           </div>
 
-          <div id="categories-grid-list" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {filteredCategories.map((cat) => (
-              <button
-                id={`cat-card-${cat.id}`}
-                key={cat.id}
-                onClick={() => handleCategoryClick(cat.name)}
-                className="group p-5 bg-[#111415] border border-zinc-800 hover:border-[#c5a059]/60 rounded-2xl flex flex-col items-center justify-center text-center gap-3 transition-colors cursor-pointer"
-              >
-                <div className="w-12 h-12 rounded-full bg-[#151f37] group-hover:bg-[#c5a059]/10 border border-zinc-800 group-hover:border-[#c5a059]/30 flex items-center justify-center text-[#e9c176] transition-all">
-                  <CategoryIcon category={cat.name} className="w-5 h-5 text-[#e9c176] group-hover:scale-110 transition-transform" />
+          {isLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((idx) => (
+                <div key={idx} className="p-5 bg-[#111415] border border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center gap-3 animate-pulse">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800/80"></div>
+                  <div className="h-3.5 w-16 bg-zinc-800/60 rounded"></div>
                 </div>
-                <span className="text-xs font-bold text-zinc-400 group-hover:text-white transition-colors">
-                  {cat.name}
-                </span>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div id="categories-grid-list" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {filteredCategories.map((cat) => (
+                <button
+                  id={`cat-card-${cat.id}`}
+                  key={cat.id}
+                  onClick={() => handleCategoryClick(cat.name)}
+                  className="group p-5 bg-[#111415] border border-zinc-800 hover:border-[#c5a059]/60 rounded-2xl flex flex-col items-center justify-center text-center gap-3 transition-colors cursor-pointer"
+                >
+                  <div className="w-12 h-12 rounded-full bg-[#151f37] group-hover:bg-[#c5a059]/10 border border-zinc-800 group-hover:border-[#c5a059]/30 flex items-center justify-center text-[#e9c176] transition-all">
+                    <CategoryIcon category={cat.name} className="w-5 h-5 text-[#e9c176] group-hover:scale-110 transition-transform" />
+                  </div>
+                  <span className="text-xs font-bold text-zinc-400 group-hover:text-white transition-colors">
+                    {cat.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Top Rated Experts Grid */}
@@ -381,52 +397,66 @@ export default function HomeDashboard({
             <p className="text-xs text-zinc-400 font-sans">Highly-vetted, certified pro technicians</p>
           </div>
 
-          <div id="experts-grid-row" className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-            {EXPERTS.map((expert) => (
-              <div
-                id={`expert-crd-${expert.id}`}
-                key={expert.id}
-                className="flex-shrink-0 w-64 bg-[#111415] border border-zinc-850 hover:border-[#c5a059]/40 rounded-2xl p-5 flex flex-col items-center text-center group relative transition-all"
-              >
-                {/* Pro Badge indicators */}
-                <span className="absolute top-4 right-4 bg-[#c5a059] text-black font-mono text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-[#ffdea5]/50 shadow">
-                  {expert.proBadge}
-                </span>
-
-                <div className="relative mb-3">
-                  <img
-                    id={`expert-avatar-${expert.id}`}
-                    src={expert.avatar}
-                    alt={expert.name}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-[#c5a059] shadow-lg"
-                    referrerPolicy="no-referrer"
-                  />
-                  {/* Category icon badge in top corner of profile */}
-                  <CategoryProfileBadge category={expert.category} sizeClassName="w-6 h-6 p-1.5" />
+          {isLoading ? (
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+              {[1, 2, 3].map((idx) => (
+                <div key={idx} className="flex-shrink-0 w-64 bg-[#111415] border border-zinc-850 rounded-2xl p-5 flex flex-col items-center text-center animate-pulse space-y-3">
+                  <div className="w-16 h-16 rounded-full bg-zinc-800/80"></div>
+                  <div className="h-4 w-28 bg-zinc-800/80 rounded"></div>
+                  <div className="h-3.5 w-36 bg-zinc-800/60 rounded"></div>
+                  <div className="h-3.5 w-24 bg-zinc-800/60 rounded"></div>
+                  <div className="w-full h-9 bg-zinc-800/80 rounded-xl"></div>
                 </div>
-
-                <h3 id={`expert-name-${expert.id}`} className="font-bold text-sm text-white mb-0.5">{expert.name}</h3>
-                <p id={`expert-category-${expert.id}`} className="text-xs font-mono text-[#e9c176] tracking-wide mb-2">
-                  {expert.category}
-                </p>
-
-                {/* Star rating details */}
-                <div className="flex items-center gap-1 mb-4 justify-center text-xs">
-                  <Star className="w-3.5 h-3.5 fill-[#e9c176] text-[#e9c176]" />
-                  <span className="font-bold text-zinc-300">{expert.rating}</span>
-                  <span className="text-zinc-500 font-mono">({expert.reviewsCount} reviews)</span>
-                </div>
-
-                <button
-                  id={`expert-book-btn-${expert.id}`}
-                  onClick={() => handleBookExpert(expert)}
-                  className="w-full py-2.5 bg-zinc-800 group-hover:bg-[#c5a059] text-zinc-300 group-hover:text-black hover:brightness-110 font-bold text-xs rounded-xl tracking-wider uppercase transition-all cursor-pointer border border-zinc-700 group-hover:border-[#ffdea5]/40"
+              ))}
+            </div>
+          ) : (
+            <div id="experts-grid-row" className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+              {EXPERTS.map((expert) => (
+                <div
+                  id={`expert-crd-${expert.id}`}
+                  key={expert.id}
+                  className="flex-shrink-0 w-64 bg-[#111415] border border-zinc-850 hover:border-[#c5a059]/40 rounded-2xl p-5 flex flex-col items-center text-center group relative transition-all"
                 >
-                  Book Professional
-                </button>
-              </div>
-            ))}
-          </div>
+                  {/* Pro Badge indicators */}
+                  <span className="absolute top-4 right-4 bg-[#c5a059] text-black font-mono text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-[#ffdea5]/50 shadow">
+                    {expert.proBadge}
+                  </span>
+
+                  <div className="relative mb-3">
+                    <img
+                      id={`expert-avatar-${expert.id}`}
+                      src={expert.avatar}
+                      alt={expert.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-[#c5a059] shadow-lg"
+                      referrerPolicy="no-referrer"
+                    />
+                    {/* Category icon badge in top corner of profile */}
+                    <CategoryProfileBadge category={expert.category} sizeClassName="w-6 h-6 p-1.5" />
+                  </div>
+
+                  <h3 id={`expert-name-${expert.id}`} className="font-bold text-sm text-white mb-0.5">{expert.name}</h3>
+                  <p id={`expert-category-${expert.id}`} className="text-xs font-mono text-[#e9c176] tracking-wide mb-2">
+                    {expert.category}
+                  </p>
+
+                  {/* Star rating details */}
+                  <div className="flex items-center gap-1 mb-4 justify-center text-xs">
+                    <Star className="w-3.5 h-3.5 fill-[#e9c176] text-[#e9c176]" />
+                    <span className="font-bold text-zinc-300">{expert.rating}</span>
+                    <span className="text-zinc-500 font-mono">({expert.reviewsCount} reviews)</span>
+                  </div>
+
+                  <button
+                    id={`expert-book-btn-${expert.id}`}
+                    onClick={() => handleBookExpert(expert)}
+                    className="w-full py-2.5 bg-zinc-800 group-hover:bg-[#c5a059] text-zinc-300 group-hover:text-black hover:brightness-110 font-bold text-xs rounded-xl tracking-wider uppercase transition-all cursor-pointer border border-zinc-700 group-hover:border-[#ffdea5]/40"
+                  >
+                    Book Professional
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Bento Board Sections */}
@@ -941,63 +971,12 @@ export default function HomeDashboard({
                                   "{order.userBehaviour}"
                                 </div>
                               </div>
-                            ) : ratingOrderId === order.id ? (
-                              <div className="bg-[#121b2d] border border-[#c5a059]/35 rounded-xl p-3 mt-1.5 space-y-3 shadow-inner">
-                                <div className="space-y-1 text-left">
-                                  <span className="text-[9px] text-[#e9c176] uppercase font-bold tracking-wider font-sans block">1. Select Service Rating:</span>
-                                  <div className="flex gap-2 p-1 bg-zinc-950/40 rounded-lg w-max border border-zinc-800">
-                                    {[1, 2, 3, 4, 5].map((stars) => (
-                                      <button
-                                        key={stars}
-                                        type="button"
-                                        onClick={() => setTempRatingStars(stars)}
-                                        className="focus:outline-none focus:scale-110 active:scale-95 transition-all text-[#e9c176] cursor-pointer"
-                                      >
-                                        <Star
-                                          className={`w-5 h-5 ${tempRatingStars >= stars ? 'fill-[#e9c176] text-[#e9c176]' : 'text-zinc-750'}`}
-                                        />
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1 text-left">
-                                  <span className="text-[9px] text-zinc-400 uppercase font-bold tracking-wider font-sans block">2. Space for Writing Behaviour:</span>
-                                  <textarea
-                                    value={tempBehaviourFeedback}
-                                    onChange={(e) => setTempBehaviourFeedback(e.target.value)}
-                                    placeholder="Enter behavior notes (e.g. Very polite with great manners, puntual, extremely clean...)"
-                                    className="w-full bg-[#07122a] border border-zinc-800 rounded-xl p-2 text-xs text-white placeholder-zinc-500 focus:border-[#c5a059] outline-none min-h-[50px] resize-none font-sans"
-                                  />
-                                </div>
-
-                                <div className="flex gap-2 justify-end pt-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => setRatingOrderId(null)}
-                                    className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSubmitReview(order.id, order.workerName)}
-                                    className="bg-[#c5a059] hover:bg-[#e9c176] text-black text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-lg transition-colors cursor-pointer"
-                                  >
-                                    Submit Review
-                                  </button>
-                                </div>
-                              </div>
                             ) : (
                               <div className="flex justify-between items-center gap-2 mt-1 pt-2 border-t border-zinc-900 flex-wrap">
                                 <span className="text-[9px] text-zinc-500 italic font-sans">No feedback submitted yet.</span>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setRatingOrderId(order.id);
-                                    setTempRatingStars(5);
-                                    setTempBehaviourFeedback('');
-                                  }}
+                                  onClick={() => setReviewModalOrder(order)}
                                   className="text-[10px] bg-[#c5a059]/10 hover:bg-[#c5a059] text-[#e9c176] hover:text-black hover:font-bold border border-[#c5a059]/30 px-3 py-1 rounded-xl transition-all font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
                                 >
                                   <Star className="w-3.5 h-3.5 text-[#e9c176]" />
@@ -1102,6 +1081,31 @@ export default function HomeDashboard({
           </>
         )}
       </AnimatePresence>
+
+      {/* Structured Post-Service Rating & Citizen Feedback Modal */}
+      {reviewModalOrder && (
+        <PostServiceReviewModal
+          order={reviewModalOrder}
+          isOpen={!!reviewModalOrder}
+          onClose={() => setReviewModalOrder(null)}
+          onSubmitSuccess={(submittedReview: CustomerReview) => {
+            const updated = historyOrders.map((o) => {
+              if (o.id === submittedReview.orderId) {
+                return {
+                  ...o,
+                  isRated: true,
+                  userRating: submittedReview.rating,
+                  userBehaviour: submittedReview.comment
+                };
+              }
+              return o;
+            });
+            setHistoryOrders(updated);
+            localStorage.setItem('punchx_order_history', JSON.stringify(updated));
+          }}
+          showNotification={showNotification}
+        />
+      )}
     </div>
   );
 }

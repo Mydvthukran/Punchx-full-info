@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AppScreen, OrderRecord } from '../types';
+import { AppScreen, OrderRecord, CustomerReview } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
+import { db } from '../lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { 
   Wrench, ShieldCheck, CheckCircle2, Clock, MapPin, Phone, 
   Upload, Navigation, DollarSign, Star, UserCheck, AlertCircle, 
@@ -28,6 +30,37 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     window.dispatchEvent(new Event('storage'));
   }, [isOnline]);
   const [activeTab, setActiveTab] = useState<'orders' | 'earnings' | 'profile' | 'bot'>('orders');
+
+  // Loading state for Firestore/data sync simulation
+  const [isLoading, setIsLoading] = useState(true);
+  const [workerReviews, setWorkerReviews] = useState<CustomerReview[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
+
+  // Fetch reviews for worker from Firestore
+  useEffect(() => {
+    let unsubscribe: () => void;
+    try {
+      setIsLoadingReviews(true);
+      const reviewsCol = collection(db, 'reviews');
+      unsubscribe = onSnapshot(reviewsCol, (snapshot) => {
+        const live: CustomerReview[] = [];
+        snapshot.forEach((docSnap) => {
+          live.push({ id: docSnap.id, ...docSnap.data() } as CustomerReview);
+        });
+        setWorkerReviews(live);
+        setIsLoadingReviews(false);
+      }, (err) => {
+        console.warn('Firestore worker review subscription offline:', err);
+        setIsLoadingReviews(false);
+      });
+    } catch (e) {
+      console.warn('Firestore worker reviews listener error:', e);
+      setIsLoadingReviews(false);
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   // Orders State
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -180,19 +213,23 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
 
   // Reset/Load demo orders helper
   const resetToDemoOrders = () => {
+    setIsLoading(true);
     setOrders(initialSampleOrders);
     localStorage.setItem('punchx_order_history', JSON.stringify(initialSampleOrders));
     showNotification('📦 Loaded fresh Demo Orders for verification!');
+    setTimeout(() => setIsLoading(false), 500);
   };
 
-  // Load orders from localStorage
+  // Load orders from localStorage / Firestore sync
   const loadOrders = () => {
+    setIsLoading(true);
     const rawHistory = localStorage.getItem('punchx_order_history');
     if (rawHistory) {
       try {
         const parsed = JSON.parse(rawHistory);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setOrders(parsed);
+          setTimeout(() => setIsLoading(false), 500);
           return;
         }
       } catch (e) {
@@ -202,6 +239,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     // Default fallback
     setOrders(initialSampleOrders);
     localStorage.setItem('punchx_order_history', JSON.stringify(initialSampleOrders));
+    setTimeout(() => setIsLoading(false), 500);
   };
 
   useEffect(() => {
@@ -435,8 +473,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       {/* Top Android Navigation Header Bar */}
       <header className="sticky top-0 z-40 w-full bg-[#07122a]/95 backdrop-blur-md border-b border-[#c5a059]/20 px-3.5 py-3 flex justify-between items-center shadow-lg">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-[#07122a] border border-[#c5a059]/40 flex items-center justify-center p-0 overflow-hidden flex-shrink-0">
-            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-cover rounded-full" />
+          <div className="w-8 h-8 rounded-full bg-white border border-[#c5a059]/40 flex items-center justify-center p-0.5 overflow-hidden flex-shrink-0">
+            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0">
             <h1 className="font-sans font-extrabold text-xs text-white tracking-tight flex items-center gap-1.5 truncate">
@@ -520,11 +558,33 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
             {/* Orders Feed List - Pending Orders Only */}
             <div className="space-y-4">
               <div className="flex justify-between items-center text-xs font-mono text-zinc-400">
-                <span>PENDING DISPATCH ORDERS ({orders.filter(o => o.status === 'Pending' || o.status === 'In-Progress').length})</span>
-                <span className="text-[#e9c176]">Touch card for details & actions</span>
+                <span>PENDING DISPATCH ORDERS ({isLoading ? '...' : orders.filter(o => o.status === 'Pending' || o.status === 'In-Progress').length})</span>
+                <span className="text-[#e9c176]">{isLoading ? 'Syncing backend...' : 'Touch card for details & actions'}</span>
               </div>
 
-              {orders.filter(o => o.status === 'Pending' || o.status === 'In-Progress').length === 0 ? (
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((idx) => (
+                    <div key={idx} className="bg-[#11192e] border border-zinc-800/80 rounded-2xl p-5 space-y-3 animate-pulse shadow-xl">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-20 bg-zinc-800/80 rounded-lg"></div>
+                          <div className="h-5 w-32 bg-zinc-800/60 rounded-md"></div>
+                        </div>
+                        <div className="h-6 w-28 bg-[#c5a059]/20 rounded-full border border-[#c5a059]/20"></div>
+                      </div>
+                      <div className="space-y-2 py-1">
+                        <div className="h-3.5 w-full bg-zinc-800/60 rounded"></div>
+                        <div className="h-3.5 w-3/4 bg-zinc-800/50 rounded"></div>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-zinc-800/80">
+                        <div className="h-3.5 w-48 bg-zinc-800/60 rounded"></div>
+                        <div className="h-5 w-20 bg-zinc-800/80 rounded-md"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : orders.filter(o => o.status === 'Pending' || o.status === 'In-Progress').length === 0 ? (
                 <div className="bg-[#11192e] border border-zinc-800 rounded-3xl p-8 text-center space-y-4">
                   <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto opacity-80" />
                   <h3 className="font-extrabold text-white text-base">No Pending Dispatches Right Now</h3>
@@ -766,6 +826,64 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                     <span className="text-zinc-400">Average Completion Time:</span>
                     <span className="font-bold text-white">38 Minutes</span>
                   </div>
+                </div>
+
+                {/* Customer Ratings & Behavior Reviews Received */}
+                <div className="space-y-3 pt-3 border-t border-zinc-800">
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                      <Star className="w-4 h-4 text-[#e9c176] fill-[#e9c176]" />
+                      Customer Ratings & Behavior Reviews Received
+                    </h3>
+                    <span className="text-[10px] font-mono text-[#e9c176] bg-[#c5a059]/15 px-2.5 py-0.5 rounded-full border border-[#c5a059]/30 font-bold">
+                      {workerReviews.length} Feedback Records
+                    </span>
+                  </div>
+
+                  {isLoadingReviews ? (
+                    <div className="space-y-2">
+                      {[1, 2].map((sk) => (
+                        <div key={sk} className="bg-[#07122a] border border-zinc-800/80 p-3.5 rounded-2xl animate-pulse space-y-2">
+                          <div className="flex justify-between">
+                            <div className="h-3.5 w-28 bg-zinc-800 rounded"></div>
+                            <div className="h-3.5 w-16 bg-zinc-800 rounded"></div>
+                          </div>
+                          <div className="h-3 w-full bg-zinc-800/60 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : workerReviews.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {workerReviews.map((rev) => (
+                        <div key={rev.id} className="bg-[#07122a] border border-zinc-800/80 p-3.5 rounded-2xl space-y-1.5 shadow-sm text-left">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-white font-sans">{rev.customer}</span>
+                            <div className="flex items-center text-[#e9c176] gap-0.5">
+                              {[...Array(rev.rating || 5)].map((_, idx) => (
+                                <Star key={idx} className="w-3 h-3 fill-current" />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-xs text-zinc-300 italic font-sans leading-relaxed">
+                            "{rev.comment}"
+                          </p>
+                          {rev.tags && rev.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {rev.tags.map((tg, i) => (
+                                <span key={i} className="text-[9px] font-bold text-[#e9c176] bg-[#c5a059]/10 px-2 py-0.5 rounded border border-[#c5a059]/20">
+                                  ✓ {tg}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-[#07122a] border border-zinc-800 p-4 rounded-xl text-center text-xs text-zinc-400 font-sans">
+                      No customer feedback reviews submitted yet. Ratings from completed services will appear here in real time.
+                    </div>
+                  )}
                 </div>
 
                 {/* List of Completed Orders in Profile Panel */}

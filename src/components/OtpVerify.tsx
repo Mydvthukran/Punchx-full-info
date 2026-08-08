@@ -160,7 +160,7 @@ export default function OtpVerify({
       <div id="otp-header-zone" className="w-full max-w-sm flex flex-col items-center text-center mt-4">
         <motion.div
           id="otp-logo-ring"
-          className="w-20 h-20 rounded-full p-0 flex items-center justify-center mb-6 shadow-xl overflow-hidden border-2 border-[#c5a059]/40"
+          className="w-20 h-20 rounded-full bg-white p-1 flex items-center justify-center mb-6 shadow-xl overflow-hidden border-2 border-[#c5a059]/40"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
@@ -169,7 +169,7 @@ export default function OtpVerify({
             id="otp-logo-img"
             src={PUNCHX_LOGO}
             alt="PunchX Logo"
-            className="w-full h-full object-cover rounded-full"
+            className="w-full h-full object-contain"
           />
         </motion.div>
 

@@ -64,12 +64,12 @@ export default function Splash({ onTransition }: SplashProps) {
           <div className="absolute inset-0 bg-gradient-to-tr from-[#c5a059]/30 to-[#e9c176]/30 blur-3xl rounded-full scale-105 animate-pulse"></div>
 
           {/* Golden Rotating Metallic Frame */}
-          <div className="relative w-36 h-36 md:w-44 md:h-44 bg-[#111415] rounded-full p-0 flex items-center justify-center shadow-2xl border-2 border-[#c5a059]/40 overflow-hidden">
+          <div className="relative w-36 h-36 md:w-44 md:h-44 bg-white rounded-full p-2 flex items-center justify-center shadow-2xl border-2 border-[#c5a059]/40 overflow-hidden">
             <img
               id="splash-logo-image"
               src={PUNCHX_LOGO}
               alt="PunchX Logo"
-              className="object-cover rounded-full w-full h-full transform group-hover:scale-105 transition-transform duration-500"
+              className="object-contain w-full h-full transform group-hover:scale-105 transition-transform duration-500"
             />
           </div>
         </motion.div>

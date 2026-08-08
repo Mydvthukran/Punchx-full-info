@@ -112,8 +112,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
         
         {/* Title Header */}
         <div className="text-center space-y-2 border-b border-zinc-800 pb-5">
-          <div className="w-14 h-14 rounded-full bg-[#07122a] border border-[#c5a059]/40 flex items-center justify-center p-0 overflow-hidden mx-auto shadow-lg">
-            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-cover rounded-full" />
+          <div className="w-14 h-14 rounded-full bg-white border border-[#c5a059]/40 flex items-center justify-center p-1 overflow-hidden mx-auto shadow-lg">
+            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">
             PUNCHX AUTHORITY WORKER REGISTRATION

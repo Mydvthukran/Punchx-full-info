@@ -12,6 +12,8 @@ import {
   Sparkles, MessageSquare, AlertCircle
 } from 'lucide-react';
 import { ALL_EXPERTS } from '../data/experts';
+import { db } from '../lib/firebase';
+import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 
 interface AdminDashboardProps {
   onTransition: (target: AppScreen) => void;
@@ -128,8 +130,8 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [workerApps, setWorkerApps] = useState<WorkerApplication[]>([]);
   
-  // Tab segments: live_services | registrations | customers | workers | overview
-  const [activeTab, setActiveTab] = useState<'live_services' | 'registrations' | 'customers' | 'workers' | 'overview'>('live_services');
+  // Tab segments: live_services | registrations | customers | workers | reviews | overview
+  const [activeTab, setActiveTab] = useState<'live_services' | 'registrations' | 'customers' | 'workers' | 'reviews' | 'overview'>('live_services');
   
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -157,11 +159,34 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   ]);
 
   // Customer Reviews State
-  const [customerReviews] = useState([
+  const [customerReviews, setCustomerReviews] = useState<any[]>([
     { id: 'REV-1', customer: 'Ananya Sharma', rating: 5, category: 'AC Jet Service', comment: 'Super quick arrival! Rajesh was professional and cleaned the coils thoroughly.', date: 'Today' },
     { id: 'REV-2', customer: 'Rohan Mehta', rating: 5, category: 'Electrical Repair', comment: 'Suresh diagnosed the MCB tripping problem in 15 minutes. Very reliable.', date: 'Yesterday' },
     { id: 'REV-3', customer: 'Priya Nair', rating: 4, category: 'Deep Cleaning', comment: 'Great service quality and hygienic equipment used.', date: '2 days ago' }
   ]);
+
+  useEffect(() => {
+    let unsubscribe: () => void;
+    try {
+      const reviewsCol = collection(db, 'reviews');
+      unsubscribe = onSnapshot(reviewsCol, (snapshot) => {
+        const live: any[] = [];
+        snapshot.forEach((docSnap) => {
+          live.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        if (live.length > 0) {
+          setCustomerReviews(live);
+        }
+      }, (err) => {
+        console.warn('Firestore review subscription offline:', err);
+      });
+    } catch (e) {
+      console.warn('Firestore reviews listener error:', e);
+    }
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   // Activity log feed
   const [activityLogs, setActivityLogs] = useState<Array<{ id: string; time: string; text: string; tag: string }>>([
@@ -383,8 +408,8 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
       {/* Top Navigation Header Bar */}
       <header className="sticky top-0 z-40 w-full bg-[#07122a]/95 backdrop-blur-md border-b border-[#c5a059]/30 px-4 sm:px-8 py-3 flex flex-wrap justify-between items-center gap-3 shadow-xl">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-[#07122a] border border-[#c5a059]/40 flex items-center justify-center p-0 overflow-hidden flex-shrink-0 shadow-md">
-            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-cover rounded-full" />
+          <div className="w-10 h-10 rounded-full bg-white border border-[#c5a059]/40 flex items-center justify-center p-0.5 overflow-hidden flex-shrink-0 shadow-md">
+            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0">
             <h1 className="font-sans font-extrabold text-sm sm:text-base text-white tracking-tight flex items-center gap-2 flex-wrap truncate">

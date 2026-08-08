@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { AppScreen, Worker } from '../types';
-import { ArrowLeft, Star, ShieldCheck, CheckCircle2, Shield, Award, Sparkles, Building2, Compass, Heart, ThumbsUp } from 'lucide-react';
+import { AppScreen, Worker, CustomerReview } from '../types';
+import { ArrowLeft, Star, ShieldCheck, CheckCircle2, Shield, Award, Sparkles, Building2, Compass, Heart, ThumbsUp, Check } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 interface ProviderDetailsProps {
   onTransition: (target: AppScreen) => void;
@@ -15,6 +17,41 @@ export default function ProviderDetails({
   selectedWorker,
   showNotification
 }: ProviderDetailsProps) {
+  const [firestoreReviews, setFirestoreReviews] = useState<CustomerReview[]>([]);
+  const [isLoadingReviews, setIsLoadingReviews] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!selectedWorker) return;
+    
+    let isMounted = true;
+    const fetchWorkerReviews = async () => {
+      setIsLoadingReviews(true);
+      try {
+        const path = 'reviews';
+        const reviewsRef = collection(db, path);
+        const q = query(reviewsRef, where('workerName', '==', selectedWorker.name));
+        const snapshot = await getDocs(q);
+        
+        const fetched: CustomerReview[] = [];
+        snapshot.forEach(docSnap => {
+          fetched.push({ id: docSnap.id, ...docSnap.data() } as CustomerReview);
+        });
+
+        if (isMounted) {
+          setFirestoreReviews(fetched);
+        }
+      } catch (err) {
+        console.warn('Firestore reviews fetch offline/failed, using fallback:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingReviews(false);
+        }
+      }
+    };
+
+    fetchWorkerReviews();
+    return () => { isMounted = false; };
+  }, [selectedWorker]);
 
   if (!selectedWorker) {
     return (
@@ -225,51 +262,120 @@ export default function ProviderDetails({
           </div>
         </section>
 
-        {/* Real Customer Review Mock Feed */}
+        {/* Real Customer Review Feed from Firestore */}
         <section className="bg-[#111415] border border-zinc-850 rounded-2xl p-5 shadow space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-xs uppercase font-mono tracking-wider text-[#e9c176] font-bold flex items-center gap-1.5">
               <ThumbsUp className="w-4 h-4 text-[#e9c176]" />
-              Recent Service Reviews
+              Verified Citizen Reviews
             </h3>
-            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20 uppercase">Highly Polite</span>
+            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20 uppercase">
+              {firestoreReviews.length > 0 ? `${firestoreReviews.length} Live Reviews` : 'Verified Feedback'}
+            </span>
           </div>
 
-          <div className="space-y-4 divide-y divide-zinc-805">
-            <div className="space-y-1.5 pt-1">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-white text-xs">Sanjay M.</span>
-                <span className="text-zinc-500 text-[10px]">2 days ago</span>
-              </div>
-              <div className="flex items-center text-[#e9c176]">
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-              </div>
-              <p className="text-xs text-zinc-400 leading-normal">
-                "Arrived exactly on time! His behavior was extremely professional. He explained the problem patiently and cleaned up the room after completing work. Highly recommend."
-              </p>
+          {isLoadingReviews ? (
+            <div className="space-y-4">
+              {[1, 2].map((sk) => (
+                <div key={sk} className="space-y-2 p-3 bg-zinc-900/40 rounded-xl border border-zinc-850 animate-pulse">
+                  <div className="flex justify-between items-center">
+                    <div className="h-3.5 w-24 bg-zinc-800 rounded"></div>
+                    <div className="h-3 w-16 bg-zinc-800 rounded"></div>
+                  </div>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((st) => (
+                      <div key={st} className="w-3 h-3 bg-zinc-800 rounded-full"></div>
+                    ))}
+                  </div>
+                  <div className="h-3.5 w-full bg-zinc-800/60 rounded"></div>
+                  <div className="h-3.5 w-3/4 bg-zinc-800/60 rounded"></div>
+                </div>
+              ))}
             </div>
+          ) : (
+            <div className="space-y-4 divide-y divide-zinc-805">
+              {firestoreReviews.map((rev) => (
+                <div key={rev.id} className="space-y-2 pt-3 first:pt-0">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                      {rev.customer}
+                      <span className="text-[9px] bg-[#c5a059]/15 text-[#e9c176] px-1.5 py-0.2 rounded border border-[#c5a059]/30 font-mono">Verified Citizen</span>
+                    </span>
+                    <span className="text-zinc-500 text-[10px]">{rev.date || 'Recently'}</span>
+                  </div>
 
-            <div className="space-y-1.5 pt-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-white text-xs">Rekha Sharma</span>
-                <span className="text-zinc-500 text-[10px]">1 week ago</span>
-              </div>
-              <div className="flex items-center text-[#e9c176]">
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-                <Star className="w-3 h-3 fill-current" />
-              </div>
-              <p className="text-xs text-zinc-400 leading-normal">
-                "Very polite behaviour. Completed work quickly without any hassle. No hidden payments or extra changes. Absolute five stars!"
-              </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center text-[#e9c176]">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3 h-3 ${i < rev.rating ? 'fill-current text-[#e9c176]' : 'text-zinc-750'}`}
+                        />
+                      ))}
+                    </div>
+                    {rev.punctuality && (
+                      <span className="text-[9px] font-mono bg-zinc-900 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-800">
+                        {rev.punctuality}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-zinc-300 leading-relaxed italic">
+                    "{rev.comment}"
+                  </p>
+
+                  {rev.tags && rev.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {rev.tags.map((tg, idx) => (
+                        <span key={idx} className="text-[9px] font-bold text-[#e9c176] bg-[#c5a059]/10 px-2 py-0.5 rounded-md border border-[#c5a059]/20">
+                          ✓ {tg}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Seed / Default Reviews fallback if none in Firestore */}
+              {firestoreReviews.length === 0 && (
+                <>
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-white text-xs">Sanjay M.</span>
+                      <span className="text-zinc-500 text-[10px]">2 days ago</span>
+                    </div>
+                    <div className="flex items-center text-[#e9c176]">
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                    </div>
+                    <p className="text-xs text-zinc-400 leading-normal">
+                      "Arrived exactly on time! His behavior was extremely professional. He explained the problem patiently and cleaned up the room after completing work. Highly recommend."
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5 pt-3">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-white text-xs">Rekha Sharma</span>
+                      <span className="text-zinc-500 text-[10px]">1 week ago</span>
+                    </div>
+                    <div className="flex items-center text-[#e9c176]">
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                      <Star className="w-3 h-3 fill-current" />
+                    </div>
+                    <p className="text-xs text-zinc-400 leading-normal">
+                      "Very polite behaviour. Completed work quickly without any hassle. No hidden payments or extra changes. Absolute five stars!"
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
+          )}
         </section>
 
       </main>

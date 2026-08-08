@@ -61,9 +61,9 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-20 h-20 rounded-full bg-[#07122a] border-2 border-[#c5a059]/40 p-0 shadow-2xl overflow-hidden mb-1 flex items-center justify-center"
+            className="w-20 h-20 rounded-full bg-white border-2 border-[#c5a059]/40 p-1 shadow-2xl overflow-hidden mb-1 flex items-center justify-center"
           >
-            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-cover rounded-full" />
+            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-contain" />
           </motion.div>
 
           <motion.div
