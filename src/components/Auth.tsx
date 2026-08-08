@@ -25,10 +25,7 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
   
-  const [signinEmail, setSigninEmail] = useState(
-    activePanelRole === 'admin' ? 'admin@punchx.com' :
-    activePanelRole === 'worker' ? 'rajesh.ac.expert@gmail.com' : ''
-  );
+  const [signinEmail, setSigninEmail] = useState('');
   const [signinPassword, setSigninPassword] = useState('');
 
   // UI helpers
