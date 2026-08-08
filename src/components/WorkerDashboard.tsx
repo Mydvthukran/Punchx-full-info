@@ -787,7 +787,6 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                             </span>
                           </div>
                           <p className="text-xs text-zinc-200">Customer: <span className="font-bold text-white">{ord.customerName || 'Aarav Sharma'}</span></p>
-                          <p className="text-[11px] text-zinc-400 font-mono">Address: {ord.customerAddress}</p>
                           <p className="text-[10px] text-emerald-400 font-mono font-bold">Payment Mode: {ord.paymentMethod || 'UPI / Digital Transfer'}</p>
                         </div>
 

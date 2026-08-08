@@ -17,33 +17,33 @@ service cloud.firestore {
       return request.resource.data;
     }
 
-    // Orders collection
+    // Orders collection: Allow read and validated writes for booking operations
     match /orders/{orderId} {
       allow read: if true;
       allow create, update: if isValidId(orderId) 
         && incoming().category is string && incoming().category.size() <= 100
         && incoming().price is number
         && incoming().customerName is string && incoming().customerName.size() <= 100;
-      allow delete: if true;
+      allow delete: if request.auth != null;
     }
 
-    // Customer Reviews collection
+    // Customer Reviews collection: Allow read and validated review submissions
     match /reviews/{reviewId} {
       allow read: if true;
       allow create, update: if isValidId(reviewId)
         && incoming().customer is string && incoming().customer.size() <= 100
         && incoming().rating is number
         && incoming().comment is string && incoming().comment.size() <= 500;
-      allow delete: if true;
+      allow delete: if request.auth != null;
     }
 
-    // Field Emergency SOS Alerts
+    // Field Emergency SOS Alerts: Allow read and validated field emergency alerts
     match /emergencyAlerts/{alertId} {
       allow read: if true;
       allow create, update: if isValidId(alertId)
         && incoming().worker is string && incoming().worker.size() <= 100
         && incoming().issue is string && incoming().issue.size() <= 500;
-      allow delete: if true;
+      allow delete: if request.auth != null;
     }
   }
 }

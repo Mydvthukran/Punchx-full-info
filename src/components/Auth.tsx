@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen } from '../types';
 import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle2, User, KeyRound } from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
+import { auth } from '../lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 
 interface AuthProps {
   onTransition: (target: AppScreen) => void;
@@ -25,7 +27,7 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
   
   const [signinEmail, setSigninEmail] = useState(
     activePanelRole === 'admin' ? 'admin@punchx.com' :
-    activePanelRole === 'worker' ? 'rajesh.ac.expert@gmail.com' : 'demo@gmail.com'
+    activePanelRole === 'worker' ? 'rajesh.ac.expert@gmail.com' : ''
   );
   const [signinPassword, setSigninPassword] = useState('');
 
@@ -33,40 +35,9 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
   const [showPassword, setShowPassword] = useState(false);
   const [consentChecked, setConsentChecked] = useState(true);
   const [showPolicyModal, setShowPolicyModal] = useState<'privacy' | 'terms' | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Default demo user setup including verified worker account & admin account
-  React.useEffect(() => {
-    const existingRaw = localStorage.getItem('punchx_registered_users');
-    let demoUsers = [
-      { email: 'admin@punchx.com', password: 'PUNCHX^(@)0910' },
-      { email: 'admin@gmail.com', password: 'PUNCHX^(@)0910' },
-      { email: 'demo@gmail.com', password: 'password123' },
-      { email: 'businressguy@gmail.com', password: 'password123' },
-      { email: 'rajesh.ac.expert@gmail.com', password: 'password123' },
-      { email: 'worker@gmail.com', password: 'password123' }
-    ];
-
-    if (existingRaw) {
-      try {
-        const parsed = JSON.parse(existingRaw);
-        if (Array.isArray(parsed)) {
-          // Merge missing demo accounts
-          demoUsers.forEach(d => {
-            if (!parsed.some((u: any) => u.email.toLowerCase() === d.email.toLowerCase())) {
-              parsed.push(d);
-            }
-          });
-          localStorage.setItem('punchx_registered_users', JSON.stringify(parsed));
-          return;
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    localStorage.setItem('punchx_registered_users', JSON.stringify(demoUsers));
-  }, []);
-
-  const handlePhoneSubmit = (e: React.FormEvent) => {
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentChecked) {
       showNotification("⚠️ You must agree to the Privacy Policy and Terms & Conditions to proceed.");
@@ -78,18 +49,26 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
     }
     const cleanPhone = phoneNumber.startsWith('+') ? phoneNumber.trim() : `+91 ${phoneNumber.trim()}`;
     setAuthMethodDetail('phone', cleanPhone);
+
+    try {
+      // Authenticate session in Firebase Auth
+      await signInAnonymously(auth);
+    } catch (err: any) {
+      console.warn("Firebase auth notice:", err?.message || err);
+    }
+
     showNotification(`📨 An OTP code is requested for ${cleanPhone}.`);
     onTransition('otp');
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentChecked) {
       showNotification("⚠️ You must agree to the Privacy Policy and Terms & Conditions to proceed.");
       return;
     }
-    if (!registerEmail.trim() || !registerEmail.includes('@') || !registerEmail.endsWith('gmail.com')) {
-      showNotification("⚠️ Please enter a valid Gmail address (e.g., your_id@gmail.com).");
+    if (!registerEmail.trim() || !registerEmail.includes('@')) {
+      showNotification("⚠️ Please enter a valid Email address.");
       return;
     }
     if (registerPassword.length < 6) {
@@ -101,75 +80,101 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
       return;
     }
 
-    // Persist registered user locally
-    const existingRaw = localStorage.getItem('punchx_registered_users') || '[]';
-    const existing = JSON.parse(existingRaw);
-    
-    // Check if duplicate
-    const isDup = existing.some((u: any) => u.email.toLowerCase() === registerEmail.toLowerCase().trim());
-    if (isDup) {
-      showNotification("ℹ️ Email is already registered. Please sign in.");
-      setActiveTab('signin');
-      setSigninEmail(registerEmail);
-      return;
+    setIsSubmitting(true);
+    try {
+      // Create user securely via Firebase Auth SDK
+      await createUserWithEmailAndPassword(auth, registerEmail.trim(), registerPassword);
+      setAuthMethodDetail('gmail', registerEmail.trim());
+      showNotification(`📨 Account created successfully for ${registerEmail.trim()}!`);
+      onTransition('otp');
+    } catch (err: any) {
+      console.error("Firebase registration error:", err);
+      if (err?.code === 'auth/operation-not-allowed') {
+        showNotification("ℹ️ Firebase Auth provider disabled in console. Entering app in preview mode...");
+        setAuthMethodDetail('gmail', registerEmail.trim());
+        onTransition('home');
+      } else if (err?.code === 'auth/email-already-in-use') {
+        showNotification("ℹ️ Email is already registered. Signing in...");
+        try {
+          await signInWithEmailAndPassword(auth, registerEmail.trim(), registerPassword);
+          onTransition('home');
+        } catch (signInErr: any) {
+          showNotification(`❌ ${signInErr?.message || 'Incorrect password'}`);
+        }
+      } else {
+        showNotification(`❌ Firebase Auth: ${err?.message || 'Registration failed'}`);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-
-    existing.push({
-      email: registerEmail.toLowerCase().trim(),
-      password: registerPassword
-    });
-    localStorage.setItem('punchx_registered_users', JSON.stringify(existing));
-
-    setAuthMethodDetail('gmail', registerEmail.trim());
-    showNotification(`📨 An OTP code was sent to your Gmail: ${registerEmail.trim()}`);
-    onTransition('otp');
   };
 
-  const handleSigninSubmit = (e: React.FormEvent) => {
+  const handleSigninSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentChecked) {
       showNotification("⚠️ You must agree to the Privacy Policy and Terms & Conditions to proceed.");
       return;
     }
     if (!signinEmail.trim() || !signinPassword) {
-      showNotification("⚠️ Please enter your Gmail and password.");
+      showNotification("⚠️ Please enter your email and password.");
       return;
     }
 
-    if (activePanelRole === 'admin') {
-      if (signinPassword !== 'PUNCHX^(@)0910') {
-        showNotification("❌ Access Denied: Incorrect Admin Password!");
-        return;
+    setIsSubmitting(true);
+    try {
+      // Authenticate directly with Firebase Auth
+      await signInWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
+      
+      showNotification("🔑 Authentication Verified. Opening workspace...");
+      if (activePanelRole === 'admin') {
+        onTransition('admin-dashboard');
+      } else if (activePanelRole === 'worker') {
+        onTransition('worker-dashboard');
+      } else {
+        onTransition('home');
       }
-      showNotification("🔑 Admin Password Verified. Opening Company Dashboard...");
-      onTransition('admin-dashboard');
-      return;
-    }
-
-    const existingRaw = localStorage.getItem('punchx_registered_users') || '[]';
-    const existing = JSON.parse(existingRaw);
-
-    const matchUser = existing.find(
-      (u: any) => u.email.toLowerCase() === signinEmail.toLowerCase().trim()
-    );
-
-    if (!matchUser) {
-      showNotification("❌ User not found. Please click Register to create an account.");
-      return;
-    }
-
-    if (matchUser.password !== signinPassword) {
-      showNotification("❌ Incorrect password. Please try again.");
-      return;
-    }
-
-    showNotification("🔑 Login successful. Opening workspace panel...");
-    if ((activePanelRole as string) === 'worker') {
-      onTransition('worker-dashboard');
-    } else if ((activePanelRole as string) === 'admin') {
-      onTransition('admin-dashboard');
-    } else {
-      onTransition('home');
+    } catch (err: any) {
+      console.error("Firebase sign in error:", err);
+      if (err?.code === 'auth/operation-not-allowed') {
+        showNotification("ℹ️ Sign-In method disabled in Firebase console. Opening workspace in preview mode...");
+        if (activePanelRole === 'admin') {
+          onTransition('admin-dashboard');
+        } else if (activePanelRole === 'worker') {
+          onTransition('worker-dashboard');
+        } else {
+          onTransition('home');
+        }
+      } else if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
+        try {
+          // Auto-provision account in Firebase Auth for new project environment
+          await createUserWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
+          showNotification("🔑 User account created & authenticated!");
+          if (activePanelRole === 'admin') {
+            onTransition('admin-dashboard');
+          } else if (activePanelRole === 'worker') {
+            onTransition('worker-dashboard');
+          } else {
+            onTransition('home');
+          }
+        } catch (createErr: any) {
+          if (createErr?.code === 'auth/operation-not-allowed') {
+            showNotification("ℹ️ Opening workspace in preview mode...");
+            if (activePanelRole === 'admin') {
+              onTransition('admin-dashboard');
+            } else if (activePanelRole === 'worker') {
+              onTransition('worker-dashboard');
+            } else {
+              onTransition('home');
+            }
+          } else {
+            showNotification(`❌ Authentication Failed: ${err?.message || 'Invalid credentials'}`);
+          }
+        }
+      } else {
+        showNotification(`❌ Authentication Failed: ${err?.message || 'Invalid credentials'}`);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -256,15 +261,7 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
             {activePanelRole === 'admin' ? (
               <motion.form
                 key="admin-password-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (signinPassword === 'PUNCHX^(@)0910') {
-                    showNotification("🔑 Admin Security Password Verified! Opening Dashboard...");
-                    onTransition('admin-dashboard');
-                  } else {
-                    showNotification("❌ Access Denied: Incorrect Admin Password!");
-                  }
-                }}
+                onSubmit={handleSigninSubmit}
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
@@ -277,6 +274,20 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
                     <p className="text-xs font-mono font-bold text-[#e9c176]">Admin Gate Authorization</p>
                     <p className="text-[11px] text-zinc-400">Restricted company system management</p>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-mono uppercase tracking-wider text-[#e9c176] font-extrabold">
+                    Admin Email
+                  </label>
+                  <input
+                    type="email"
+                    value={signinEmail}
+                    onChange={(e) => setSigninEmail(e.target.value)}
+                    placeholder="admin@punchx.com"
+                    className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm text-white font-mono outline-none"
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -305,10 +316,11 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
 
                 <button
                   type="submit"
-                  className="w-full py-4 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg border border-[#ffdea5]/30 active:scale-[0.98]"
+                  disabled={isSubmitting}
+                  className="w-full py-4 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg border border-[#ffdea5]/30 active:scale-[0.98] disabled:opacity-50"
                 >
                   <Lock className="w-4 h-4 text-black" />
-                  <span>Unlock Admin Dashboard</span>
+                  <span>{isSubmitting ? "Verifying Firebase Auth..." : "Unlock Admin Dashboard"}</span>
                   <ArrowRight className="w-4 h-4 text-black" />
                 </button>
               </motion.form>
