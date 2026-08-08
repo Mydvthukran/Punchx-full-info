@@ -3,7 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>PunchX Services Platform</title>
+    <script>
+      // Suppress benign Vite HMR WebSocket connection errors in dev server environment
+      (function() {
+        function isViteWsError(err) {
+          if (!err) return false;
+          var msg = (err.message || err.reason || err.stack || String(err)).toLowerCase();
+          return msg.includes('websocket') || msg.includes('vite') || msg.includes('ws');
+        }
+        window.addEventListener('unhandledrejection', function(event) {
+          if (isViteWsError(event.reason)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+        window.addEventListener('error', function(event) {
+          if (isViteWsError(event.error) || isViteWsError(event.message)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
