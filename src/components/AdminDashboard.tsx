@@ -585,6 +585,10 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               </div>
             )}
 
+            <div className="flex justify-center my-2 overflow-x-auto">
+              <div className="g-recaptcha" data-sitekey="6Le0W30tAAAAALys4Xjq3TWYaFeTtmKSEZJbioAq" data-action="LOGIN"></div>
+            </div>
+
             <button
               type="submit"
               disabled={isCheckingGate}
