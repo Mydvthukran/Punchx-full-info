@@ -18,15 +18,19 @@ import WorkerSignup from './components/WorkerSignup';
 import WorkerOtpPass from './components/WorkerOtpPass';
 import WorkerPendingApproval from './components/WorkerPendingApproval';
 import { AppScreen, Worker, WorkerApplication } from './types';
+import { AuthProvider, useAuth } from './lib/authContext';
+import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 
-export default function App() {
+function AppMain() {
+  const { currentUser, userProfile, isLoadingProfile } = useAuth();
+
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('splash');
   const [activePanelRole, setActivePanelRole] = useState<'customer' | 'worker' | 'admin'>('customer');
   const [workerApplication, setWorkerApplication] = useState<WorkerApplication | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('AC Repair');
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
 
-  const [citizenName, setCitizenName] = useState('Aarav Sharma');
+  const [citizenName, setCitizenName] = useState('PunchX Citizen');
   const [citizenAddress, setCitizenAddress] = useState('42nd Galaxy Towers, Block C, Bengaluru, KA 560001');
 
   const [authMethod, setAuthMethod] = useState<'phone' | 'gmail'>('phone');
@@ -39,6 +43,29 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   // State for mobile QR modal trigger
   const [isMobileQrOpen, setIsMobileQrOpen] = useState(false);
+
+  // Initialize Firebase credentials for Dashboard security
+  useEffect(() => {
+    ensureFirebaseDashboardCredentials();
+  }, []);
+
+  // Sync authenticated profile from AuthContext
+  useEffect(() => {
+    if (isLoadingProfile && currentUser) {
+      setCitizenName('Loading profile...');
+      setCitizenAddress('Loading address...');
+    } else if (userProfile) {
+      setCitizenName(userProfile.name || 'PunchX Member');
+      setCitizenAddress(userProfile.address || 'Address not provided');
+      if (userProfile.email) {
+        setAuthMethod('gmail');
+        setAuthTarget(userProfile.email);
+      } else if (userProfile.phone) {
+        setAuthMethod('phone');
+        setAuthTarget(userProfile.phone);
+      }
+    }
+  }, [userProfile, isLoadingProfile, currentUser]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -400,5 +427,13 @@ export default function App() {
       {/* Global Interactive QR Code Modal */}
       <MobileQRModal isOpen={isMobileQrOpen} onClose={() => setIsMobileQrOpen(false)} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppMain />
+    </AuthProvider>
   );
 }

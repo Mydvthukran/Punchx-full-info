@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, OrderRecord, CustomerReview } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
-import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { collection, query, where, onSnapshot, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { 
   Wrench, ShieldCheck, CheckCircle2, Clock, MapPin, Phone, 
   Upload, Navigation, DollarSign, Star, UserCheck, AlertCircle, 
@@ -30,6 +31,90 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     window.dispatchEvent(new Event('storage'));
   }, [isOnline]);
   const [activeTab, setActiveTab] = useState<'orders' | 'earnings' | 'profile' | 'bot'>('orders');
+
+  // Authenticated Worker Profile State
+  const [workerProfile, setWorkerProfile] = useState<{
+    uid: string;
+    name: string;
+    email: string;
+    phone: string;
+    photoURL: string;
+    skill: string;
+    experience: string;
+    rating: number;
+    completedJobs: number;
+  }>({
+    uid: 'PX-WK-88192',
+    name: 'Rajesh Kumar',
+    email: 'rajesh.ac.expert@gmail.com',
+    phone: '+91 98765 43210',
+    photoURL: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
+    skill: 'Master AC & Thermal Specialist',
+    experience: '8 Years',
+    rating: 4.95,
+    completedJobs: 128
+  });
+  const [isLoadingWorkerProfile, setIsLoadingWorkerProfile] = useState(true);
+
+  // Sync authenticated worker profile from Firestore
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setIsLoadingWorkerProfile(true);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setWorkerProfile({
+              uid: user.uid,
+              name: data.name || user.displayName || 'Verified Worker',
+              email: data.email || user.email || 'Not provided',
+              phone: data.phone || user.phoneNumber || 'Not provided',
+              photoURL: data.photoURL || user.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+              skill: data.workerSkill || 'Master Service Specialist',
+              experience: data.workerExperience || '5 Years',
+              rating: data.workerRating || 4.95,
+              completedJobs: data.workerCompletedJobs || 128
+            });
+          } else {
+            const newWorkerProfile = {
+              uid: user.uid,
+              name: user.displayName || (user.email ? user.email.split('@')[0] : 'Verified Worker'),
+              email: user.email || 'Not provided',
+              phone: user.phoneNumber || 'Not provided',
+              photoURL: user.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+              role: 'worker',
+              workerSkill: 'Master Service Specialist',
+              workerExperience: '5 Years',
+              workerRating: 4.95,
+              workerCompletedJobs: 128,
+              createdAt: new Date().toISOString()
+            };
+            await setDoc(doc(db, 'users', user.uid), newWorkerProfile);
+            setWorkerProfile({
+              uid: user.uid,
+              name: newWorkerProfile.name,
+              email: newWorkerProfile.email,
+              phone: newWorkerProfile.phone,
+              photoURL: newWorkerProfile.photoURL,
+              skill: newWorkerProfile.workerSkill,
+              experience: newWorkerProfile.workerExperience,
+              rating: newWorkerProfile.workerRating,
+              completedJobs: newWorkerProfile.workerCompletedJobs
+            });
+          }
+        } catch (e) {
+          console.error("Error loading worker profile:", e);
+        } finally {
+          setIsLoadingWorkerProfile(false);
+        }
+      } else {
+        setIsLoadingWorkerProfile(false);
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   // Loading state for Firestore/data sync simulation
   const [isLoading, setIsLoading] = useState(true);
@@ -544,7 +629,9 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               PUNCH<span className="text-[#c5a059]">X</span> WORKER
               <span className="text-[8.5px] font-mono uppercase bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold flex-shrink-0">VERIFIED</span>
             </h1>
-            <p className="text-[9.5px] text-zinc-400 font-mono truncate">Rajesh Kumar • Specialist ID: #WK-8819</p>
+            <p className="text-[9.5px] text-zinc-400 font-mono truncate">
+              {isLoadingWorkerProfile ? 'Loading profile...' : `${workerProfile.name} • Specialist ID: #${workerProfile.uid.slice(0, 8).toUpperCase()}`}
+            </p>
           </div>
         </div>
 
@@ -822,20 +909,29 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-800 pb-5">
                 <div className="flex items-center gap-4">
                   <img 
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ"
-                    alt="Worker Profile"
+                    src={workerProfile.photoURL}
+                    alt={workerProfile.name}
                     className="w-16 h-16 rounded-2xl object-cover border-2 border-[#c5a059]"
                     referrerPolicy="no-referrer"
                   />
                   <div>
-                    <h2 className="text-lg font-extrabold text-white">Rajesh Kumar</h2>
-                    <p className="text-xs text-[#e9c176] font-mono font-bold">Master AC & Thermal Specialist</p>
-                    <p className="text-[11px] text-zinc-400 font-mono mt-0.5">Verified Worker ID: PX-WK-88192</p>
+                    <h2 className="text-lg font-extrabold text-white">
+                      {isLoadingWorkerProfile ? 'Loading profile...' : workerProfile.name}
+                    </h2>
+                    <p className="text-xs text-[#e9c176] font-mono font-bold">{workerProfile.skill}</p>
+                    <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                      Verified Worker ID: #{workerProfile.uid.slice(0, 10).toUpperCase()}
+                    </p>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    try {
+                      await signOut(auth);
+                    } catch (e) {
+                      console.error(e);
+                    }
                     showNotification('🚪 Logged out from Worker Account');
                     onTransition('panel-select');
                   }}
@@ -850,12 +946,12 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 space-y-1">
                   <span className="text-[10px] font-mono text-zinc-400 block">Mobile Contact</span>
-                  <span className="font-bold text-white font-mono">+91 98765 43210</span>
+                  <span className="font-bold text-white font-mono">{workerProfile.phone || 'Not provided'}</span>
                 </div>
 
                 <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 space-y-1">
                   <span className="text-[10px] font-mono text-zinc-400 block">Gmail Account</span>
-                  <span className="font-bold text-white font-mono">rajesh.ac.expert@gmail.com</span>
+                  <span className="font-bold text-white font-mono">{workerProfile.email || 'Not provided'}</span>
                 </div>
 
                 <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 space-y-1">

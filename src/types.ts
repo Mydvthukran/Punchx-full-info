@@ -31,6 +31,22 @@ export interface WorkerApplication {
 
 export type UserRole = 'citizen' | 'worker' | 'authority';
 
+export interface UserProfile {
+  uid: string;
+  name: string;
+  email: string;
+  photoURL?: string;
+  role: 'citizen' | 'worker' | 'admin';
+  address?: string;
+  phone?: string;
+  workerSkill?: string;
+  workerExperience?: string;
+  workerRating?: number;
+  workerCompletedJobs?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Worker {
   id: string;
   name: string;

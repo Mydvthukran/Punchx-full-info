@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen } from 'lucide-react';
 import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
@@ -165,14 +165,27 @@ export default function HomeDashboard({
     setEditAddress(citizenAddress);
   }, [citizenName, citizenAddress]);
 
-  const handleSaveProfile = () => {
-    if (!editName.trim() || !editAddress.trim()) {
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
       showNotification("⚠️ Please fill out all profile fields.");
       return;
     }
+    const cleanAddress = editAddress.trim() || 'Address not provided';
     setCitizenName(editName.trim());
-    setCitizenAddress(editAddress.trim());
+    setCitizenAddress(cleanAddress);
     setIsEditing(false);
+
+    if (auth.currentUser?.uid) {
+      try {
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+          name: editName.trim(),
+          address: cleanAddress,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Firestore profile update error:", e);
+      }
+    }
     showNotification("✓ Profile updated successfully.");
   };
 

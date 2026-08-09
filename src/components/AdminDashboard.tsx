@@ -14,6 +14,7 @@ import {
 import { ALL_EXPERTS } from '../data/experts';
 import { db } from '../lib/firebase';
 import { collection, getDocs, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { ensureFirebaseDashboardCredentials, verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
 
 interface AdminDashboardProps {
   onTransition: (target: AppScreen) => void;
@@ -127,6 +128,38 @@ const DEFAULT_WORKER_APPS: WorkerApplication[] = [
 ];
 
 export default function AdminDashboard({ onTransition, showNotification }: AdminDashboardProps) {
+  // Dashboard Access Gate State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [gateEmail, setGateEmail] = useState(ADMIN_DASHBOARD_EMAIL);
+  const [gatePassword, setGatePassword] = useState('');
+  const [gateError, setGateError] = useState('');
+  const [isCheckingGate, setIsCheckingGate] = useState(false);
+
+  useEffect(() => {
+    ensureFirebaseDashboardCredentials();
+  }, []);
+
+  const handleUnlockDashboard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!gatePassword) {
+      setGateError('invalid password');
+      showNotification('⚠️ invalid password');
+      return;
+    }
+    setIsCheckingGate(true);
+    setGateError('');
+    const result = await verifyDashboardPassword(gateEmail, gatePassword);
+    setIsCheckingGate(false);
+
+    if (result.success) {
+      setIsUnlocked(true);
+      showNotification('✅ Dashboard Unlocked. Authorized Access Granted.');
+    } else {
+      setGateError('invalid password');
+      showNotification('⚠️ invalid password');
+    }
+  };
+
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [workerApps, setWorkerApps] = useState<WorkerApplication[]>([]);
   
@@ -479,6 +512,101 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     };
   });
   const maxOrdersInDay = Math.max(...monthlyOrdersData.map(d => d.ordersCount));
+
+  if (!isUnlocked) {
+    return (
+      <div id="admin-security-gate" className="min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
+        {/* Background Radiance */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#c5a059]/10 rounded-full blur-[160px] pointer-events-none"></div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          className="max-w-md w-full bg-[#0c1836] border-2 border-[#c5a059]/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 z-10 relative"
+        >
+          {/* Header Branding */}
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-white border border-[#c5a059] p-1 shadow-xl flex items-center justify-center overflow-hidden">
+              <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-contain" />
+            </div>
+            
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#c5a059]/20 border border-[#c5a059]/40 text-[#e9c176] text-xs font-mono font-bold uppercase tracking-wider">
+              <Lock className="w-3.5 h-3.5 text-[#c5a059]" />
+              <span>FIREBASE SECURED DASHBOARD</span>
+            </div>
+
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+              ENTER DASHBOARD PASSWORD
+            </h2>
+            <p className="text-xs text-zinc-400 font-mono">
+              Authorized personnel only. Credentials verified via Firebase database.
+            </p>
+          </div>
+
+          {/* Security Form */}
+          <form onSubmit={handleUnlockDashboard} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-mono text-[#e9c176] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#c5a059]" />
+                <span>Authorized Gmail</span>
+              </label>
+              <input
+                type="email"
+                required
+                value={gateEmail}
+                onChange={(e) => setGateEmail(e.target.value)}
+                placeholder="businressguy@gmail.com"
+                className="w-full bg-[#07122a] border border-zinc-700 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white font-mono outline-none transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-mono text-[#e9c176] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-[#c5a059]" />
+                <span>Dashboard Password</span>
+              </label>
+              <input
+                type="password"
+                required
+                value={gatePassword}
+                onChange={(e) => {
+                  setGatePassword(e.target.value);
+                  if (gateError) setGateError('');
+                }}
+                placeholder="Enter password"
+                className="w-full bg-[#07122a] border border-zinc-700 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white font-mono outline-none transition-all"
+              />
+            </div>
+
+            {gateError && (
+              <div id="invalid-password-alert" className="bg-rose-500/15 border border-rose-500/40 text-rose-300 rounded-xl p-3 text-xs font-mono font-bold flex items-center justify-center gap-2 animate-shake">
+                <ShieldAlert className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                <span>{gateError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isCheckingGate}
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-[#c5a059] to-[#e9c176] text-black font-extrabold text-xs uppercase tracking-wider rounded-xl hover:opacity-95 transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 font-mono"
+            >
+              <Lock className="w-4 h-4 text-black" />
+              <span>{isCheckingGate ? 'Verifying Credentials...' : 'Unlock Enterprise Panel'}</span>
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-zinc-800 text-center">
+            <button
+              onClick={() => onTransition('panel-select')}
+              className="text-xs text-zinc-400 hover:text-white font-mono underline transition-colors cursor-pointer"
+            >
+              ← Back to Panel Selection
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div id="admin-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-24 overflow-x-hidden">

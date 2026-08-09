@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Clock, Calendar, MapPin, Camera, Clipboard, Terminal, ShoppingBag, CheckCircle, ShieldAlert } from 'lucide-react';
+import { auth, db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface ConfirmBookingProps {
   onTransition: (target: AppScreen) => void;
@@ -185,9 +187,20 @@ export default function ConfirmBooking({
             ) : (
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (editAddressVal.trim()) {
-                      setCitizenAddress(editAddressVal.trim());
+                      const newAddr = editAddressVal.trim();
+                      setCitizenAddress(newAddr);
+                      if (auth.currentUser?.uid) {
+                        try {
+                          await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                            address: newAddr,
+                            updatedAt: new Date().toISOString()
+                          });
+                        } catch (e) {
+                          console.error("Error updating address in Firestore:", e);
+                        }
+                      }
                     }
                     setIsEditingAddress(false);
                   }}

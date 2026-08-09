@@ -4,6 +4,8 @@ import { AppScreen, Worker } from '../types';
 import { ALL_EXPERTS } from '../data/experts';
 import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
+import { auth, db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 interface ProvidersListProps {
   onTransition: (target: AppScreen) => void;
@@ -96,14 +98,27 @@ export default function ProvidersList({
     onTransition('provider-details');
   };
 
-  const handleSaveProfile = () => {
-    if (!tempName.trim() || !tempAddress.trim()) {
+  const handleSaveProfile = async () => {
+    if (!tempName.trim()) {
       showNotification("⚠️ User details fields cannot be left empty.");
       return;
     }
+    const cleanAddress = tempAddress.trim() || 'Address not provided';
     setCitizenName(tempName.trim());
-    setCitizenAddress(tempAddress.trim());
+    setCitizenAddress(cleanAddress);
     setIsEditingProfile(false);
+
+    if (auth.currentUser?.uid) {
+      try {
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+          name: tempName.trim(),
+          address: cleanAddress,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Firestore user profile save error:", e);
+      }
+    }
     showNotification("✓ Citizen profile metadata refreshed successfully.");
   };
 

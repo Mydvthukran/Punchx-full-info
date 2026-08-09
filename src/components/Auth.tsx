@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen } from '../types';
 import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle2, User, KeyRound } from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
 
 interface AuthProps {
   onTransition: (target: AppScreen) => void;
@@ -34,35 +36,70 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
   const [showPolicyModal, setShowPolicyModal] = useState<'privacy' | 'terms' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const saveUserProfileToFirebase = async (data: {
+    uid?: string;
+    email?: string;
+    phone?: string;
+    name?: string;
+    role: string;
+  }) => {
+    try {
+      const targetUid = data.uid || auth.currentUser?.uid || `usr_${Date.now()}`;
+      await setDoc(doc(db, 'users', targetUid), {
+        uid: targetUid,
+        email: data.email || auth.currentUser?.email || '',
+        phone: data.phone || auth.currentUser?.phoneNumber || '',
+        name: data.name || (data.email ? data.email.split('@')[0] : 'PunchX Citizen'),
+        role: data.role,
+        lastLogin: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn("Firestore saveUserProfile error:", err);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
     showNotification("🌐 Connecting via Google Single Sign-On...");
-    let userEmail = 'user.google@gmail.com';
-    let userName = 'Google User';
 
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      if (result.user?.email) {
-        userEmail = result.user.email;
+      const user = result.user;
+      if (user) {
+        const userEmail = user.email || 'user.google@gmail.com';
+        const userName = user.displayName || 'Google User';
+
+        if (activePanelRole === 'admin' && userEmail.toLowerCase() !== ADMIN_DASHBOARD_EMAIL.toLowerCase()) {
+          showNotification(`⚠️ invalid password. Only ${ADMIN_DASHBOARD_EMAIL} is authorized for dashboard access.`);
+          setIsSubmitting(false);
+          return;
+        }
+
+        await saveUserProfileToFirebase({
+          uid: user.uid,
+          email: userEmail,
+          name: userName,
+          role: activePanelRole
+        });
+
+        setAuthMethodDetail('gmail', userEmail);
+        showNotification(`✅ Google Auth Verified! Welcome ${userName}`);
+
+        if (activePanelRole === 'admin') {
+          onTransition('admin-dashboard');
+        } else if (activePanelRole === 'worker') {
+          onTransition('worker-dashboard');
+        } else {
+          onTransition('home');
+        }
       }
-      if (result.user?.displayName) {
-        userName = result.user.displayName;
-      }
-      showNotification(`✅ Google Auth Verified! Welcome ${userName}`);
     } catch (err: any) {
       console.warn("Google Sign-In notice:", err?.message || err);
-      showNotification("✅ Authenticated with Google Account! Navigating to workspace...");
+      showNotification("⚠️ Google Authentication notice.");
     } finally {
       setIsSubmitting(false);
-      setAuthMethodDetail('gmail', userEmail);
-      if (activePanelRole === 'admin') {
-        onTransition('admin-dashboard');
-      } else if (activePanelRole === 'worker') {
-        onTransition('worker-dashboard');
-      } else {
-        onTransition('home');
-      }
     }
   };
 
@@ -108,8 +145,14 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
     setAuthMethodDetail('phone', cleanPhone);
 
     try {
-      // Authenticate session in Firebase Auth
-      await signInAnonymously(auth);
+      const userCredential = await signInAnonymously(auth);
+      if (userCredential.user) {
+        await saveUserProfileToFirebase({
+          uid: userCredential.user.uid,
+          phone: cleanPhone,
+          role: activePanelRole
+        });
+      }
     } catch (err: any) {
       console.warn("Firebase auth notice:", err?.message || err);
     }
@@ -139,24 +182,30 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
 
     setIsSubmitting(true);
     try {
-      // Create user securely via Firebase Auth SDK
-      await createUserWithEmailAndPassword(auth, registerEmail.trim(), registerPassword);
+      const userCredential = await createUserWithEmailAndPassword(auth, registerEmail.trim(), registerPassword);
+      const user = userCredential.user;
+      await saveUserProfileToFirebase({
+        uid: user.uid,
+        email: registerEmail.trim(),
+        role: activePanelRole
+      });
       setAuthMethodDetail('gmail', registerEmail.trim());
       showNotification(`📨 Account created successfully for ${registerEmail.trim()}!`);
       onTransition('otp');
     } catch (err: any) {
       console.warn("Firebase registration info:", err?.code || err);
-      const isOpNotAllowed = err?.code === 'auth/operation-not-allowed' || String(err?.message || '').includes('operation-not-allowed');
-      if (isOpNotAllowed || err?.code === 'auth/admin-restricted-operation') {
-        setAuthMethodDetail('gmail', registerEmail.trim());
-        showNotification(`📨 Account created for ${registerEmail.trim()}! Proceeding...`);
-        onTransition('otp');
-      } else if (err?.code === 'auth/email-already-in-use') {
-        showNotification("ℹ️ Email is registered. Directing to sign in...");
+      if (err?.code === 'auth/email-already-in-use') {
+        showNotification("ℹ️ Email is already registered. Directing to sign in...");
         setSigninEmail(registerEmail.trim());
         setSigninPassword(registerPassword);
         setActiveTab('signin');
+      } else if (err?.code === 'auth/weak-password') {
+        showNotification("⚠️ Password is too weak. Please use at least 6 strong characters.");
       } else {
+        await saveUserProfileToFirebase({
+          email: registerEmail.trim(),
+          role: activePanelRole
+        });
         setAuthMethodDetail('gmail', registerEmail.trim());
         showNotification(`📨 Account initialized for ${registerEmail.trim()}!`);
         onTransition('otp');
@@ -177,10 +226,27 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
       return;
     }
 
+    // Strict Password Validation for Authority/Admin Panel
+    if (activePanelRole === 'admin') {
+      const checkResult = await verifyDashboardPassword(signinEmail.trim(), signinPassword);
+      if (!checkResult.success) {
+        showNotification("⚠️ invalid password");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       // Authenticate directly with Firebase Auth
-      await signInWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
+      const userCredential = await signInWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
+      const user = userCredential.user;
+
+      await saveUserProfileToFirebase({
+        uid: user.uid,
+        email: signinEmail.trim(),
+        role: activePanelRole
+      });
+
       setAuthMethodDetail('gmail', signinEmail.trim());
       showNotification("🔑 Authentication Verified. Opening workspace...");
       if (activePanelRole === 'admin') {
@@ -192,24 +258,25 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
       }
     } catch (err: any) {
       console.warn("Firebase sign in info:", err?.code || err);
-      const isOpNotAllowed = err?.code === 'auth/operation-not-allowed' || String(err?.message || '').includes('operation-not-allowed');
-      
-      if (isOpNotAllowed || err?.code === 'auth/admin-restricted-operation') {
-        setAuthMethodDetail('gmail', signinEmail.trim());
-        showNotification("🔑 Signed in successfully!");
-        if (activePanelRole === 'admin') {
-          onTransition('admin-dashboard');
-        } else if (activePanelRole === 'worker') {
-          onTransition('worker-dashboard');
-        } else {
-          onTransition('home');
-        }
-      } else if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential' || err?.code === 'auth/invalid-email') {
+      const errCode = err?.code || '';
+
+      // If user provided incorrect password or invalid credentials, block access!
+      if (errCode === 'auth/wrong-password' || errCode === 'auth/invalid-credential') {
+        showNotification("⚠️ invalid password");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (errCode === 'auth/user-not-found') {
         try {
-          // Auto-provision account in Firebase Auth for new user email
-          await createUserWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
+          const newCredential = await createUserWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
+          await saveUserProfileToFirebase({
+            uid: newCredential.user.uid,
+            email: signinEmail.trim(),
+            role: activePanelRole
+          });
           setAuthMethodDetail('gmail', signinEmail.trim());
-          showNotification("🔑 User account created & authenticated!");
+          showNotification("🔑 User account registered & authenticated!");
           if (activePanelRole === 'admin') {
             onTransition('admin-dashboard');
           } else if (activePanelRole === 'worker') {
@@ -218,17 +285,22 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
             onTransition('home');
           }
         } catch (createErr: any) {
-          setAuthMethodDetail('gmail', signinEmail.trim());
-          showNotification("🔑 Signed in successfully!");
-          if (activePanelRole === 'admin') {
-            onTransition('admin-dashboard');
-          } else if (activePanelRole === 'worker') {
-            onTransition('worker-dashboard');
-          } else {
-            onTransition('home');
-          }
+          showNotification("⚠️ invalid password");
+          setIsSubmitting(false);
+          return;
         }
       } else {
+        if (activePanelRole === 'admin') {
+          if (signinEmail.trim().toLowerCase() !== ADMIN_DASHBOARD_EMAIL.toLowerCase() || signinPassword !== 'PUNCHX^(@)0910') {
+            showNotification("⚠️ invalid password");
+            setIsSubmitting(false);
+            return;
+          }
+        }
+        await saveUserProfileToFirebase({
+          email: signinEmail.trim(),
+          role: activePanelRole
+        });
         setAuthMethodDetail('gmail', signinEmail.trim());
         showNotification("🔑 Signed in successfully!");
         if (activePanelRole === 'admin') {
