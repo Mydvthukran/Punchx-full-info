@@ -97,7 +97,7 @@ export default function ConfirmBooking({
       </header>
 
       {/* Main Form Fields */}
-      <main className="w-full max-w-xl mx-auto px-4 pt-4 space-y-5">
+      <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-6">
         
         {/* Active Worker Metadata panel */}
         {selectedWorker && (

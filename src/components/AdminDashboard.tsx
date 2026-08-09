@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { ALL_EXPERTS } from '../data/experts';
 import { db } from '../lib/firebase';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
 
 interface AdminDashboardProps {
   onTransition: (target: AppScreen) => void;
@@ -166,10 +166,11 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   ]);
 
   useEffect(() => {
-    let unsubscribe: () => void;
+    let unsubs: (() => void)[] = [];
     try {
+      // 1. Reviews
       const reviewsCol = collection(db, 'reviews');
-      unsubscribe = onSnapshot(reviewsCol, (snapshot) => {
+      const unsubReviews = onSnapshot(reviewsCol, (snapshot) => {
         const live: any[] = [];
         snapshot.forEach((docSnap) => {
           live.push({ id: docSnap.id, ...docSnap.data() });
@@ -180,11 +181,45 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
       }, (err) => {
         console.warn('Firestore review subscription offline:', err);
       });
+      unsubs.push(unsubReviews);
+
+      // 2. Orders
+      const ordersCol = collection(db, 'orders');
+      const unsubOrders = onSnapshot(ordersCol, (snapshot) => {
+        const liveOrders: OrderRecord[] = [];
+        snapshot.forEach((docSnap) => {
+          liveOrders.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
+        });
+        if (liveOrders.length > 0) {
+          setOrders(liveOrders);
+          localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
+        }
+      }, (err) => {
+        console.warn('Firestore orders subscription offline:', err);
+      });
+      unsubs.push(unsubOrders);
+
+      // 3. Worker Applications
+      const appsCol = collection(db, 'workerApplications');
+      const unsubApps = onSnapshot(appsCol, (snapshot) => {
+        const liveApps: WorkerApplication[] = [];
+        snapshot.forEach((docSnap) => {
+          liveApps.push({ id: docSnap.id, ...docSnap.data() } as WorkerApplication);
+        });
+        if (liveApps.length > 0) {
+          setWorkerApps(liveApps);
+          localStorage.setItem('punchx_worker_applications', JSON.stringify(liveApps));
+        }
+      }, (err) => {
+        console.warn('Firestore applications subscription offline:', err);
+      });
+      unsubs.push(unsubApps);
     } catch (e) {
-      console.warn('Firestore reviews listener error:', e);
+      console.warn('Firestore listeners setup error:', e);
     }
+
     return () => {
-      if (unsubscribe) unsubscribe();
+      unsubs.forEach(fn => fn());
     };
   }, []);
 
@@ -239,29 +274,43 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   };
 
   // Handle Approving Worker Registration
-  const handleApproveWorker = (appId: string) => {
+  const handleApproveWorker = async (appId: string) => {
     const target = workerApps.find(a => a.id === appId);
     const updated = workerApps.map(a => a.id === appId ? { ...a, status: 'APPROVED' as const } : a);
     setWorkerApps(updated);
     localStorage.setItem('punchx_worker_applications', JSON.stringify(updated));
+
+    try {
+      await updateDoc(doc(db, 'workerApplications', appId), { status: 'APPROVED' });
+    } catch (e) {
+      console.error("Error updating worker application status in Firestore:", e);
+    }
+
     showNotification(`🎉 Registration ${appId} (${target?.legalName || 'Worker'}) ACCEPTED! Worker authorized to access panel.`);
     addActivityLog(`Registration ${appId} (${target?.legalName}) APPROVED`, 'WORKER');
   };
 
   // Handle Rejecting Worker Registration
-  const handleRejectWorker = () => {
+  const handleRejectWorker = async () => {
     if (!rejectModal) return;
     const { appId, applicantName } = rejectModal;
     const updated = workerApps.map(a => a.id === appId ? { ...a, status: 'REJECTED' as const } : a);
     setWorkerApps(updated);
     localStorage.setItem('punchx_worker_applications', JSON.stringify(updated));
+
+    try {
+      await updateDoc(doc(db, 'workerApplications', appId), { status: 'REJECTED' });
+    } catch (e) {
+      console.error("Error updating worker application status in Firestore:", e);
+    }
+
     showNotification(`❌ Registration ${appId} (${applicantName}) DECLINED. Reason: ${rejectReason}`);
     addActivityLog(`Registration ${appId} DECLINED (${rejectReason})`, 'WORKER');
     setRejectModal(null);
   };
 
   // Simulate adding a test incoming registration application
-  const handleSimulateNewRegistration = () => {
+  const handleSimulateNewRegistration = async () => {
     const newId = `WRK-${Math.floor(800 + Math.random() * 100)}`;
     const names = ['Rajesh Sharma', 'Aakash Verma', 'Kavita Pillai', 'Mohd Farooq', 'Nikhil Joshi'];
     const skills = ['AC Repair Specialist', 'Electrical Inspection Pro', 'Deep Home Cleaning', 'Plumbing & Pipe Expert'];
@@ -284,33 +333,54 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     const updated = [newApp, ...workerApps];
     setWorkerApps(updated);
     localStorage.setItem('punchx_worker_applications', JSON.stringify(updated));
+
+    try {
+      await setDoc(doc(db, 'workerApplications', newId), newApp);
+    } catch (e) {
+      console.error("Error writing simulated worker app to Firestore:", e);
+    }
+
     showNotification(`📩 New Worker Registration Received: ${randomName} (${newId})!`);
     addActivityLog(`New Registration Application ${newId} submitted by ${randomName}`, 'NEW_REG');
   };
 
   // Update order status
-  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderRecord['status']) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderRecord['status']) => {
     const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
     setOrders(updated);
     localStorage.setItem('punchx_order_history', JSON.stringify(updated));
+
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
+    } catch (e) {
+      console.error("Error updating order status in Firestore:", e);
+    }
+
     showNotification(`✓ Order ${orderId} status updated to: ${newStatus}`);
     addActivityLog(`Order ${orderId} updated to ${newStatus}`, 'ORDER');
   };
 
   // Reassign technician for a service booking
-  const handleReassignWorker = (newWorkerName: string) => {
+  const handleReassignWorker = async (newWorkerName: string) => {
     if (!reassignModal) return;
     const { orderId } = reassignModal;
     const updated = orders.map(o => o.id === orderId ? { ...o, workerName: newWorkerName } : o);
     setOrders(updated);
     localStorage.setItem('punchx_order_history', JSON.stringify(updated));
+
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { workerName: newWorkerName });
+    } catch (e) {
+      console.error("Error reassigning worker in Firestore:", e);
+    }
+
     showNotification(`🔄 Service ${orderId} reassigned to technician: ${newWorkerName}`);
     addActivityLog(`Order ${orderId} reassigned to ${newWorkerName}`, 'REASSIGN');
     setReassignModal(null);
   };
 
   // Create manual dispatch order
-  const handleCreateManualDispatch = (e: React.FormEvent) => {
+  const handleCreateManualDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCustomerName.trim() || !newCustomerAddress.trim()) {
       showNotification('⚠️ Please specify customer name and service address');
@@ -338,6 +408,14 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     const updated = [createdOrder, ...orders];
     setOrders(updated);
     localStorage.setItem('punchx_order_history', JSON.stringify(updated));
+
+    try {
+      await setDoc(doc(db, 'orders', newId), createdOrder);
+      console.log('Manual dispatch order saved to Firestore:', newId);
+    } catch (e) {
+      console.error('Error writing manual dispatch order to Firestore:', e);
+    }
+
     showNotification(`🚀 Dispatch #${newId} assigned to ${newWorkerName} for ${newCustomerName}!`);
     addActivityLog(`Manual Order #${newId} dispatched to ${newWorkerName}`, 'DISPATCH');
     setNewDispatchModal(false);

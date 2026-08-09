@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen } from 'lucide-react';
 import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
@@ -105,8 +107,9 @@ export default function HomeDashboard({
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
-  // Synchronize dynamic booking history values
+  // Synchronize dynamic booking history values with Firestore & localStorage
   useEffect(() => {
+    // 1. Initial fallback load from localStorage
     const raw = localStorage.getItem('punchx_order_history') || '[]';
     try {
       setHistoryOrders(JSON.parse(raw));
@@ -121,9 +124,39 @@ export default function HomeDashboard({
       } catch {
         setActiveOrder(null);
       }
-    } else {
-      setActiveOrder(null);
     }
+
+    // 2. Real-time Firestore subscription for live orders sync
+    let unsubscribe: () => void;
+    try {
+      const ordersCol = collection(db, 'orders');
+      unsubscribe = onSnapshot(ordersCol, (snapshot) => {
+        const liveOrders: OrderRecord[] = [];
+        snapshot.forEach((docSnap) => {
+          liveOrders.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
+        });
+        if (liveOrders.length > 0) {
+          // Sort by creation or ID
+          setHistoryOrders(liveOrders);
+          localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
+          
+          // Find active order
+          const active = liveOrders.find(o => o.status === 'In-Progress' || o.status === 'Pending');
+          if (active) {
+            setActiveOrder(active);
+            localStorage.setItem('punchx_active_order', JSON.stringify(active));
+          }
+        }
+      }, (err) => {
+        console.warn("Firestore orders listener offline fallback active:", err);
+      });
+    } catch (e) {
+      console.warn("Firestore connection error in Home.tsx:", e);
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [isProfileOpen]);
 
   // Keep transient inputs in sync when global props update
@@ -143,19 +176,26 @@ export default function HomeDashboard({
     showNotification("✓ Profile updated successfully.");
   };
 
-  const handleCancelBooking = (orderId: string) => {
+  const handleCancelBooking = async (orderId: string) => {
     const updated = historyOrders.map(o => {
       if (o.id === orderId) {
-        return { ...o, status: 'Cancelled' };
+        return { ...o, status: 'Cancelled' as const };
       }
       return o;
     });
     setHistoryOrders(updated);
     localStorage.setItem('punchx_order_history', JSON.stringify(updated));
+
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status: 'Cancelled' });
+    } catch (e) {
+      console.error("Firestore cancel update failed:", e);
+    }
+
     showNotification(`⚠️ Booking ${orderId} has been cancelled.`);
   };
 
-  const handleSubmitReview = (orderId: string, workerName: string) => {
+  const handleSubmitReview = async (orderId: string, workerName: string) => {
     const updated = historyOrders.map(o => {
       if (o.id === orderId) {
         return {
@@ -169,6 +209,28 @@ export default function HomeDashboard({
     });
     setHistoryOrders(updated);
     localStorage.setItem('punchx_order_history', JSON.stringify(updated));
+
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        isRated: true,
+        userRating: tempRatingStars,
+        userBehaviour: tempBehaviourFeedback.trim() || 'Polite and professional behaviour.'
+      });
+
+      // Also save to reviews collection
+      const reviewId = `REV-${Date.now()}`;
+      await setDoc(doc(db, 'reviews', reviewId), {
+        id: reviewId,
+        customer: citizenName || 'Verified Customer',
+        rating: tempRatingStars,
+        category: 'Service Review',
+        comment: tempBehaviourFeedback.trim() || 'Polite and professional behaviour.',
+        date: new Date().toLocaleDateString()
+      });
+    } catch (e) {
+      console.error("Firestore review submission error:", e);
+    }
+
     showNotification(`⭐ Rating of ${tempRatingStars} ★ and behaviour review submitted for ${workerName}!`);
     setRatingOrderId(null);
     setTempRatingStars(5);
@@ -248,7 +310,7 @@ export default function HomeDashboard({
       </header>
 
       {/* Main Content Pane */}
-      <main className="w-full max-w-xl mx-auto px-4 pt-4 space-y-6">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 space-y-8">
         
         {/* Dynamic Search Input with Holographic Glow */}
         <div id="search-section" className="relative group">
@@ -398,9 +460,9 @@ export default function HomeDashboard({
           </div>
 
           {isLoading ? (
-            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-              {[1, 2, 3].map((idx) => (
-                <div key={idx} className="flex-shrink-0 w-64 bg-[#111415] border border-zinc-850 rounded-2xl p-5 flex flex-col items-center text-center animate-pulse space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((idx) => (
+                <div key={idx} className="w-full bg-[#111415] border border-zinc-850 rounded-2xl p-5 flex flex-col items-center text-center animate-pulse space-y-3">
                   <div className="w-16 h-16 rounded-full bg-zinc-800/80"></div>
                   <div className="h-4 w-28 bg-zinc-800/80 rounded"></div>
                   <div className="h-3.5 w-36 bg-zinc-800/60 rounded"></div>
@@ -410,12 +472,12 @@ export default function HomeDashboard({
               ))}
             </div>
           ) : (
-            <div id="experts-grid-row" className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+            <div id="experts-grid-row" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {EXPERTS.map((expert) => (
                 <div
                   id={`expert-crd-${expert.id}`}
                   key={expert.id}
-                  className="flex-shrink-0 w-64 bg-[#111415] border border-zinc-850 hover:border-[#c5a059]/40 rounded-2xl p-5 flex flex-col items-center text-center group relative transition-all"
+                  className="w-full bg-[#111415] border border-zinc-850 hover:border-[#c5a059]/40 rounded-2xl p-5 flex flex-col items-center text-center group relative transition-all"
                 >
                   {/* Pro Badge indicators */}
                   <span className="absolute top-4 right-4 bg-[#c5a059] text-black font-mono text-[9px] font-extrabold px-2 py-0.5 rounded-full border border-[#ffdea5]/50 shadow">

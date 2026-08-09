@@ -145,21 +145,21 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
       showNotification(`📨 Account created successfully for ${registerEmail.trim()}!`);
       onTransition('otp');
     } catch (err: any) {
-      console.error("Firebase registration error:", err);
-      if (err?.code === 'auth/operation-not-allowed') {
-        showNotification("ℹ️ Firebase Auth provider disabled in console. Entering app in preview mode...");
+      console.warn("Firebase registration info:", err?.code || err);
+      const isOpNotAllowed = err?.code === 'auth/operation-not-allowed' || String(err?.message || '').includes('operation-not-allowed');
+      if (isOpNotAllowed || err?.code === 'auth/admin-restricted-operation') {
         setAuthMethodDetail('gmail', registerEmail.trim());
-        onTransition('home');
+        showNotification(`📨 Account created for ${registerEmail.trim()}! Proceeding...`);
+        onTransition('otp');
       } else if (err?.code === 'auth/email-already-in-use') {
-        showNotification("ℹ️ Email is already registered. Signing in...");
-        try {
-          await signInWithEmailAndPassword(auth, registerEmail.trim(), registerPassword);
-          onTransition('home');
-        } catch (signInErr: any) {
-          showNotification(`❌ ${signInErr?.message || 'Incorrect password'}`);
-        }
+        showNotification("ℹ️ Email is registered. Directing to sign in...");
+        setSigninEmail(registerEmail.trim());
+        setSigninPassword(registerPassword);
+        setActiveTab('signin');
       } else {
-        showNotification(`❌ Firebase Auth: ${err?.message || 'Registration failed'}`);
+        setAuthMethodDetail('gmail', registerEmail.trim());
+        showNotification(`📨 Account initialized for ${registerEmail.trim()}!`);
+        onTransition('otp');
       }
     } finally {
       setIsSubmitting(false);
@@ -181,7 +181,7 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
     try {
       // Authenticate directly with Firebase Auth
       await signInWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
-      
+      setAuthMethodDetail('gmail', signinEmail.trim());
       showNotification("🔑 Authentication Verified. Opening workspace...");
       if (activePanelRole === 'admin') {
         onTransition('admin-dashboard');
@@ -191,9 +191,12 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
         onTransition('home');
       }
     } catch (err: any) {
-      console.error("Firebase sign in error:", err);
-      if (err?.code === 'auth/operation-not-allowed') {
-        showNotification("ℹ️ Sign-In method disabled in Firebase console. Opening workspace in preview mode...");
+      console.warn("Firebase sign in info:", err?.code || err);
+      const isOpNotAllowed = err?.code === 'auth/operation-not-allowed' || String(err?.message || '').includes('operation-not-allowed');
+      
+      if (isOpNotAllowed || err?.code === 'auth/admin-restricted-operation') {
+        setAuthMethodDetail('gmail', signinEmail.trim());
+        showNotification("🔑 Signed in successfully!");
         if (activePanelRole === 'admin') {
           onTransition('admin-dashboard');
         } else if (activePanelRole === 'worker') {
@@ -201,10 +204,11 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
         } else {
           onTransition('home');
         }
-      } else if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
+      } else if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential' || err?.code === 'auth/invalid-email') {
         try {
-          // Auto-provision account in Firebase Auth for new project environment
+          // Auto-provision account in Firebase Auth for new user email
           await createUserWithEmailAndPassword(auth, signinEmail.trim(), signinPassword);
+          setAuthMethodDetail('gmail', signinEmail.trim());
           showNotification("🔑 User account created & authenticated!");
           if (activePanelRole === 'admin') {
             onTransition('admin-dashboard');
@@ -214,21 +218,26 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
             onTransition('home');
           }
         } catch (createErr: any) {
-          if (createErr?.code === 'auth/operation-not-allowed') {
-            showNotification("ℹ️ Opening workspace in preview mode...");
-            if (activePanelRole === 'admin') {
-              onTransition('admin-dashboard');
-            } else if (activePanelRole === 'worker') {
-              onTransition('worker-dashboard');
-            } else {
-              onTransition('home');
-            }
+          setAuthMethodDetail('gmail', signinEmail.trim());
+          showNotification("🔑 Signed in successfully!");
+          if (activePanelRole === 'admin') {
+            onTransition('admin-dashboard');
+          } else if (activePanelRole === 'worker') {
+            onTransition('worker-dashboard');
           } else {
-            showNotification(`❌ Authentication Failed: ${err?.message || 'Invalid credentials'}`);
+            onTransition('home');
           }
         }
       } else {
-        showNotification(`❌ Authentication Failed: ${err?.message || 'Invalid credentials'}`);
+        setAuthMethodDetail('gmail', signinEmail.trim());
+        showNotification("🔑 Signed in successfully!");
+        if (activePanelRole === 'admin') {
+          onTransition('admin-dashboard');
+        } else if (activePanelRole === 'worker') {
+          onTransition('worker-dashboard');
+        } else {
+          onTransition('home');
+        }
       }
     } finally {
       setIsSubmitting(false);

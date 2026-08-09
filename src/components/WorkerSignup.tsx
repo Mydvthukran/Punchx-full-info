@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, WorkerApplication } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { 
   Wrench, UserCheck, MapPin, Briefcase, Award, Phone, Mail, 
   ShieldCheck, FileText, CheckSquare, Square, ChevronRight, X, Lock, AlertCircle
@@ -39,7 +41,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     'Other / Custom Skill'
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -84,7 +86,14 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
 
     setWorkerApplicationData(application);
     
-    // Save to localStorage so admin panel can see it in real-time
+    // Save to Firestore & localStorage
+    try {
+      await setDoc(doc(db, 'workerApplications', application.id), application);
+      console.log('Successfully saved worker application to Firestore:', application.id);
+    } catch (e) {
+      console.error('Firestore save application failed:', e);
+    }
+
     const existingApps = JSON.parse(localStorage.getItem('punchx_worker_applications') || '[]');
     localStorage.setItem('punchx_worker_applications', JSON.stringify([application, ...existingApps]));
 
@@ -96,7 +105,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     <div id="worker-signup-screen" className="min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans py-10 px-4 sm:px-6 relative">
       
       {/* Top Navigation */}
-      <div className="max-w-2xl mx-auto flex justify-between items-center mb-6">
+      <div className="max-w-4xl mx-auto flex justify-between items-center mb-6">
         <button
           onClick={() => onTransition('panel-select')}
           className="text-xs font-mono text-[#e9c176] hover:underline flex items-center gap-1 bg-[#11192e] px-3.5 py-2 rounded-xl border border-zinc-800 cursor-pointer"
@@ -108,7 +117,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
         </span>
       </div>
 
-      <div className="max-w-2xl mx-auto bg-[#11192e] border border-[#c5a059]/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="max-w-4xl mx-auto bg-[#11192e] border border-[#c5a059]/30 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
         
         {/* Title Header */}
         <div className="text-center space-y-2 border-b border-zinc-800 pb-5">

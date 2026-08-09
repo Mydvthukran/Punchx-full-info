@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, OrderRecord, CustomerReview } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { 
   Wrench, ShieldCheck, CheckCircle2, Clock, MapPin, Phone, 
   Upload, Navigation, DollarSign, Star, UserCheck, AlertCircle, 
@@ -212,15 +212,25 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   ];
 
   // Reset/Load demo orders helper
-  const resetToDemoOrders = () => {
+  const resetToDemoOrders = async () => {
     setIsLoading(true);
     setOrders(initialSampleOrders);
     localStorage.setItem('punchx_order_history', JSON.stringify(initialSampleOrders));
+
+    // Save demo orders to Firestore
+    try {
+      for (const ord of initialSampleOrders) {
+        await setDoc(doc(db, 'orders', ord.id), ord);
+      }
+    } catch (e) {
+      console.error("Error writing demo orders to Firestore:", e);
+    }
+
     showNotification('📦 Loaded fresh Demo Orders for verification!');
     setTimeout(() => setIsLoading(false), 500);
   };
 
-  // Load orders from localStorage / Firestore sync
+  // Load orders from localStorage / Firestore helper
   const loadOrders = () => {
     setIsLoading(true);
     const rawHistory = localStorage.getItem('punchx_order_history');
@@ -229,21 +239,60 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
         const parsed = JSON.parse(rawHistory);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setOrders(parsed);
-          setTimeout(() => setIsLoading(false), 500);
+          setTimeout(() => setIsLoading(false), 300);
           return;
         }
       } catch (e) {
         console.error(e);
       }
     }
-    // Default fallback
     setOrders(initialSampleOrders);
-    localStorage.setItem('punchx_order_history', JSON.stringify(initialSampleOrders));
-    setTimeout(() => setIsLoading(false), 500);
+    setTimeout(() => setIsLoading(false), 300);
   };
 
+  // Load orders from localStorage / Firestore sync
   useEffect(() => {
     loadOrders();
+    setIsLoading(true);
+    const rawHistory = localStorage.getItem('punchx_order_history');
+    if (rawHistory) {
+      try {
+        const parsed = JSON.parse(rawHistory);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setOrders(parsed);
+          setIsLoading(false);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Subscribe to real-time Firestore orders
+    let unsubscribe: () => void;
+    try {
+      const ordersCol = collection(db, 'orders');
+      unsubscribe = onSnapshot(ordersCol, (snapshot) => {
+        const live: OrderRecord[] = [];
+        snapshot.forEach((docSnap) => {
+          live.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
+        });
+        if (live.length > 0) {
+          setOrders(live);
+          localStorage.setItem('punchx_order_history', JSON.stringify(live));
+        }
+        setIsLoading(false);
+      }, (err) => {
+        console.warn("Firestore subscription offline:", err);
+        setIsLoading(false);
+      });
+    } catch (e) {
+      console.warn("Firestore listener setup error:", e);
+      setIsLoading(false);
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // Sync state to localStorage
@@ -259,7 +308,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   };
 
   // Handle Accept Order
-  const handleAcceptOrder = () => {
+  const handleAcceptOrder = async () => {
     if (!selectedOrder) return;
     if (!isOnline) {
       showNotification("⚠️ You are currently OFFLINE (OFF DUTY). Please turn ON DUTY in the top right corner to accept orders.");
@@ -268,15 +317,29 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     const updated = orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'In-Progress' as const } : o);
     updateOrdersInStateAndStorage(updated);
     setSelectedOrder({ ...selectedOrder, status: 'In-Progress' });
+
+    try {
+      await updateDoc(doc(db, 'orders', selectedOrder.id), { status: 'In-Progress' });
+    } catch (e) {
+      console.error("Firestore accept order update failed:", e);
+    }
+
     showNotification(`⚡ Order ${selectedOrder.id} ACCEPTED! Location & route unlocked.`);
   };
 
   // Handle Reject Order
-  const handleRejectOrder = () => {
+  const handleRejectOrder = async () => {
     if (!selectedOrder) return;
     const updated = orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'Cancelled' as const } : o);
     updateOrdersInStateAndStorage(updated);
     setShowOrderModal(false);
+
+    try {
+      await updateDoc(doc(db, 'orders', selectedOrder.id), { status: 'Cancelled' });
+    } catch (e) {
+      console.error("Firestore reject order update failed:", e);
+    }
+
     setSelectedOrder(null);
     showNotification(`❌ Order ${selectedOrder.id} REJECTED.`);
   };
@@ -518,7 +581,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       </header>
 
       {/* Main Content Area */}
-      <main className="w-full max-w-2xl mx-auto px-3.5 pt-4 space-y-5">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 space-y-6">
 
         {/* TAB 1: RECEIVED ORDERS FEED (HOME PAGE) */}
         {activeTab === 'orders' && (

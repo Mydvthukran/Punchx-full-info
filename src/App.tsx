@@ -37,14 +37,8 @@ export default function App() {
   const [bookingTime, setBookingTime] = useState('11:30 AM');
   const [bookingDate, setBookingDate] = useState('12');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // State for mobile QR modal trigger
   const [isMobileQrOpen, setIsMobileQrOpen] = useState(false);
-
-  useEffect(() => {
-    // Automatically present the QR Code on initial load of the desktop view for convenient user testing
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      setIsMobileQrOpen(true);
-    }
-  }, []);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -150,41 +144,12 @@ export default function App() {
         </div>
       )}
 
-      {/* Desktop Luxury Ornaments and Side Titles */}
-      <div className="hidden lg:flex fixed left-8 top-1/2 -translate-y-1/2 flex-col items-start gap-4 max-w-xs z-50 pointer-events-none select-none select-none">
-        <div className="flex items-center gap-2 border-b border-[#c5a059]/30 pb-3 w-full">
-          <div className="w-4 h-4 text-[#c5a059] border border-[#c5a059] flex items-center justify-center font-serif text-[10px]">⚜</div>
-          <span className="font-sans font-black text-xs uppercase tracking-[0.25em] text-[#e9c176] gold-gradient-text">PunchX Premium Suite</span>
-        </div>
-        <p className="text-[11px] text-zinc-500 font-sans leading-relaxed">
-          Security-grade home repair utility platform. Vetted technicians, military-grade hand-offs with dynamic OTP credentials.
-        </p>
-        <div className="h-[2px] w-12 bg-gradient-to-r from-[#c5a059] to-transparent"></div>
-        {/* Subtle vector filigree icon */}
-        <svg className="w-16 h-16 text-[#c5a059]/15 animate-pulse mt-2" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1">
-          <path d="M50 0 C40 30, 10 30, 10 50 C10 70, 40 70, 50 100 C60 70, 90 70, 90 50 C90 30, 60 30, 50 0 Z" />
-          <path d="M50 20 C45 40, 25 40, 25 50 C25 60, 45 60, 50 80 C55 60, 75 60, 75 50 C75 40, 55 40, 50 20 Z" strokeWidth="0.5" />
-        </svg>
-      </div>
-
-      <div className="hidden lg:flex fixed right-8 top-1/2 -translate-y-1/2 flex-col items-end gap-4 max-w-xs text-right z-50 pointer-events-none select-none">
-        <div className="flex items-center gap-2 border-b border-[#c5a059]/30 pb-3 w-full justify-end">
-          <span className="font-sans font-black text-xs uppercase tracking-[0.25em] text-[#e9c176] gold-gradient-text">Verified Hand-Over</span>
-          <div className="w-4 h-4 text-[#c5a059] border border-[#c5a059] flex items-center justify-center font-serif text-[10px]">⚖</div>
-        </div>
-        <p className="text-[11px] text-zinc-500 font-sans leading-relaxed">
-          Integrated photographic closure receipts. Secure tracking data is stored persistently in compliant digital ledgers.
-        </p>
-        <div className="h-[2px] w-12 bg-gradient-to-l from-[#c5a059] to-transparent"></div>
-        <span className="font-mono text-[9px] text-[#c5a56b]/40 uppercase tracking-widest">PX SECURE v4.12 // ACTIVE</span>
-      </div>
-
       {/* IMMERSIVE APPLICATION PLATFORM PORTAL */}
       {currentScreen === 'admin-dashboard' ? (
         /* DESKTOP APP MODE: Wide Desktop Layout for Company Admin Dashboard */
         <div 
           id="punchx-desktop-app-wrapper"
-          className="relative z-10 w-full max-w-7xl mx-auto min-h-[92vh] bg-[#07122a] rounded-3xl border border-[#c5a059]/30 shadow-[0_25px_80px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col my-2 md:my-6"
+          className="relative z-10 w-full max-w-7xl mx-auto min-h-screen md:min-h-[92vh] bg-[#07122a] md:rounded-3xl md:border md:border-[#c5a059]/30 md:shadow-[0_25px_80px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col my-0 md:my-4"
         >
           {/* Top Desktop App Control Bar */}
           <div className="bg-[#07122a]/95 border-b border-[#c5a059]/20 px-6 py-2.5 flex justify-between items-center z-45 text-[11px] font-mono select-none flex-shrink-0">
@@ -219,32 +184,37 @@ export default function App() {
           </div>
         </div>
       ) : (
-        /* ANDROID MOBILE APP MODE: Realistic Android Smartphone Layout for Customer & Worker Panels */
+        /* FULLY RESPONSIVE APPLICATION CONTAINER FOR ALL BREAKPOINTS */
         <div 
-          id="punchx-android-app-wrapper"
-          className="relative z-10 w-full max-w-[430px] sm:max-w-[440px] min-h-[92vh] md:min-h-[840px] md:h-[840px] bg-[#07122a] md:rounded-[46px] md:border-[7px] md:border-[#1e293b] md:outline md:outline-2 md:outline-[#c5a059]/40 md:shadow-[0_30px_90px_rgba(0,0,0,0.92)] overflow-hidden flex flex-col my-1 md:my-4 select-none"
+          id="punchx-app-wrapper"
+          className="relative z-10 w-full max-w-7xl mx-auto min-h-screen md:min-h-[92vh] bg-[#07122a] md:rounded-3xl md:border md:border-[#c5a059]/30 md:shadow-[0_25px_80px_rgba(0,0,0,0.92)] overflow-hidden flex flex-col my-0 md:my-4"
         >
-          {/* Authentic Android Top Status Bar & Notch Camera Punch-Hole */}
-          <div className="bg-[#07122a] border-b border-zinc-800/60 px-5 pt-3 pb-2 flex justify-between items-center z-45 text-[11px] font-mono text-zinc-300 select-none flex-shrink-0">
-            {/* Left: Device Time */}
-            <div className="font-sans font-extrabold text-[#e9c176] text-xs tracking-tight">
-              {deviceTime}
+          {/* Responsive Header Bar */}
+          <div className="bg-[#07122a] border-b border-zinc-800/60 px-4 sm:px-6 pt-3 pb-2 flex justify-between items-center z-45 text-[11px] font-mono text-zinc-300 select-none flex-shrink-0">
+            {/* Left: Device Time & App Label */}
+            <div className="flex items-center gap-2">
+              <span className="font-sans font-extrabold text-[#e9c176] text-xs tracking-tight">
+                {deviceTime}
+              </span>
+              <span className="hidden sm:inline-block text-[10px] bg-[#c5a059]/15 text-[#e9c176] px-2 py-0.5 rounded border border-[#c5a059]/30 font-bold">
+                PUNCHX SERVICE PLATFORM
+              </span>
             </div>
 
-            {/* Center: Camera Punch Hole Dot */}
-            <div className="w-3.5 h-3.5 bg-black border border-zinc-800 rounded-full flex-shrink-0 shadow-inner flex items-center justify-center">
-              <div className="w-1 h-1 bg-zinc-900 rounded-full"></div>
+            {/* Center: System Status */}
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+              <span className="text-[10px] text-emerald-400 font-bold tracking-wider hidden sm:inline">LIVE SYNC ACTIVE</span>
             </div>
 
-            {/* Right: Android Status Icons (Signal, 5G, Battery) */}
-            <div className="flex items-center gap-1.5 text-zinc-300 text-[10px] font-bold">
+            {/* Right: Network & Battery Indicators */}
+            <div className="flex items-center gap-2 text-zinc-300 text-[10px] font-bold">
               <span>5G</span>
               <svg className="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.3c-.2-.2-.2-.51 0-.71L12 11l7.65 7.59c.2.2.2.51 0 .71l-.62.61C20.26 18.07 21 16.12 21 14c0-4.97-4.03-9-9-9z"/>
               </svg>
-              <div className="flex items-center gap-0.5 bg-emerald-500/20 text-emerald-400 px-1 py-0.5 rounded border border-emerald-500/40 text-[9px]">
+              <div className="flex items-center gap-0.5 bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/40 text-[9px]">
                 <span>98%</span>
-                <span className="w-1.5 h-2 bg-emerald-400 rounded-xs"></span>
               </div>
             </div>
           </div>

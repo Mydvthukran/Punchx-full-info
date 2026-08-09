@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { AppScreen } from '../types';
 import { ArrowLeft, Star, Phone, MessageSquare, MapPin, Sparkles, Send, X, Compass, CheckCircle, Camera, Upload, ShieldCheck, UserCheck, Image } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
@@ -316,7 +318,19 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     }, 1200);
   };
 
-  const handleCancelBooking = () => {
+  const handleCancelBooking = async () => {
+    if (activeOrder?.id) {
+      try {
+        await updateDoc(doc(db, 'orders', activeOrder.id), {
+          status: 'Cancelled',
+          cancelReason: cancelReason,
+          cancelDetails: cancelExplanation
+        });
+      } catch (e) {
+        console.error("Error cancelling order in Firestore:", e);
+      }
+    }
+
     if (statusStep === 0) {
       setIsCancelling(true);
       setTimeout(() => {
@@ -387,8 +401,21 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     }
   };
 
-  const handleCompleteService = (closureDetails?: { name?: string; address?: string; photo?: string }) => {
+  const handleCompleteService = async (closureDetails?: { name?: string; address?: string; photo?: string }) => {
     if (!activeOrder) return;
+
+    if (activeOrder.id) {
+      try {
+        await updateDoc(doc(db, 'orders', activeOrder.id), {
+          status: 'Done',
+          closureName: closureDetails?.name || activeOrder.customerName || "Elite Customer",
+          closureAddress: closureDetails?.address || "Direct Geolocalized GPS Coordinate Site",
+          closurePhoto: closureDetails?.photo || "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=400"
+        });
+      } catch (e) {
+        console.error("Error completing order in Firestore:", e);
+      }
+    }
     
     try {
       // 1. Mark this specific order as 'Done' in the order history
@@ -525,10 +552,11 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
       </header>
 
       {/* Main scrolling content flow container */}
-      <main className="w-full max-w-xl mx-auto pt-4 pb-24 px-4 space-y-5 relative z-10">
+      <main className="w-full max-w-7xl mx-auto pt-6 pb-24 px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Map Backdrop Container (Now aligned gracefully in document flow) */}
-        <div id="tracking-radar-map" className="relative w-full h-[280px] md:h-[340px] bg-[#030d25] rounded-2xl border border-[#c5a059]/25 overflow-hidden shadow-inner">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Map Backdrop Container */}
+          <div id="tracking-radar-map" className="lg:col-span-6 xl:col-span-7 relative w-full h-[320px] lg:h-[600px] bg-[#030d25] rounded-2xl border border-[#c5a059]/25 overflow-hidden shadow-inner sticky top-4">
           {/* Dark satellite imagery */}
           <img
             alt="Satellite City Map"
@@ -622,7 +650,7 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
         </div>
 
         {/* Dynamic Flow Card Overlay container */}
-        <div id="tracking-card-overlay" className="w-full">
+        <div id="tracking-card-overlay" className="w-full lg:col-span-6 xl:col-span-5">
           <div className="bg-[#0c1525]/90 border border-[#c5a059]/30 backdrop-blur-xl rounded-2xl p-5 md:p-6 shadow-[0_15px_40px_rgba(0,0,0,0.8)]">
             
             {/* Worker Info Header */}
@@ -840,6 +868,7 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
 
           </div>
         </div>
+      </div>
       </main>
 
       {/* Real-time chat dialogue overlay dialog */}

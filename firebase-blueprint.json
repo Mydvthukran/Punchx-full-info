@@ -48,6 +48,21 @@
         "issue": { "type": "string", "maxLength": 500 }
       },
       "required": ["id", "worker", "location", "issue"]
+    },
+    "WorkerApplication": {
+      "title": "Worker Application",
+      "description": "Application submitted by a technician for joining PunchX",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 64 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "category": { "type": "string", "maxLength": 100 },
+        "experienceYears": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "maxLength": 50 },
+        "submittedAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "fullName", "phone", "category"]
     }
   },
   "firestore": {
@@ -62,6 +77,10 @@
     "/emergencyAlerts/{alertId}": {
       "schema": { "$ref": "#/entities/EmergencyAlert" },
       "description": "Collection of active field emergency alerts"
+    },
+    "/workerApplications/{appId}": {
+      "schema": { "$ref": "#/entities/WorkerApplication" },
+      "description": "Collection of technician applications"
     }
   }
 }

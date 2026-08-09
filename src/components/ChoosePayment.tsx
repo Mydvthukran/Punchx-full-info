@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Check, Lock, ShieldCheck, Ticket, Plus, X, ArrowRight, Wallet, CreditCard, Landmark, Coins } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 interface ChoosePaymentProps {
   onTransition: (target: AppScreen) => void;
@@ -84,35 +86,47 @@ export default function ChoosePayment({
     }
   };
 
-  const handlePayNow = () => {
+  const handlePayNow = async () => {
     setPaying(true);
-    // Simulate payment transaction
-    setTimeout(() => {
-      setPaying(false);
-      
-      // Save order to history & register as actively tracked booking
-      try {
-        const existingRaw = localStorage.getItem('punchx_order_history') || '[]';
-        const existing = JSON.parse(existingRaw);
-        const newOrder = {
-          id: `PX-${Math.floor(1000 + Math.random() * 9000)}`,
-          category: selectedWorker ? selectedWorker.category : 'AC Repair',
-          workerName: selectedWorker ? selectedWorker.name : 'Rajesh Kumar',
-          workerAvatar: selectedWorker ? selectedWorker.avatar : 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
-          workerRating: selectedWorker ? (selectedWorker.rating || 4.9) : 4.9,
-          price: grandTotal,
-          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          status: 'In Progress'
-        };
-        existing.unshift(newOrder); // Prepend to show most recent first
-        localStorage.setItem('punchx_order_history', JSON.stringify(existing));
-        localStorage.setItem('punchx_active_order', JSON.stringify(newOrder));
-      } catch (e) {
-        console.error("Error writing active order:", e);
-      }
+    
+    const newOrderId = `PX-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newOrder = {
+      id: newOrderId,
+      category: selectedWorker ? selectedWorker.category : 'AC Repair',
+      workerName: selectedWorker ? selectedWorker.name : 'Rajesh Kumar',
+      workerAvatar: selectedWorker ? selectedWorker.avatar : 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
+      workerRating: selectedWorker ? (selectedWorker.rating || 4.9) : 4.9,
+      price: grandTotal,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      status: 'In Progress',
+      customerName: 'Anand Sharma',
+      customerAddress: 'HSR Layout, Sector 1, Bengaluru',
+      customerPhone: '+91 98765 43210',
+      createdAt: new Date().toISOString()
+    };
 
-      setShowSuccessModal(true);
-    }, 1800);
+    try {
+      // 1. Write to Firestore DB
+      await setDoc(doc(db, 'orders', newOrderId), newOrder);
+      console.log("Successfully saved order to Firestore:", newOrderId);
+    } catch (e) {
+      console.error("Firestore write failed:", e);
+      handleFirestoreError(e, OperationType.WRITE, `orders/${newOrderId}`);
+    }
+
+    // 2. Save order to history & register as actively tracked booking locally as fallback
+    try {
+      const existingRaw = localStorage.getItem('punchx_order_history') || '[]';
+      const existing = JSON.parse(existingRaw);
+      existing.unshift(newOrder);
+      localStorage.setItem('punchx_order_history', JSON.stringify(existing));
+      localStorage.setItem('punchx_active_order', JSON.stringify(newOrder));
+    } catch (e) {
+      console.error("Error writing active order to localStorage:", e);
+    }
+
+    setPaying(false);
+    setShowSuccessModal(true);
   };
 
   return (
@@ -142,7 +156,7 @@ export default function ChoosePayment({
       </header>
 
       {/* Main Content Pane */}
-      <main className="w-full max-w-xl mx-auto px-4 pt-4 space-y-5">
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-6">
         <div id="payment-layout-cols" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
           {/* Service Fee Selection List Card Column */}
