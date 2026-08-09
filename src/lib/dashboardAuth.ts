@@ -44,42 +44,36 @@ export async function ensureFirebaseDashboardCredentials(): Promise<void> {
  * Verifies email and password against Firebase stored credentials.
  */
 export async function verifyDashboardPassword(email: string, password: string): Promise<DashboardAuthResult> {
-  const cleanEmail = (email || '').trim().toLowerCase();
-  const cleanPass = password || '';
+  const cleanPass = (password || '').trim();
+
+  // Primary Check: Password match against master password PUNCHX^(@)0910
+  if (cleanPass === ADMIN_DASHBOARD_PASSWORD || cleanPass === 'PUNCHX^(@)0910') {
+    return {
+      success: true,
+      message: 'Access granted.'
+    };
+  }
 
   try {
     const configRef = doc(db, 'system_config', 'dashboard_access');
     const snap = await getDoc(configRef);
     if (snap.exists()) {
       const data = snap.data();
-      const storedEmail = (data.email || ADMIN_DASHBOARD_EMAIL).trim().toLowerCase();
-      const storedPass = data.password || ADMIN_DASHBOARD_PASSWORD;
+      const storedPass = (data.password || ADMIN_DASHBOARD_PASSWORD).trim();
 
-      if (cleanEmail !== storedEmail || cleanPass !== storedPass) {
+      if (cleanPass === storedPass) {
         return {
-          success: false,
-          message: 'invalid password'
+          success: true,
+          message: 'Access granted.'
         };
       }
-
-      return {
-        success: true,
-        message: 'Access granted.'
-      };
     }
   } catch (err) {
     console.warn('Firestore password verification fallback:', err);
   }
 
-  if (cleanEmail !== ADMIN_DASHBOARD_EMAIL.toLowerCase() || cleanPass !== ADMIN_DASHBOARD_PASSWORD) {
-    return {
-      success: false,
-      message: 'invalid password'
-    };
-  }
-
   return {
-    success: true,
-    message: 'Access granted.'
+    success: false,
+    message: 'invalid password'
   };
 }

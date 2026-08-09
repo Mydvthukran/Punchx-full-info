@@ -254,7 +254,20 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
     // Strict Password Validation for Authority/Admin Panel
     if (activePanelRole === 'admin') {
       const checkResult = await verifyDashboardPassword(signinEmail.trim(), signinPassword);
-      if (!checkResult.success) {
+      if (checkResult.success) {
+        setAuthMethodDetail('gmail', signinEmail.trim() || ADMIN_DASHBOARD_EMAIL);
+        showNotification("🔑 Authority Verification Successful! Opening Admin Dashboard...");
+        try {
+          await saveUserProfileToFirebase({
+            email: signinEmail.trim() || ADMIN_DASHBOARD_EMAIL,
+            role: 'admin'
+          });
+        } catch (dbErr) {
+          console.warn("Save profile notice:", dbErr);
+        }
+        onTransition('admin-dashboard');
+        return;
+      } else {
         showNotification("⚠️ invalid password");
         return;
       }
@@ -274,9 +287,7 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
 
       setAuthMethodDetail('gmail', signinEmail.trim());
       showNotification("🔑 Authentication Verified. Opening workspace...");
-      if (activePanelRole === 'admin') {
-        onTransition('admin-dashboard');
-      } else if (activePanelRole === 'worker') {
+      if (activePanelRole === 'worker') {
         onTransition('worker-dashboard');
       } else {
         onTransition('home');
@@ -302,9 +313,7 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
           });
           setAuthMethodDetail('gmail', signinEmail.trim());
           showNotification("🔑 User account registered & authenticated!");
-          if (activePanelRole === 'admin') {
-            onTransition('admin-dashboard');
-          } else if (activePanelRole === 'worker') {
+          if (activePanelRole === 'worker') {
             onTransition('worker-dashboard');
           } else {
             onTransition('home');
@@ -315,22 +324,13 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
           return;
         }
       } else {
-        if (activePanelRole === 'admin') {
-          if (signinEmail.trim().toLowerCase() !== ADMIN_DASHBOARD_EMAIL.toLowerCase() || signinPassword !== 'PUNCHX^(@)0910') {
-            showNotification("⚠️ invalid password");
-            setIsSubmitting(false);
-            return;
-          }
-        }
         await saveUserProfileToFirebase({
           email: signinEmail.trim(),
           role: activePanelRole
         });
         setAuthMethodDetail('gmail', signinEmail.trim());
         showNotification("🔑 Signed in successfully!");
-        if (activePanelRole === 'admin') {
-          onTransition('admin-dashboard');
-        } else if (activePanelRole === 'worker') {
+        if (activePanelRole === 'worker') {
           onTransition('worker-dashboard');
         } else {
           onTransition('home');
@@ -431,13 +431,11 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
                 transition={{ duration: 0.2 }}
                 className="space-y-5"
               >
-                {renderGoogleButton("Admin Fast Sign-In with Google")}
-
                 <div className="flex items-center gap-3 bg-[#07122a] p-3.5 rounded-xl border border-[#c5a059]/30">
                   <Lock className="w-5 h-5 text-[#c5a059] flex-shrink-0" />
                   <div>
-                    <p className="text-xs font-mono font-bold text-[#e9c176]">Admin Gate Authorization</p>
-                    <p className="text-[11px] text-zinc-400">Restricted company system management</p>
+                    <p className="text-xs font-mono font-bold text-[#e9c176]">Authority / Admin Security Gate</p>
+                    <p className="text-[11px] text-zinc-400">Password verification required for system access</p>
                   </div>
                 </div>
 
@@ -449,9 +447,8 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
                     type="email"
                     value={signinEmail}
                     onChange={(e) => setSigninEmail(e.target.value)}
-                    placeholder="admin@punchx.com"
+                    placeholder="businressguy@gmail.com"
                     className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm text-white font-mono outline-none"
-                    required
                   />
                 </div>
 
