@@ -19,11 +19,14 @@ export interface WorkerApplication {
   id: string;
   legalName: string;
   address: string;
+  area?: string;
+  sector?: string;
   skill: string;
   customSkill?: string;
   experienceYears: string;
   phone: string;
   email: string;
+  visitingFee?: number;
   termsAccepted: boolean;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   appliedAt: string;
@@ -38,7 +41,10 @@ export interface UserProfile {
   photoURL?: string;
   role: 'citizen' | 'worker' | 'admin';
   address?: string;
+  area?: string;
+  sector?: string;
   phone?: string;
+  visitingFee?: number;
   workerSkill?: string;
   workerExperience?: string;
   workerRating?: number;
@@ -56,17 +62,24 @@ export interface Worker {
   avatar: string;
   proBadge: 'PRO' | 'TOP' | 'VET' | 'AUTHORIZED';
   price: number;
+  visitingFee?: number;
   available?: boolean;
   phone?: string;
+  address?: string;
+  area?: string;
+  sector?: string;
+  location?: { lat: number; lng: number };
+  areaMatch?: boolean;
+  distanceKm?: number;
   completedJobs?: number;
   earningsToday?: number;
 }
 
-export interface ServiceCategory {
+export type ServiceCategory = {
   id: string;
   name: string;
   icon: string;
-}
+};
 
 export interface OrderRecord {
   id: string;
@@ -75,12 +88,18 @@ export interface OrderRecord {
   workerAvatar?: string;
   workerRating?: number;
   price: number;
+  visitingFee?: number;
+  platformCommission?: number;
+  gstAmount?: number;
+  totalAmountToPay?: number;
   date: string;
   time?: string;
   status: 'Pending' | 'In-Progress' | 'Done' | 'Cancelled';
   customerName?: string;
   customerAddress?: string;
   customerPhone?: string;
+  area?: string;
+  sector?: string;
   otpCode?: string;
   issueDescription?: string;
   photoProof?: string;

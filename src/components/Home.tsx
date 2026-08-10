@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
-import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen } from 'lucide-react';
+import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass } from 'lucide-react';
 import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
 import PUNCHX_LOGO from '../assets/logo';
 import PostServiceReviewModal from './PostServiceReviewModal';
+import { requestAndAutoUpdateLocation } from '../lib/location';
 
 interface HomeProps {
   onTransition: (target: AppScreen) => void;
@@ -59,6 +60,26 @@ export default function HomeDashboard({
   
   const [editName, setEditName] = useState(citizenName);
   const [editAddress, setEditAddress] = useState(citizenAddress);
+
+  const [isLocatingCustomer, setIsLocatingCustomer] = useState(false);
+
+  const handleSyncCustomerLocation = async () => {
+    setIsLocatingCustomer(true);
+    const loc = await requestAndAutoUpdateLocation('customer');
+    setIsLocatingCustomer(false);
+    if (loc && loc.address) {
+      setCitizenAddress(loc.address);
+      setEditAddress(loc.address);
+      showNotification(`📍 Customer GPS Location Auto-Updated: ${loc.area || loc.address}`);
+    }
+  };
+
+  useEffect(() => {
+    // Auto update location on load if profile address is generic or empty
+    if (!citizenAddress || citizenAddress.includes('Loading')) {
+      handleSyncCustomerLocation();
+    }
+  }, []);
 
   // Review & Rating State For Completed Works Only
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
@@ -135,17 +156,17 @@ export default function HomeDashboard({
         snapshot.forEach((docSnap) => {
           liveOrders.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
         });
-        if (liveOrders.length > 0) {
-          // Sort by creation or ID
-          setHistoryOrders(liveOrders);
-          localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
-          
-          // Find active order
-          const active = liveOrders.find(o => o.status === 'In-Progress' || o.status === 'Pending');
-          if (active) {
-            setActiveOrder(active);
-            localStorage.setItem('punchx_active_order', JSON.stringify(active));
-          }
+        setHistoryOrders(liveOrders);
+        localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
+        
+        // Find active order
+        const active = liveOrders.find(o => o.status === 'In-Progress' || o.status === 'Pending');
+        if (active) {
+          setActiveOrder(active);
+          localStorage.setItem('punchx_active_order', JSON.stringify(active));
+        } else {
+          setActiveOrder(null);
+          localStorage.removeItem('punchx_active_order');
         }
       }, (err) => {
         console.warn("Firestore orders listener offline fallback active:", err);
@@ -325,6 +346,33 @@ export default function HomeDashboard({
       {/* Main Content Pane */}
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 space-y-8">
         
+        {/* Location & GPS Auto-Sync Bar */}
+        <div className="bg-[#11192e] border border-[#c5a059]/30 rounded-2xl p-3.5 flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+            <div className="p-2 rounded-xl bg-[#c5a059]/15 text-[#c5a059] border border-[#c5a059]/30 flex-shrink-0">
+              <MapPin className="w-4 h-4 text-[#c5a059]" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono uppercase tracking-widest text-[#e9c176] font-extrabold">Service Location</span>
+                <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 font-bold">GPS AUTO-DETECTED</span>
+              </div>
+              <p className="text-xs text-white font-bold truncate mt-0.5" title={citizenAddress}>
+                {citizenAddress || 'Detecting address...'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSyncCustomerLocation}
+            disabled={isLocatingCustomer}
+            className="px-3 py-1.5 bg-[#c5a059]/20 hover:bg-[#c5a059] text-[#e9c176] hover:text-black rounded-xl text-[10px] font-mono font-extrabold uppercase transition-all flex items-center gap-1.5 border border-[#c5a059]/40 cursor-pointer flex-shrink-0 ml-2"
+          >
+            <Compass className={`w-3.5 h-3.5 ${isLocatingCustomer ? 'animate-spin text-white' : ''}`} />
+            <span>{isLocatingCustomer ? 'Syncing...' : 'Auto GPS'}</span>
+          </button>
+        </div>
+
         {/* Dynamic Search Input with Holographic Glow */}
         <div id="search-section" className="relative group">
           <div className="absolute inset-0 bg-gradient-to-r from-[#c5a059]/10 to-transparent blur-md rounded-2xl opacity-70"></div>
@@ -735,7 +783,7 @@ export default function HomeDashboard({
                           </h4>
                           <p className="text-xs font-sans text-zinc-300 font-medium flex items-center gap-1.5 flex-wrap">
                             {authMethod === 'gmail' ? <Mail className="w-3.5 h-3.5 text-[#e9c176]" /> : <Phone className="w-3.5 h-3.5 text-[#e9c176]" />}
-                            <span className="text-[#e9c176] font-extrabold bg-[#c5a059]/15 px-2 py-0.5 rounded border border-[#c5a059]/25 shadow-sm">{authTarget || 'demo@gmail.com'}</span>
+                            <span className="text-[#e9c176] font-extrabold bg-[#c5a059]/15 px-2 py-0.5 rounded border border-[#c5a059]/25 shadow-sm">{authTarget || 'citizen@punchx.app'}</span>
                             <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-black">Logged In</span>
                           </p>
                         </div>

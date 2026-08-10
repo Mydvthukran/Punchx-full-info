@@ -68,12 +68,13 @@ export default function ChoosePayment({
     }
   };
 
-  // Dynamic cost structures
-  const baseFee = selectedWorker ? selectedWorker.price : 199;
-  const convenienceFee = 50;
-  const subtotal = baseFee + convenienceFee;
-  const discount = promoApplied ? Math.round(subtotal * 0.2) : 0;
-  const grandTotal = subtotal - discount + tipAmount;
+  // Dynamic cost structures matching worker visiting fee + company commission (₹20) + GST (18%)
+  const baseFee = selectedWorker ? (selectedWorker.visitingFee || selectedWorker.price || 199) : 199;
+  const companyCommission = 20; // Company Commission Fee
+  const taxableSubtotal = baseFee + companyCommission;
+  const gstAmount = Math.round(taxableSubtotal * 0.18); // 18% GST
+  const discount = promoApplied ? Math.round((taxableSubtotal + gstAmount) * 0.15) : 0;
+  const grandTotal = taxableSubtotal + gstAmount - discount + tipAmount;
 
   const handleApplyPromoCode = () => {
     if (!couponInput.trim()) return;
@@ -203,7 +204,7 @@ export default function ChoosePayment({
               })}
             </div>
 
-            {/* Add New payment mock action */}
+            {/* Add New payment method action */}
             <button
               id="add-payment-method-btn"
               onClick={() => {
@@ -329,12 +330,16 @@ export default function ChoosePayment({
               {/* Fee Breakdown list */}
               <div className="space-y-3.5 pb-4 border-b border-zinc-800 text-xs text-left">
                 <div className="flex justify-between items-center text-zinc-400">
-                  <span>Base Service Fee</span>
+                  <span>Worker Estimated Visiting Fee</span>
                   <span className="font-mono text-zinc-200 font-bold">₹{baseFee}</span>
                 </div>
                 <div className="flex justify-between items-center text-zinc-400">
-                  <span>Convenience Fee</span>
-                  <span className="font-mono text-zinc-200 font-bold">₹{convenienceFee}</span>
+                  <span>Company Commission Fee</span>
+                  <span className="font-mono text-[#e9c176] font-bold">₹{companyCommission}</span>
+                </div>
+                <div className="flex justify-between items-center text-zinc-400">
+                  <span>Government GST Tax (18%)</span>
+                  <span className="font-mono text-zinc-200 font-bold">₹{gstAmount}</span>
                 </div>
                 {tipAmount > 0 && (
                   <div id="summary-tip-item" className="flex justify-between items-center text-[#e9c176] font-medium font-sans">
@@ -344,7 +349,7 @@ export default function ChoosePayment({
                 )}
                 {promoApplied && (
                   <div className="flex justify-between items-center text-emerald-400 py-1.5 border-t border-dashed border-zinc-800 font-mono">
-                    <span>Exclusive 2折扣 Claimed</span>
+                    <span>Promo Discount Claimed</span>
                     <span>-₹{discount}</span>
                   </div>
                 )}

@@ -5,13 +5,14 @@ import PUNCHX_LOGO from '../assets/logo';
 import { db, auth } from '../lib/firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { requestAndAutoUpdateLocation, LocationData, getSectorFromAddress } from '../lib/location';
 import { 
   Wrench, ShieldCheck, CheckCircle2, Clock, MapPin, Phone, 
   Upload, Navigation, DollarSign, Star, UserCheck, AlertCircle, 
   MessageSquare, ChevronRight, Power, Camera, RefreshCw, Check,
   XCircle, TrendingUp, BarChart2, FileText, Send, Sparkles, User,
   Calendar, CreditCard, ArrowLeft, PenTool, Lock, HelpCircle,
-  Compass, Eye, Play, LogOut
+  Compass, Eye, Play, LogOut, Edit3, X
 } from 'lucide-react';
 
 interface WorkerDashboardProps {
@@ -41,6 +42,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     photoURL: string;
     skill: string;
     experience: string;
+    visitingFee: number;
     rating: number;
     completedJobs: number;
   }>({
@@ -51,10 +53,34 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     photoURL: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
     skill: 'Service Specialist',
     experience: 'Verified Professional',
+    visitingFee: 199,
     rating: 5.0,
     completedJobs: 0
   });
   const [isLoadingWorkerProfile, setIsLoadingWorkerProfile] = useState(true);
+  const [editFeeModal, setEditFeeModal] = useState(false);
+  const [tempVisitingFee, setTempVisitingFee] = useState<number>(199);
+
+  // GPS Location Auto Update State
+  const [workerLocation, setWorkerLocation] = useState<LocationData | null>(null);
+  const [isLocatingWorker, setIsLocatingWorker] = useState(false);
+
+  const handleSyncWorkerGPS = async (targetUid?: string) => {
+    setIsLocatingWorker(true);
+    const loc = await requestAndAutoUpdateLocation('worker', targetUid || workerProfile.uid);
+    setIsLocatingWorker(false);
+    if (loc) {
+      setWorkerLocation(loc);
+      showNotification(`📍 Worker GPS Auto-Updated: ${loc.area || loc.address}`);
+    } else {
+      showNotification("⚠️ Device location access denied. Please allow GPS permissions.");
+    }
+  };
+
+  // Auto update worker location when opening dashboard or logging in
+  useEffect(() => {
+    handleSyncWorkerGPS();
+  }, [workerProfile.uid]);
 
   // Sync authenticated worker profile from Firestore
   useEffect(() => {
@@ -65,6 +91,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
+            const fee = data.visitingFee || data.price || 199;
             setWorkerProfile({
               uid: user.uid,
               name: data.name || user.displayName || 'Verified Worker',
@@ -73,9 +100,11 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               photoURL: data.photoURL || user.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
               skill: data.workerSkill || 'Master Service Specialist',
               experience: data.workerExperience || '5 Years',
+              visitingFee: fee,
               rating: data.workerRating || 5.0,
               completedJobs: data.workerCompletedJobs || 0
             });
+            setTempVisitingFee(fee);
           } else {
             const newWorkerProfile = {
               uid: user.uid,
@@ -86,6 +115,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               role: 'worker',
               workerSkill: 'Master Service Specialist',
               workerExperience: '1 Year',
+              visitingFee: 199,
               workerRating: 5.0,
               workerCompletedJobs: 0,
               createdAt: new Date().toISOString()
@@ -99,9 +129,11 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               photoURL: newWorkerProfile.photoURL,
               skill: newWorkerProfile.workerSkill,
               experience: newWorkerProfile.workerExperience,
+              visitingFee: 199,
               rating: newWorkerProfile.workerRating,
               completedJobs: newWorkerProfile.workerCompletedJobs
             });
+            setTempVisitingFee(199);
           }
         } catch (e) {
           console.error("Error loading worker profile:", e);
@@ -220,15 +252,6 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   // Real Received Orders
   const initialSampleOrders: OrderRecord[] = [];
 
-  // Reset/Clear orders helper
-  const resetToDemoOrders = async () => {
-    setIsLoading(true);
-    setOrders([]);
-    localStorage.setItem('punchx_order_history', JSON.stringify([]));
-    showNotification('📦 Orders list refreshed!');
-    setTimeout(() => setIsLoading(false), 300);
-  };
-
   // Load orders from localStorage / Firestore helper
   const loadOrders = () => {
     setIsLoading(true);
@@ -298,6 +321,22 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       showNotification("⚠️ You are currently OFFLINE (OFF DUTY). Please turn ON DUTY in the top right corner to accept orders.");
       return;
     }
+
+    // Sector restriction check according to Rapido / Uber area model
+    const workerSector = workerLocation?.sector || getSectorFromAddress(workerLocation?.address || workerProfile.skill);
+    const orderSector = selectedOrder.sector || getSectorFromAddress(selectedOrder.customerAddress, selectedOrder.area);
+
+    const isSectorMatch = (
+      workerSector.toLowerCase() === orderSector.toLowerCase() ||
+      workerSector.toLowerCase().includes(orderSector.toLowerCase()) ||
+      orderSector.toLowerCase().includes(workerSector.toLowerCase())
+    );
+
+    if (!isSectorMatch) {
+      showNotification(`⛔ SECTOR LOCK (Rapido/Uber Rule): You are in ${workerSector}. You can ONLY accept orders from your sector (${orderSector}).`);
+      return;
+    }
+
     const updated = orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'In-Progress' as const } : o);
     updateOrdersInStateAndStorage(updated);
     setSelectedOrder({ ...selectedOrder, status: 'In-Progress' });
@@ -308,7 +347,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       console.error("Firestore accept order update failed:", e);
     }
 
-    showNotification(`⚡ Order ${selectedOrder.id} ACCEPTED! Location & route unlocked.`);
+    showNotification(`⚡ Order ${selectedOrder.id} ACCEPTED! Location & route unlocked in ${workerSector}.`);
   };
 
   // Handle Reject Order
@@ -511,8 +550,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
 
   // Compute Earnings Calculations
   const completedOrders = orders.filter(o => o.status === 'Done');
-  const dailyEarnings = completedOrders.reduce((acc, o) => acc + o.price, 0) + 1280;
-  const monthlyEarnings = dailyEarnings + 38400;
+  const dailyEarnings = completedOrders.reduce((acc, o) => acc + (o.price || 0), 0);
+  const monthlyEarnings = dailyEarnings;
 
   return (
     <div id="worker-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-24 overflow-x-hidden">
@@ -566,6 +605,32 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
         </div>
       </header>
 
+      {/* Worker Live GPS Location & Auto Sync Banner */}
+      <div className="bg-[#0b1731] border-b border-[#c5a059]/25 px-4 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-sans">
+        <div className="flex items-center gap-2 overflow-hidden min-w-0">
+          <Compass className={`w-3.5 h-3.5 text-[#e9c176] flex-shrink-0 ${isLocatingWorker ? 'animate-spin' : ''}`} />
+          <div className="truncate min-w-0">
+            <span className="text-[10px] text-zinc-400 uppercase font-mono tracking-wide font-bold mr-2">Worker GPS:</span>
+            <span className="text-white font-bold text-[11px] truncate">
+              {workerLocation ? workerLocation.address : 'Auto-syncing device location...'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+          <span className="text-[10px] font-mono font-extrabold text-[#e9c176] bg-[#c5a059]/15 border border-[#c5a059]/40 px-2.5 py-1 rounded-full">
+            📍 Sector: {workerLocation?.sector || getSectorFromAddress(workerLocation?.address)}
+          </span>
+          <button
+            onClick={() => handleSyncWorkerGPS()}
+            disabled={isLocatingWorker}
+            className="px-2.5 py-1 bg-[#c5a059]/20 hover:bg-[#c5a059] text-[#e9c176] hover:text-black rounded text-[10px] font-mono font-bold uppercase transition-all border border-[#c5a059]/30 cursor-pointer"
+          >
+            {isLocatingWorker ? 'Syncing...' : 'Re-Sync GPS'}
+          </button>
+        </div>
+      </div>
+
       {/* Main Content Area */}
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 space-y-6">
 
@@ -588,13 +653,6 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={resetToDemoOrders}
-                  className="px-3.5 py-2 bg-[#07122a] border border-[#c5a059]/40 text-[#e9c176] hover:bg-[#c5a059] hover:text-black rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
-                  title="Load fresh demo service orders"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-[#c5a059]" /> Load Demo Orders
-                </button>
                 <button
                   onClick={loadOrders}
                   className="px-3.5 py-2 bg-[#07122a] border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5"
@@ -640,12 +698,6 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                   <p className="text-xs text-zinc-400 max-w-sm mx-auto">
                     All incoming service tasks have been completed or cleared.
                   </p>
-                  <button
-                    onClick={resetToDemoOrders}
-                    className="px-5 py-2.5 bg-[#c5a059] text-black hover:bg-[#e9c176] rounded-xl text-xs font-mono font-extrabold uppercase transition-all cursor-pointer inline-flex items-center gap-2 shadow-lg"
-                  >
-                    <Sparkles className="w-4 h-4 text-black" /> Load Fresh Demo Orders
-                  </button>
                 </div>
               ) : (
                 orders.filter(o => o.status === 'Pending' || o.status === 'In-Progress').map((order) => {
@@ -715,10 +767,10 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                 <div className="flex justify-between items-baseline">
                   <h3 className="text-3xl font-extrabold text-[#e9c176] font-mono">₹{dailyEarnings}</h3>
                   <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                    +18% Today
+                    Live Verified
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 pt-1">Across {completedOrders.length + 3} completed diagnostic tasks today.</p>
+                <p className="text-[11px] text-zinc-400 pt-1">Across {completedOrders.length} completed diagnostic tasks today.</p>
               </div>
 
               <div className="bg-gradient-to-br from-[#11192e] to-[#0d1527] border border-[#c5a059]/40 rounded-3xl p-6 shadow-xl space-y-2">
@@ -726,10 +778,10 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                 <div className="flex justify-between items-baseline">
                   <h3 className="text-3xl font-extrabold text-white font-mono">₹{monthlyEarnings}</h3>
                   <span className="text-xs font-mono text-blue-400 font-bold bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">
-                    42 Jobs Completed
+                    {completedOrders.length} Jobs Completed
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 pt-1">Directly deposited to Bank Account Ending ••8912.</p>
+                <p className="text-[11px] text-zinc-400 pt-1">Directly deposited to registered worker bank account.</p>
               </div>
             </div>
 
@@ -744,7 +796,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                   <p className="text-xs text-zinc-400">Daily breakdown of worker revenue</p>
                 </div>
                 <span className="text-xs font-mono text-[#e9c176] font-bold bg-[#c5a059]/15 px-3 py-1 rounded-full border border-[#c5a059]/30">
-                  July 2026
+                  Real-time Database Sync
                 </span>
               </div>
 
@@ -752,13 +804,13 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               <div className="pt-6 pb-2">
                 <div className="flex items-end justify-between gap-2 h-40 px-2 border-b border-zinc-800 pb-2">
                   {[
-                    { day: 'Mon', val: 1200, height: '55%' },
-                    { day: 'Tue', val: 1450, height: '65%' },
-                    { day: 'Wed', val: 980, height: '42%' },
-                    { day: 'Thu', val: 1850, height: '85%' },
-                    { day: 'Fri', val: 2100, height: '95%' },
-                    { day: 'Sat', val: 1600, height: '72%' },
-                    { day: 'Sun', val: dailyEarnings, height: '80%' }
+                    { day: 'Mon', val: 0, height: '10%' },
+                    { day: 'Tue', val: 0, height: '10%' },
+                    { day: 'Wed', val: 0, height: '10%' },
+                    { day: 'Thu', val: 0, height: '10%' },
+                    { day: 'Fri', val: 0, height: '10%' },
+                    { day: 'Sat', val: 0, height: '10%' },
+                    { day: 'Today', val: dailyEarnings, height: dailyEarnings > 0 ? '80%' : '10%' }
                   ].map((bar, idx) => (
                     <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
                       <span className="text-[10px] font-mono text-[#e9c176] opacity-0 group-hover:opacity-100 transition-opacity">
@@ -775,8 +827,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               </div>
 
               <div className="flex justify-between items-center text-xs font-mono text-zinc-400 pt-2">
-                <span>Peak Earning Day: Friday (₹2,100)</span>
-                <span className="text-emerald-400 font-bold">100% Payout Credited</span>
+                <span>Completed Tasks Value: ₹{dailyEarnings}</span>
+                <span className="text-emerald-400 font-bold">100% Payout Verified</span>
               </div>
             </div>
 
@@ -842,7 +894,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               </div>
 
               {/* Profile Personal Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 space-y-1">
                   <span className="text-[10px] font-mono text-zinc-400 block">Mobile Contact</span>
                   <span className="font-bold text-white font-mono">{workerProfile.phone || 'Not provided'}</span>
@@ -853,14 +905,20 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                   <span className="font-bold text-white font-mono">{workerProfile.email || 'Not provided'}</span>
                 </div>
 
-                <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono text-zinc-400 block">Field Experience</span>
-                  <span className="font-bold text-[#e9c176] font-mono">5+ Years (Master Veteran)</span>
-                </div>
-
-                <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 space-y-1">
-                  <span className="text-[10px] font-mono text-zinc-400 block">Registered Address</span>
-                  <span className="font-bold text-zinc-300">Indiranagar 3rd Stage, Bengaluru</span>
+                {/* Visiting Fee Card */}
+                <div className="bg-[#07122a] p-3.5 rounded-xl border border-[#c5a059]/40 space-y-1 relative">
+                  <span className="text-[10px] font-mono text-zinc-400 block uppercase">Estimated Visiting Fee (₹)</span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-lg text-[#e9c176] font-mono">
+                      ₹{workerProfile.visitingFee || 199}
+                    </span>
+                    <button
+                      onClick={() => setEditFeeModal(true)}
+                      className="text-[10px] font-mono font-bold text-black bg-[#c5a059] hover:bg-[#e9c176] px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Edit3 className="w-3 h-3" /> Edit
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1515,7 +1573,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                   onChange={(e) => setOtpInput(e.target.value)}
                   className="w-full bg-[#07122a] border border-[#c5a059] rounded-xl px-4 py-2.5 text-center font-mono font-bold text-white text-base outline-none"
                 />
-                <p className="text-[10px] text-zinc-500 text-center font-mono">Demo Customer OTP: <span className="text-[#e9c176] font-bold">8842</span></p>
+                <p className="text-[10px] text-zinc-500 text-center font-mono">Customer OTP Code: <span className="text-[#e9c176] font-bold">{selectedOrder?.otpCode || '8842'}</span></p>
               </div>
 
               {/* Final Complete Action Button */}
@@ -1584,6 +1642,78 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               >
                 REDIRECT TO HOME PAGE
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* EDIT VISITING FEE MODAL */}
+      <AnimatePresence>
+        {editFeeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#11192e] border-2 border-[#c5a059] rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative"
+            >
+              <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-[#c5a059]" />
+                  <h3 className="font-extrabold text-sm text-white font-mono">Update Estimated Visiting Fee</h3>
+                </div>
+                <button
+                  onClick={() => setEditFeeModal(false)}
+                  className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-mono text-zinc-300 block">Visiting / Diagnostic Fee (₹):</label>
+                <input
+                  type="number"
+                  min={50}
+                  max={5000}
+                  value={tempVisitingFee}
+                  onChange={(e) => setTempVisitingFee(Number(e.target.value))}
+                  className="w-full bg-[#07122a] border border-[#c5a059] rounded-xl px-4 py-3 text-lg font-mono font-extrabold text-[#e9c176] outline-none"
+                />
+                <p className="text-[10px] text-zinc-400">
+                  This base fee will be shown to customers when browsing specialists before company commission (₹20) + GST (18%).
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setEditFeeModal(false)}
+                  className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-mono font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!tempVisitingFee || tempVisitingFee <= 0) return;
+                    try {
+                      if (auth.currentUser) {
+                        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                          visitingFee: Number(tempVisitingFee),
+                          price: Number(tempVisitingFee)
+                        });
+                      }
+                    } catch (e) {
+                      console.error("Updating visiting fee error:", e);
+                    }
+                    setWorkerProfile(prev => ({ ...prev, visitingFee: Number(tempVisitingFee) }));
+                    setEditFeeModal(false);
+                    showNotification(`✓ Visiting fee updated to ₹${tempVisitingFee}`);
+                  }}
+                  className="flex-1 py-3 bg-[#c5a059] hover:bg-[#e9c176] text-black text-xs font-mono font-extrabold rounded-xl cursor-pointer shadow-lg"
+                >
+                  Save Fee
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

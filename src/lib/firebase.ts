@@ -1,14 +1,18 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, memoryLocalCache, getFirestore } from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+
+// Silence non-fatal transient connection warnings
+setLogLevel('error');
 
 const app = initializeApp(firebaseConfig);
 
 let firestoreInstance;
 try {
   const dbSettings = {
-    localCache: memoryLocalCache()
+    localCache: memoryLocalCache(),
+    experimentalAutoDetectLongPolling: true,
   };
   firestoreInstance = firebaseConfig.firestoreDatabaseId
     ? initializeFirestore(app, dbSettings, firebaseConfig.firestoreDatabaseId)

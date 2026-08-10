@@ -11,19 +11,6 @@ interface LiveTrackingProps {
   bookingTime: string;
 }
 
-const DEFAULT_FALLBACK_ORDER = {
-  id: "PX-8492",
-  category: "AC Repair",
-  workerName: "Rajesh Kumar",
-  workerAvatar: "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=400",
-  workerRating: "4.9",
-  price: 1450,
-  date: "Today",
-  status: "In Progress",
-  customerName: "Elite Customer",
-  bookingTime: "Within 30 mins"
-};
-
 export default function LiveTracking({ onTransition, bookingTime }: LiveTrackingProps) {
   const [activeOrder, setActiveOrder] = useState<any>(() => {
     try {
@@ -34,7 +21,7 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     } catch (e) {
       console.warn("Could not read active order", e);
     }
-    return DEFAULT_FALLBACK_ORDER;
+    return null;
   });
   const [eta, setEta] = useState(8);
   const [statusStep, setStatusStep] = useState(0); // 0 = Assigned, 1 = Out for Service, 2 = Arrived, 3 = Completed
@@ -126,33 +113,33 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
   // Load from local storage dynamically
   useEffect(() => {
     const raw = localStorage.getItem('punchx_active_order');
-    let parsed = DEFAULT_FALLBACK_ORDER;
     if (raw) {
       try {
-        parsed = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
         setActiveOrder(parsed);
+        if (parsed) {
+          setChatMessages([
+            {
+              sender: 'worker',
+              text: `Hello! I am ${parsed.workerName || 'your service provider'}. Your request is verified. I am currently preparing diagnostic tools and will be Out for Service shortly!`,
+              time: "Just now"
+            }
+          ]);
+          const storageKey = `punchx_otp_${parsed.id}`;
+          let activeOtp = localStorage.getItem(storageKey);
+          if (!activeOtp) {
+            activeOtp = Math.floor(1000 + Math.random() * 9000).toString();
+            localStorage.setItem(storageKey, activeOtp);
+          }
+          setOtp(activeOtp);
+        }
       } catch (e) {
         console.error("Error reading active order", e);
+        setActiveOrder(null);
       }
+    } else {
+      setActiveOrder(null);
     }
-
-    // Personalize initial message with their name
-    setChatMessages([
-      {
-        sender: 'worker',
-        text: `Hello! I am ${parsed.workerName}. Your elite request is verified. I am currently assembling the correct diagnostic tools and will be Out for Service shortly!`,
-        time: "Just now"
-      }
-    ]);
-
-    // Secure unique 4-digit OTP per customer
-    const storageKey = `punchx_otp_${parsed.id}`;
-    let activeOtp = localStorage.getItem(storageKey);
-    if (!activeOtp) {
-      activeOtp = Math.floor(1000 + Math.random() * 9000).toString();
-      localStorage.setItem(storageKey, activeOtp);
-    }
-    setOtp(activeOtp);
   }, []);
 
   // Sync live real address and recipient defaults for closure details

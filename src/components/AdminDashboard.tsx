@@ -85,16 +85,10 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   const [newIssueDesc, setNewIssueDesc] = useState('');
 
   // Emergency SOS state
-  const [emergencyAlerts, setEmergencyAlerts] = useState<Array<{ id: string; worker: string; location: string; time: string; issue: string }>>([
-    { id: 'SOS-101', worker: 'Rajesh Kumar', location: 'Bellandur Sector 2, Bengaluru', time: '10 mins ago', issue: 'Overvoltage fuse spark reported during AC check' }
-  ]);
+  const [emergencyAlerts, setEmergencyAlerts] = useState<Array<{ id: string; worker: string; location: string; time: string; issue: string }>>([]);
 
   // Customer Reviews State
-  const [customerReviews, setCustomerReviews] = useState<any[]>([
-    { id: 'REV-1', customer: 'Ananya Sharma', rating: 5, category: 'AC Jet Service', comment: 'Super quick arrival! Rajesh was professional and cleaned the coils thoroughly.', date: 'Today' },
-    { id: 'REV-2', customer: 'Rohan Mehta', rating: 5, category: 'Electrical Repair', comment: 'Suresh diagnosed the MCB tripping problem in 15 minutes. Very reliable.', date: 'Yesterday' },
-    { id: 'REV-3', customer: 'Priya Nair', rating: 4, category: 'Deep Cleaning', comment: 'Great service quality and hygienic equipment used.', date: '2 days ago' }
-  ]);
+  const [customerReviews, setCustomerReviews] = useState<any[]>([]);
 
   useEffect(() => {
     let unsubs: (() => void)[] = [];
@@ -106,9 +100,7 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
         snapshot.forEach((docSnap) => {
           live.push({ id: docSnap.id, ...docSnap.data() });
         });
-        if (live.length > 0) {
-          setCustomerReviews(live);
-        }
+        setCustomerReviews(live);
       }, (err) => {
         console.warn('Firestore review subscription offline:', err);
       });
@@ -121,10 +113,8 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
         snapshot.forEach((docSnap) => {
           liveOrders.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
         });
-        if (liveOrders.length > 0) {
-          setOrders(liveOrders);
-          localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
-        }
+        setOrders(liveOrders);
+        localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
       }, (err) => {
         console.warn('Firestore orders subscription offline:', err);
       });
@@ -137,10 +127,8 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
         snapshot.forEach((docSnap) => {
           liveApps.push({ id: docSnap.id, ...docSnap.data() } as WorkerApplication);
         });
-        if (liveApps.length > 0) {
-          setWorkerApps(liveApps);
-          localStorage.setItem('punchx_worker_applications', JSON.stringify(liveApps));
-        }
+        setWorkerApps(liveApps);
+        localStorage.setItem('punchx_worker_applications', JSON.stringify(liveApps));
       }, (err) => {
         console.warn('Firestore applications subscription offline:', err);
       });
@@ -377,8 +365,8 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   };
 
   // Compute live analytical totals
-  const totalRevenue = orders.reduce((acc, o) => acc + (o.status === 'Done' ? o.price : 0), 18450);
-  const totalOrdersCount = orders.length + 184;
+  const totalRevenue = orders.reduce((acc, o) => acc + (o.status === 'Done' ? o.price : 0), 0);
+  const totalOrdersCount = orders.length;
   const pendingOrdersCount = orders.filter(o => o.status === 'Pending').length;
   const liveInProgressCount = orders.filter(o => o.status === 'In-Progress').length;
   const completedCount = orders.filter(o => o.status === 'Done').length;
@@ -393,17 +381,22 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     return matchesSearch && matchesStatus;
   });
 
-  // Mock monthly orders graph
+  // Real monthly orders graph derived strictly from database records
   const monthlyOrdersData = Array.from({ length: 31 }, (_, i) => {
     const day = i + 1;
-    const baseVal = 5 + Math.floor(Math.sin(i * 0.5) * 4) + (i % 7 === 5 || i % 7 === 6 ? 6 : 2);
+    const dayOrders = orders.filter(o => {
+      if (!o.createdAt) return false;
+      const d = new Date(o.createdAt);
+      return d.getDate() === day;
+    });
+    const dayRevenue = dayOrders.reduce((acc, curr) => acc + (curr.price || 0), 0);
     return {
       day,
-      ordersCount: day === 26 ? (orders.length + baseVal) : baseVal,
-      revenue: (day === 26 ? (orders.length + baseVal) : baseVal) * 340
+      ordersCount: dayOrders.length,
+      revenue: dayRevenue
     };
   });
-  const maxOrdersInDay = Math.max(...monthlyOrdersData.map(d => d.ordersCount));
+  const maxOrdersInDay = Math.max(1, ...monthlyOrdersData.map(d => d.ordersCount));
 
   if (!isUnlocked) {
     return (
@@ -964,11 +957,11 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-zinc-800/80 pb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-[#15203b] border border-[#c5a059]/40 flex items-center justify-center text-[#e9c176] font-mono font-bold text-lg flex-shrink-0">
-                            {app.legalName.charAt(0)}
+                            {(app.legalName || 'Worker').charAt(0)}
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="text-base font-extrabold text-white">{app.legalName}</h3>
+                              <h3 className="text-base font-extrabold text-white">{app.legalName || 'Authorized Specialist'}</h3>
                               <span className="text-xs font-mono font-bold text-[#e9c176]">{app.id}</span>
                               <span className={`text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full font-bold ${
                                 app.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
@@ -1219,11 +1212,11 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-full bg-[#15203b] border-2 border-[#c5a059] flex items-center justify-center font-bold text-white shadow-md">
-                            {app.legalName.charAt(0)}
+                            {(app.legalName || 'Worker').charAt(0)}
                           </div>
                           <div>
                             <h4 className="font-extrabold text-sm text-white group-hover:text-[#e9c176] transition-colors">
-                              {app.legalName}
+                              {app.legalName || 'Authorized Specialist'}
                             </h4>
                             <p className="text-xs text-[#e9c176] font-mono font-bold">{app.skill}</p>
                             <span className="text-[10px] text-zinc-400 font-mono">ID: {app.id}</span>

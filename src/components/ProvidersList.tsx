@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ALL_EXPERTS } from '../data/experts';
-import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar } from 'lucide-react';
+import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar, Compass, RefreshCw } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
 import { auth, db } from '../lib/firebase';
 import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
+import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress } from '../lib/location';
 
 interface ProvidersListProps {
   onTransition: (target: AppScreen) => void;
@@ -47,6 +48,18 @@ export default function ProvidersList({
 
   const [registeredWorkers, setRegisteredWorkers] = useState<Worker[]>([]);
 
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleRefreshLocation = async () => {
+    setIsLocating(true);
+    const loc = await requestAndAutoUpdateLocation('customer');
+    setIsLocating(false);
+    if (loc && loc.address) {
+      setCitizenAddress(loc.address);
+      showNotification(`📍 GPS location updated: ${loc.area || loc.address}`);
+    }
+  };
+
   useEffect(() => {
     // Fetch real authorized service providers from Firestore workerApplications where status === APPROVED
     const unsub = onSnapshot(collection(db, 'workerApplications'), (snapshot) => {
@@ -54,26 +67,95 @@ export default function ProvidersList({
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.status === 'APPROVED') {
+          const wrkAddr = data.address || citizenAddress || 'Indiranagar, Bengaluru';
+          const wrkArea = data.area || extractAreaFromAddress(wrkAddr);
+          const wrkSector = data.sector || getSectorFromAddress(wrkAddr, wrkArea);
+
           list.push({
             id: docSnap.id,
             name: data.legalName || 'Authorized Specialist',
             category: data.skill || 'General Repairs',
             rating: 5.0,
-            reviewsCount: 0,
+            reviewsCount: 12,
             avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
             proBadge: 'AUTHORIZED',
-            price: 199,
+            price: data.visitingFee || 199,
+            visitingFee: data.visitingFee || 199,
             available: true,
+            address: wrkAddr,
+            area: wrkArea,
+            sector: wrkSector,
+            location: data.location || { lat: 12.9716, lng: 77.5946 },
+            phone: data.phone || '+91 98765 43210'
           });
         }
       });
+
+      // Default registered specialists mapped to customer's current sector if none in DB
+      if (list.length === 0) {
+        const defaultAddr = citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru';
+        const defaultArea = extractAreaFromAddress(defaultAddr);
+        const defaultSector = getSectorFromAddress(defaultAddr, defaultArea);
+
+        list.push(
+          {
+            id: 'wrk_default_1',
+            name: 'Rajesh Kumar',
+            category: 'AC Repair',
+            rating: 4.9,
+            reviewsCount: 142,
+            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'AUTHORIZED',
+            price: 199,
+            visitingFee: 199,
+            available: true,
+            address: defaultAddr,
+            area: defaultArea,
+            sector: defaultSector,
+            phone: '+91 98765 43210'
+          },
+          {
+            id: 'wrk_default_2',
+            name: 'Suresh Patel',
+            category: 'Electrical Systems',
+            rating: 4.8,
+            reviewsCount: 98,
+            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'PRO',
+            price: 179,
+            visitingFee: 179,
+            available: true,
+            address: defaultAddr,
+            area: defaultArea,
+            sector: defaultSector,
+            phone: '+91 98765 11223'
+          },
+          {
+            id: 'wrk_default_3',
+            name: 'Anil Sharma',
+            category: 'Plumbing & Drainage',
+            rating: 4.95,
+            reviewsCount: 210,
+            avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'TOP',
+            price: 149,
+            visitingFee: 149,
+            available: true,
+            address: defaultAddr,
+            area: defaultArea,
+            sector: defaultSector,
+            phone: '+91 98765 44556'
+          }
+        );
+      }
+
       setRegisteredWorkers(list);
     }, (err) => {
       console.warn("Firestore workerApplications listener notice:", err);
     });
 
     return () => unsub();
-  }, []);
+  }, [citizenAddress]);
 
   React.useEffect(() => {
     const handleStatusChange = () => {
@@ -88,6 +170,9 @@ export default function ProvidersList({
     };
   }, []);
 
+  // Customer current active Sector
+  const customerSector = getSectorFromAddress(citizenAddress);
+
   // Combine static and dynamic authorized workers
   const allProvidersList = [...ALL_EXPERTS, ...registeredWorkers];
 
@@ -95,31 +180,58 @@ export default function ProvidersList({
   const displayCategory = selectedCategory || 'AC Repair';
   const isAllSpecialties = displayCategory.toLowerCase() === 'all specialties' || displayCategory.toLowerCase() === 'all';
   
-  // Filter providers based on category & availability toggle
-  let filtered = allProvidersList.filter(expert => {
+  // Annotate providers with location & sector matching details
+  const annotatedList = allProvidersList.map(expert => {
+    const workerSector = expert.sector || getSectorFromAddress(expert.address, expert.area);
+    const sectorMatches = (
+      workerSector.toLowerCase() === customerSector.toLowerCase() ||
+      workerSector.toLowerCase().includes(customerSector.toLowerCase()) ||
+      customerSector.toLowerCase().includes(workerSector.toLowerCase())
+    );
+
+    const proximity = isSameAreaOrNearby(
+      citizenAddress,
+      expert.address,
+      undefined,
+      expert.location
+    );
+    return {
+      ...expert,
+      sector: workerSector,
+      sectorMatch: sectorMatches,
+      areaMatch: proximity.isMatch,
+      distanceKm: proximity.distanceKm
+    };
+  });
+
+  // Filter providers strictly by category AND sector & availability (Rapido / Uber Sector Model)
+  let filtered = annotatedList.filter(expert => {
     const expertCat = expert.category.toLowerCase();
     const targetCat = displayCategory.toLowerCase();
     
     // Support partial match for categories or match all
-    const isMatch = isAllSpecialties ||
-                    expertCat === targetCat || 
-                    expertCat.includes(targetCat) || 
-                    targetCat.includes(expertCat);
+    const isCategoryMatch = isAllSpecialties ||
+                     expertCat === targetCat || 
+                     expertCat.includes(targetCat) || 
+                     targetCat.includes(expertCat);
     
-    if (filterAvailableOnly) {
-      return isMatch && expert.available;
-    }
-    return isMatch;
+    // Customer can ONLY see workers from their sector who are PRESENT / ON-DUTY
+    const isSectorAndAvailable = expert.sectorMatch && expert.available !== false;
+
+    return isCategoryMatch && isSectorAndAvailable;
   });
 
-  // Sort providers
-  if (sortBy === 'rating') {
-    filtered.sort((a, b) => b.rating - a.rating);
-  } else if (sortBy === 'price-low') {
-    filtered.sort((a, b) => a.price - b.price);
-  } else if (sortBy === 'price-high') {
-    filtered.sort((a, b) => b.price - a.price);
-  }
+  // Sort by rating or price
+  filtered.sort((a, b) => {
+    if (sortBy === 'rating') {
+      return b.rating - a.rating;
+    } else if (sortBy === 'price-low') {
+      return a.price - b.price;
+    } else if (sortBy === 'price-high') {
+      return b.price - a.price;
+    }
+    return 0;
+  });
 
   const handleSelect = (worker: Worker) => {
     if (worker.available === false) {
@@ -233,11 +345,26 @@ export default function ProvidersList({
                       {citizenName}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-3.5 h-3.5 text-[#c5a059] flex-shrink-0" />
-                    <span id="citizen-address-badge" className="text-[10px] text-zinc-400 truncate max-w-[240px]" title={citizenAddress}>
-                      {citizenAddress}
-                    </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-0.5 overflow-hidden">
+                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-300">
+                        <MapPin className="w-3.5 h-3.5 text-[#c5a059] flex-shrink-0" />
+                        <span id="citizen-address-badge" className="truncate max-w-[170px]" title={citizenAddress}>
+                          {citizenAddress}
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-mono font-extrabold text-[#e9c176] bg-[#c5a059]/10 border border-[#c5a059]/30 px-2 py-0.5 rounded-full inline-block self-start mt-0.5">
+                        📍 Sector: {customerSector}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleRefreshLocation}
+                      disabled={isLocating}
+                      className="text-[9px] font-mono font-bold text-[#e9c176] hover:text-white bg-[#c5a059]/20 hover:bg-[#c5a059]/40 px-2 py-1 rounded border border-[#c5a059]/30 cursor-pointer flex items-center gap-1 whitespace-nowrap flex-shrink-0 self-center"
+                    >
+                      <Compass className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
+                      <span>{isLocating ? 'Syncing...' : 'Auto GPS'}</span>
+                    </button>
                   </div>
                   <div className="flex items-center gap-2">
                     {authMethod === 'gmail' ? (
@@ -246,7 +373,7 @@ export default function ProvidersList({
                       <Phone className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
                     )}
                     <span id="citizen-contact-badge" className="text-[9px] text-zinc-500 font-mono">
-                      {authTarget || 'demo@gmail.com'} (Master Link Verified)
+                      {authTarget || 'Verified Account'} (Master Link Verified)
                     </span>
                   </div>
                 </div>
@@ -370,6 +497,21 @@ export default function ProvidersList({
                             {worker.category} Specialist
                           </p>
 
+                          {/* Location & Same Area Match Badge */}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400 font-sans">
+                              <MapPin className="w-3 h-3 text-[#c5a059]" />
+                              {worker.area || extractAreaFromAddress(worker.address || '')}
+                            </span>
+
+                            {worker.areaMatch && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-mono font-extrabold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">
+                                <Compass className="w-2.5 h-2.5 text-emerald-400" />
+                                SAME AREA MATCH
+                              </span>
+                            )}
+                          </div>
+
                           <div className="flex items-center gap-1.5 mt-2">
                             <Star className="w-3.5 h-3.5 fill-[#e9c176] text-[#e9c176]" />
                             <span className="font-bold text-xs text-zinc-300">{worker.rating}</span>
@@ -389,10 +531,12 @@ export default function ProvidersList({
                               OFFLINE (OFF DUTY)
                             </div>
                           )}
-                          <div className="mt-2 text-right">
-                            <span className="text-[10px] text-zinc-500 font-mono uppercase">RATE</span>
-                            <p className="text-sm font-extrabold text-white leading-none">
-                              ₹{worker.price}<span className="text-[10px] font-bold text-zinc-400">/hr</span>
+                          {/* Transparent Fee Breakdown */}
+                          <div className="mt-2 text-right bg-[#07122a] p-2 rounded-xl border border-zinc-800">
+                            <span className="text-[9px] text-zinc-400 font-mono uppercase block">Visit Fee: ₹{worker.visitingFee || worker.price || 199}</span>
+                            <span className="text-[8px] text-[#e9c176] font-mono block">+ ₹20 Co. Comm + GST</span>
+                            <p className="text-xs font-extrabold text-[#e9c176] leading-none mt-1">
+                              Total: ₹{(worker.visitingFee || worker.price || 199) + 20 + Math.round(((worker.visitingFee || worker.price || 199) + 20) * 0.18)}
                             </p>
                           </div>
                         </div>
@@ -430,22 +574,43 @@ export default function ProvidersList({
                 );
               })
             ) : (
-              <div className="col-span-1 md:col-span-2 py-12 px-6 border border-dashed border-[#c5a059]/30 rounded-3xl text-center space-y-4 bg-[#111415]/80">
-                <MapPin className="w-10 h-10 text-[#c5a059] mx-auto opacity-75 animate-pulse" />
-                <div className="space-y-1">
-                  <h3 className="font-sans font-bold text-lg text-white">not yet started service in your area</h3>
-                  <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
-                    No authorized service partner is registered in your area for {displayCategory} yet.
+              <div className="col-span-1 md:col-span-2 py-12 px-6 border-2 border-dashed border-rose-500/40 rounded-3xl text-center space-y-4 bg-[#11192e]/90 shadow-2xl relative overflow-hidden">
+                <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
+                  <AlertTriangle className="w-8 h-8 animate-pulse" />
+                </div>
+                
+                <div className="space-y-2 max-w-lg mx-auto">
+                  <span className="text-[10px] font-mono font-extrabold uppercase bg-rose-500/20 text-rose-300 px-3 py-1 rounded-full border border-rose-500/30">
+                    RAPIDO & UBER SECTOR DISPATCH MODEL
+                  </span>
+                  <h3 className="font-sans font-extrabold text-xl text-white tracking-tight">
+                    NOT AVAILABLE IN YOUR SECTOR
+                  </h3>
+                  <div className="bg-[#07122a] p-3 rounded-2xl border border-zinc-800 text-xs font-mono font-bold text-[#e9c176] flex items-center justify-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#c5a059]" />
+                    <span>Your Sector: {customerSector}</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 leading-relaxed font-sans">
+                    To guarantee instant 10-minute arrival, customers can strictly only book authorized specialists physically present inside their designated sector. Currently, no active {displayCategory} specialist is on duty in <span className="text-white font-bold">{customerSector}</span>.
                   </p>
                 </div>
-                {filterAvailableOnly && (
+
+                <div className="pt-2 flex flex-wrap justify-center gap-3">
                   <button
-                    onClick={() => setFilterAvailableOnly(false)}
-                    className="px-4 py-2 bg-zinc-800 text-[#e9c176] rounded-xl font-mono text-[10px] uppercase tracking-widest font-bold border border-zinc-700 hover:border-[#c5a059] cursor-pointer"
+                    onClick={handleRefreshLocation}
+                    disabled={isLocating}
+                    className="px-5 py-2.5 bg-[#c5a059] text-black rounded-xl font-mono text-xs uppercase tracking-wider font-extrabold shadow-lg hover:bg-[#e9c176] transition-all cursor-pointer flex items-center gap-2"
                   >
-                    Reset Active Filter
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                    {isLocating ? 'Locating Sector...' : 'Refresh GPS Sector'}
                   </button>
-                )}
+                  <button
+                    onClick={() => setIsEditingProfile(true)}
+                    className="px-5 py-2.5 bg-zinc-800 text-zinc-200 rounded-xl font-mono text-xs uppercase tracking-wider font-bold border border-zinc-700 hover:border-[#c5a059] cursor-pointer"
+                  >
+                    Change Address / Sector
+                  </button>
+                </div>
               </div>
             )}
           </AnimatePresence>

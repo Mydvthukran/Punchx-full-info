@@ -50,7 +50,7 @@ export default function MobileQRModal({ isOpen, onClose }: MobileQRModalProps) {
               <Smartphone className="w-4 h-4 animate-bounce" />
             </div>
             <span className="text-[11px] font-mono tracking-widest font-extrabold text-[#e9c176] uppercase">
-              Mobile Demo Gateway
+              Mobile Application Gateway
             </span>
           </div>
           <button
@@ -67,7 +67,7 @@ export default function MobileQRModal({ isOpen, onClose }: MobileQRModalProps) {
             {/* Embedded QR Code Image */}
             <img
               src={qrCodeUrl}
-              alt="Scan QR code for mobile demo"
+              alt="Scan QR code for mobile app"
               className="w-40 h-40 object-contain rounded-lg border border-[#07122a]/10"
               referrerPolicy="no-referrer"
             />
@@ -78,7 +78,7 @@ export default function MobileQRModal({ isOpen, onClose }: MobileQRModalProps) {
 
           <div className="space-y-1.5">
             <h4 className="text-xs font-mono font-bold tracking-wider text-[#e9c176] uppercase">
-              SCAN QR TO RUN DEMO
+              SCAN QR FOR MOBILE APP
             </h4>
             <p className="text-[10px] font-mono text-amber-500/90 leading-relaxed font-semibold bg-amber-500/5 px-2.5 py-1.5 rounded-lg border border-amber-500/15">
               💡 No Expo Go App Required! Standard Safari/Chrome mobile browser handles this fully-responsive layout natively.

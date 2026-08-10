@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, WorkerApplication } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { requestAndAutoUpdateLocation } from '../lib/location';
 import { 
   Wrench, UserCheck, MapPin, Briefcase, Award, Phone, Mail, 
-  ShieldCheck, FileText, CheckSquare, Square, ChevronRight, X, Lock, AlertCircle
+  ShieldCheck, FileText, CheckSquare, Square, ChevronRight, X, Lock, AlertCircle, Compass, DollarSign
 } from 'lucide-react';
 
 interface WorkerSignupProps {
@@ -18,9 +19,28 @@ interface WorkerSignupProps {
 export default function WorkerSignup({ onTransition, showNotification, setWorkerApplicationData }: WorkerSignupProps) {
   const [legalName, setLegalName] = useState('');
   const [address, setAddress] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState('AC Repair & Thermal');
+
+  // Auto request location permission on load if empty
+  useEffect(() => {
+    if (!address) {
+      handleDetectLocation();
+    }
+  }, []);
+
+  const handleDetectLocation = async () => {
+    setIsLocating(true);
+    const loc = await requestAndAutoUpdateLocation('worker');
+    setIsLocating(false);
+    if (loc && loc.address) {
+      setAddress(loc.address);
+      showNotification(`📍 Worker address detected: ${loc.address}`);
+    }
+  };
   const [customSkill, setCustomSkill] = useState('');
   const [experienceYears, setExperienceYears] = useState('3-5 Years');
+  const [visitingFee, setVisitingFee] = useState<number>(199);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   
@@ -57,6 +77,10 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       setErrorMsg('Please specify your custom skill.');
       return;
     }
+    if (visitingFee <= 0 || isNaN(visitingFee)) {
+      setErrorMsg('Please specify a valid estimated visiting fee (minimum ₹50).');
+      return;
+    }
     if (!phone.trim() || phone.trim().length < 10) {
       setErrorMsg('Please enter a valid 10-digit mobile phone number.');
       return;
@@ -77,6 +101,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       skill: selectedSkill === 'Other / Custom Skill' ? customSkill.trim() : selectedSkill,
       customSkill: selectedSkill === 'Other / Custom Skill' ? customSkill.trim() : undefined,
       experienceYears,
+      visitingFee: Number(visitingFee),
       phone: phone.trim(),
       email: email.trim(),
       termsAccepted: true,
@@ -172,9 +197,19 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
 
           {/* Full Residential & Work Address */}
           <div className="space-y-1.5">
-            <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5" /> Full Residential & Work Address
-            </label>
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" /> Full Residential & Work Address
+              </label>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                className="text-[10px] font-mono font-bold text-[#e9c176] hover:underline flex items-center gap-1 bg-[#c5a059]/15 px-2 py-0.5 rounded border border-[#c5a059]/30 cursor-pointer"
+              >
+                <Compass className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
+                <span>{isLocating ? 'Detecting...' : 'Auto GPS Fill'}</span>
+              </button>
+            </div>
             <textarea
               rows={2}
               placeholder="e.g. House #104, 3rd Cross, Indiranagar, Bengaluru, KA 560038"
@@ -225,21 +260,39 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
             )}
           </div>
 
-          {/* Experience Years */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5" /> Years of Field Experience
-            </label>
-            <select
-              value={experienceYears}
-              onChange={(e) => setExperienceYears(e.target.value)}
-              className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white outline-none cursor-pointer"
-            >
-              <option value="1-2 Years">1 - 2 Years</option>
-              <option value="3-5 Years">3 - 5 Years</option>
-              <option value="6-10 Years">6 - 10 Years</option>
-              <option value="10+ Years Veteran">10+ Years (Master Veteran)</option>
-            </select>
+          {/* Experience Years & Visiting Fee */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5" /> Years of Field Experience
+              </label>
+              <select
+                value={experienceYears}
+                onChange={(e) => setExperienceYears(e.target.value)}
+                className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white outline-none cursor-pointer"
+              >
+                <option value="1-2 Years">1 - 2 Years</option>
+                <option value="3-5 Years">3 - 5 Years</option>
+                <option value="6-10 Years">6 - 10 Years</option>
+                <option value="10+ Years Veteran">10+ Years (Master Veteran)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-[#e9c176]" /> Estimated Visiting / Inspection Fee (₹)
+              </label>
+              <input
+                type="number"
+                min={50}
+                max={5000}
+                placeholder="199"
+                value={visitingFee}
+                onChange={(e) => setVisitingFee(Number(e.target.value))}
+                className="w-full bg-[#07122a] border border-[#c5a059]/40 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white font-mono font-bold outline-none"
+              />
+              <p className="text-[10px] text-zinc-400">Base visit fee charged to customer before company commission & GST.</p>
+            </div>
           </div>
 
           {/* Mobile Phone & Gmail */}

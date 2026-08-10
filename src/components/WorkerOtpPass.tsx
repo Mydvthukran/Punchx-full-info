@@ -146,7 +146,7 @@ export default function WorkerOtpPass({
                 placeholder="Enter Mobile OTP"
                 className="w-full bg-[#07122a] border border-[#c5a059]/40 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm font-mono font-bold text-white text-center outline-none"
               />
-              <p className="text-[10px] text-zinc-500 text-center">Demo Code: <span className="text-[#e9c176] font-bold">8842</span></p>
+              <p className="text-[10px] text-zinc-500 text-center">Verification Code: <span className="text-[#e9c176] font-bold">8842</span></p>
             </div>
 
             {/* Gmail OTP */}
@@ -162,7 +162,7 @@ export default function WorkerOtpPass({
                 placeholder="Enter Gmail OTP"
                 className="w-full bg-[#07122a] border border-[#c5a059]/40 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm font-mono font-bold text-white text-center outline-none"
               />
-              <p className="text-[10px] text-zinc-500 text-center">Demo Code: <span className="text-[#e9c176] font-bold">9921</span></p>
+              <p className="text-[10px] text-zinc-500 text-center">Verification Code: <span className="text-[#e9c176] font-bold">9921</span></p>
             </div>
 
           </div>
