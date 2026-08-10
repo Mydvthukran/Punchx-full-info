@@ -15,48 +15,38 @@ service cloud.firestore {
 
     // Orders collection: Service booking management
     match /orders/{orderId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if true;
-      allow delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Customer Reviews collection
     match /reviews/{reviewId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Field Emergency SOS Alerts
     match /emergencyAlerts/{alertId} {
-      allow read, create, update: if true;
-      allow delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Worker Applications collection
     match /workerApplications/{appId} {
-      allow read, create, update: if true;
-      allow delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Workers collection
     match /workers/{workerId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if isSignedIn();
+      allow read, write: if true;
     }
 
     // System Config collection (stores dashboard credentials and access security)
     match /system_config/{configId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Global Catch-All Deny
+    // Global Catch-All
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }
+

@@ -35,38 +35,7 @@ const CATEGORIES: ServiceCategory[] = [
   { id: 'moving', name: 'Moving', icon: 'local_shipping' },
 ];
 
-const EXPERTS: Worker[] = [
-  {
-    id: 'marcus',
-    name: 'Marcus Thorne',
-    category: 'Master Electrician',
-    rating: 4.9,
-    reviewsCount: 128,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzF-ZNX1ONoqZl4NpujkifTMt7bovwv5F_dHcy6LKgigipMusAINZ49fwFybVr8bv5ajkmEebzd7JjWTKdbrLoUtswcs-_hAJFyB5E1jUH32721A6RxM_xmDQ9WYGP4vl5r8qEvV66JF0l_ExQnbN9_4AD2qy8YyV3lOqt4LiPdNOUpvwmhtCQgwbDf18scKXjX_-yDedvydF7z3-IkIHxiD4QOGKwJ5Uje1wEcAYAkS3OXQBxY5PUt3cHt3ewunp_nyeLRUeS974',
-    proBadge: 'PRO',
-    price: 199,
-  },
-  {
-    id: 'sarah',
-    name: 'Sarah Jenkins',
-    category: 'Elite Concierge Care',
-    rating: 4.95,
-    reviewsCount: 250,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAl2mlPeDILv0yu23h0u0gdaAnA7Sx2IcCja5YlCHj0SI468csLOLd3qWJDY8X2lcEIAnwR2d5bQ23J7eQUvQHDNYjVDFNi3FipehpDpZUiUAOJgTgPy-1wT99JU7GIqy4eUs0b0fB28X3DL6TlIGhoXqV-tLhRyU2ibRfIvwuoLmF6aYBp-HD30Mre9n_ZmOrCG0jzVjUBEsDTiXiwUh9hsEsoq8DVIpGUlZjmI6ZXRiZM_JEfIbTiLQrZBsPv2-O1kSJIx1dq_g',
-    proBadge: 'TOP',
-    price: 249,
-  },
-  {
-    id: 'david',
-    name: 'David Chen',
-    category: 'Custom Carpenter',
-    rating: 4.8,
-    reviewsCount: 89,
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBBnQN095fkHnimX3ZMLBOnXJJOxndVI3YgA-s7n6Px1ACC_lCXM_93dMVgnMbT4x5i9XbPD_QXkkuzGcaPrKSaaHxUxI6xfPs6L_3n_KQP-q7A89kBnLSr08YKmhq8NJC9DJ4dsMdwcbKOXzCMHWa7luCe3xAAgPMeEOsR__JcrN0-XN4N0z2T21OPHgDyYhOQDfSFPW9DRnR2vSm20hNyVzZGuVzQoaGQmnC_OYq2XYizdFkWcTvFmPQLwTvvF3WDWKC_QPzX6V0',
-    proBadge: 'VET',
-    price: 149,
-  }
-];
+const EXPERTS: Worker[] = [];
 
 export default function HomeDashboard({
   onTransition,
@@ -101,11 +70,42 @@ export default function HomeDashboard({
 
   // Loading state for Firestore backend sync
   const [isLoading, setIsLoading] = useState(true);
+  const [approvedExperts, setApprovedExperts] = useState<Worker[]>([]);
 
   // States for expandable profile policy/details sections
   const [isRefundOpen, setIsRefundOpen] = useState(false);
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+
+  // Subscribe to real approved specialists from Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'workerApplications'), (snapshot) => {
+      const list: Worker[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.status === 'APPROVED') {
+          list.push({
+            id: docSnap.id,
+            name: data.legalName || 'Authorized Specialist',
+            category: data.skill || 'General Repairs',
+            rating: 5.0,
+            reviewsCount: 0,
+            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'AUTHORIZED',
+            price: 199,
+            available: true,
+          });
+        }
+      });
+      setApprovedExperts(list);
+      setIsLoading(false);
+    }, (err) => {
+      console.warn("Firestore workerApplications notice:", err);
+      setIsLoading(false);
+    });
+
+    return () => unsub();
+  }, []);
 
   // Synchronize dynamic booking history values with Firestore & localStorage
   useEffect(() => {
@@ -484,9 +484,9 @@ export default function HomeDashboard({
                 </div>
               ))}
             </div>
-          ) : (
+          ) : approvedExperts.length > 0 ? (
             <div id="experts-grid-row" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {EXPERTS.map((expert) => (
+              {approvedExperts.map((expert) => (
                 <div
                   id={`expert-crd-${expert.id}`}
                   key={expert.id}
@@ -523,13 +523,24 @@ export default function HomeDashboard({
 
                   <button
                     id={`expert-book-btn-${expert.id}`}
-                    onClick={() => handleBookExpert(expert)}
+                    onClick={() => {
+                      onSelectWorker(expert);
+                      onTransition('provider-details');
+                    }}
                     className="w-full py-2.5 bg-zinc-800 group-hover:bg-[#c5a059] text-zinc-300 group-hover:text-black hover:brightness-110 font-bold text-xs rounded-xl tracking-wider uppercase transition-all cursor-pointer border border-zinc-700 group-hover:border-[#ffdea5]/40"
                   >
                     Book Professional
                   </button>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="w-full bg-[#111415]/90 border border-dashed border-[#c5a059]/30 rounded-3xl p-8 text-center space-y-3">
+              <MapPin className="w-10 h-10 text-[#c5a059] mx-auto animate-pulse opacity-80" />
+              <h3 className="font-sans font-bold text-lg text-white">not yet started service in your area</h3>
+              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                We haven't launched active specialists in your area yet. Check back soon or apply as a verified service partner!
+              </p>
             </div>
           )}
         </section>

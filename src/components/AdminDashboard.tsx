@@ -21,111 +21,9 @@ interface AdminDashboardProps {
   showNotification: (msg: string) => void;
 }
 
-const DEFAULT_ORDERS: OrderRecord[] = [
-  {
-    id: 'PX-9042',
-    category: 'Air Conditioner Jet Service',
-    workerName: 'Rajesh Kumar',
-    price: 699,
-    date: 'Today, 11:30 AM',
-    time: '11:30 AM',
-    status: 'In-Progress',
-    customerName: 'Ananya Sharma',
-    customerAddress: 'Flat 402, Green Glen Layout, Bellandur, Bengaluru',
-    customerPhone: '+91 98765 43210',
-    otpCode: '8492',
-    paymentMethod: 'UPI (GPay)',
-    issueDescription: 'Cooling gas pressure check and deep jet coil cleaning required.',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'PX-9043',
-    category: 'Electrical Circuit & Fuse Repair',
-    workerName: 'Suresh Verma',
-    price: 499,
-    date: 'Today, 02:00 PM',
-    time: '02:00 PM',
-    status: 'Pending',
-    customerName: 'Rohan Mehta',
-    customerAddress: 'House #88, 12th Main, HSR Layout Sector 1, Bengaluru',
-    customerPhone: '+91 91234 56789',
-    otpCode: '3109',
-    paymentMethod: 'Cash on Service',
-    issueDescription: 'Main MCB tripping frequently when running high wattage appliances.',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'PX-9044',
-    category: 'Full House Deep Cleaning',
-    workerName: 'Amit Patel',
-    price: 1899,
-    date: 'Tomorrow, 09:00 AM',
-    time: '09:00 AM',
-    status: 'Pending',
-    customerName: 'Priya Nair',
-    customerAddress: 'B-601, Sterling Residency, Indiranagar, Bengaluru',
-    customerPhone: '+91 99887 76655',
-    otpCode: '5271',
-    paymentMethod: 'Online Card Payment',
-    issueDescription: '3BHK complete sanitization and floor buffing service.',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'PX-9040',
-    category: 'Sanitary & Pipe Leakage Repair',
-    workerName: 'Manoj Gowda',
-    price: 550,
-    date: 'Yesterday, 04:15 PM',
-    time: '04:15 PM',
-    status: 'Done',
-    customerName: 'Karan Singhania',
-    customerAddress: 'Villa 14, Palm Meadows, Whitefield, Bengaluru',
-    customerPhone: '+91 97654 32109',
-    otpCode: '1948',
-    paymentMethod: 'UPI (PhonePe)',
-    issueDescription: 'Kitchen sink drain line clogging and pipe joint seal replacement.',
-    createdAt: new Date().toISOString()
-  }
-];
+const DEFAULT_ORDERS: OrderRecord[] = [];
 
-const DEFAULT_WORKER_APPS: WorkerApplication[] = [
-  {
-    id: 'WRK-801',
-    legalName: 'Vikramjit Singh',
-    address: 'Koramangala 4th Block, Bengaluru',
-    skill: 'Air Conditioner & HVAC Specialist',
-    experienceYears: '6 Years Field Experience',
-    phone: '+91 98450 11223',
-    email: 'vikram.ac@gmail.com',
-    termsAccepted: true,
-    status: 'PENDING',
-    appliedAt: '2026-07-27'
-  },
-  {
-    id: 'WRK-802',
-    legalName: 'Deepak Rao',
-    address: 'JP Nagar Phase 6, Bengaluru',
-    skill: 'Master Electrician & Circuit Inspector',
-    experienceYears: '8 Years Field Experience',
-    phone: '+91 97312 44556',
-    email: 'deepak.electro@gmail.com',
-    termsAccepted: true,
-    status: 'PENDING',
-    appliedAt: '2026-07-27'
-  },
-  {
-    id: 'WRK-803',
-    legalName: 'Sunita Reddy',
-    address: 'BTM Layout 2nd Stage, Bengaluru',
-    skill: 'Professional Home & Office Cleaning',
-    experienceYears: '4 Years Field Experience',
-    phone: '+91 96110 88990',
-    email: 'sunita.cleaning@gmail.com',
-    termsAccepted: true,
-    status: 'APPROVED',
-    appliedAt: '2026-07-25'
-  }
-];
+const DEFAULT_WORKER_APPS: WorkerApplication[] = [];
 
 export default function AdminDashboard({ onTransition, showNotification }: AdminDashboardProps) {
   // Dashboard Access Gate State
@@ -257,38 +155,32 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   }, []);
 
   // Activity log feed
-  const [activityLogs, setActivityLogs] = useState<Array<{ id: string; time: string; text: string; tag: string }>>([
-    { id: '1', time: '10:42 AM', text: 'Order #PX-9042 marked In-Progress with Rajesh Kumar', tag: 'DISPATCH' },
-    { id: '2', time: '09:15 AM', text: 'Worker Application #WRK-803 approved by Admin', tag: 'WORKER' },
-    { id: '3', time: 'Yesterday', text: 'Service #PX-9040 successfully completed & verified', tag: 'COMPLETED' }
-  ]);
+  const [activityLogs, setActivityLogs] = useState<Array<{ id: string; time: string; text: string; tag: string }>>([]);
 
   // Load orders and worker applications from shared localStorage data
   const loadData = () => {
     const rawHistory = localStorage.getItem('punchx_order_history') || '[]';
     try {
       const parsed = JSON.parse(rawHistory);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         setOrders(parsed);
       } else {
-        setOrders(DEFAULT_ORDERS);
-        localStorage.setItem('punchx_order_history', JSON.stringify(DEFAULT_ORDERS));
+        setOrders([]);
       }
     } catch {
-      setOrders(DEFAULT_ORDERS);
+      setOrders([]);
     }
 
     const rawApps = localStorage.getItem('punchx_worker_applications') || '[]';
     try {
       const parsedApps = JSON.parse(rawApps);
-      if (Array.isArray(parsedApps) && parsedApps.length > 0) {
+      if (Array.isArray(parsedApps)) {
         setWorkerApps(parsedApps);
       } else {
-        setWorkerApps(DEFAULT_WORKER_APPS);
-        localStorage.setItem('punchx_worker_applications', JSON.stringify(DEFAULT_WORKER_APPS));
+        setWorkerApps([]);
       }
     } catch {
-      setWorkerApps(DEFAULT_WORKER_APPS);
+      setWorkerApps([]);
     }
   };
 
@@ -1312,76 +1204,71 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
                   <p className="text-xs text-zinc-400">Complete details, duty status & direct phone contact of all active technicians</p>
                 </div>
                 <span className="text-xs font-mono font-bold text-[#e9c176] bg-[#07122a] px-3 py-1.5 rounded-xl border border-[#c5a059]/30">
-                  {ALL_EXPERTS.length} Verified Field Specialists
+                  {workerApps.filter(a => a.status === 'APPROVED').length} Verified Field Specialists
                 </span>
               </div>
 
               {/* Grid of Worker Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {ALL_EXPERTS.map((exp, idx) => (
-                  <div 
-                    key={exp.id} 
-                    className="bg-[#07122a] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl p-5 space-y-4 transition-all hover:shadow-xl group"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          src={exp.avatar} 
-                          alt={exp.name} 
-                          className="w-12 h-12 rounded-full object-cover border-2 border-[#c5a059] group-hover:scale-105 transition-transform shadow-md" 
-                          referrerPolicy="no-referrer" 
-                        />
-                        <div>
-                          <h4 className="font-extrabold text-sm text-white group-hover:text-[#e9c176] transition-colors">
-                            {exp.name}
-                          </h4>
-                          <p className="text-xs text-[#e9c176] font-mono font-bold">{exp.category}</p>
-                          <span className="text-[10px] text-zinc-400 font-mono">ID: PX-WK-00{idx + 1}</span>
+                {workerApps.filter(a => a.status === 'APPROVED').length > 0 ? (
+                  workerApps.filter(a => a.status === 'APPROVED').map((app, idx) => (
+                    <div 
+                      key={app.id} 
+                      className="bg-[#07122a] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl p-5 space-y-4 transition-all hover:shadow-xl group"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-[#15203b] border-2 border-[#c5a059] flex items-center justify-center font-bold text-white shadow-md">
+                            {app.legalName.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-sm text-white group-hover:text-[#e9c176] transition-colors">
+                              {app.legalName}
+                            </h4>
+                            <p className="text-xs text-[#e9c176] font-mono font-bold">{app.skill}</p>
+                            <span className="text-[10px] text-zinc-400 font-mono">ID: {app.id}</span>
+                          </div>
+                        </div>
+
+                        <span className="text-[10px] font-mono uppercase px-2.5 py-1 rounded-full font-extrabold border flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border-emerald-500/40">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                          AUTHORIZED
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs bg-[#11192e] p-2.5 rounded-xl border border-zinc-800 font-mono">
+                        <span className="text-[#e9c176] font-bold">Exp: {app.experienceYears}</span>
+                        <span className="bg-[#c5a059]/20 text-[#e9c176] px-2 py-0.5 rounded border border-[#c5a059]/30 text-[10px] uppercase font-bold">
+                          ACTIVE FLEET
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 pt-1 text-xs border-t border-zinc-800/80">
+                        <div className="flex justify-between text-zinc-400">
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3.5 h-3.5 text-zinc-500" /> Phone:
+                          </span>
+                          <span className="text-zinc-300 font-mono text-[11px]">{app.phone}</span>
+                        </div>
+                        <div className="flex justify-between text-zinc-400">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-zinc-500" /> Location:
+                          </span>
+                          <span className="text-zinc-300 font-mono text-[11px] truncate max-w-[160px]">{app.address}</span>
                         </div>
                       </div>
-
-                      <span className={`text-[10px] font-mono uppercase px-2.5 py-1 rounded-full font-extrabold border flex items-center gap-1 ${
-                        exp.available 
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]' 
-                          : 'bg-zinc-800 text-zinc-400 border-zinc-700'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${exp.available ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`}></span>
-                        {exp.available ? 'ON DUTY' : 'OFFLINE'}
-                      </span>
                     </div>
-
-                    <div className="flex justify-between items-center text-xs bg-[#11192e] p-2.5 rounded-xl border border-zinc-800 font-mono">
-                      <span className="text-[#e9c176] font-bold">Rate: ₹{exp.price}/hr</span>
-                      <span className="bg-[#c5a059]/20 text-[#e9c176] px-2 py-0.5 rounded border border-[#c5a059]/30 text-[10px] uppercase font-bold">
-                        {exp.proBadge || 'VERIFIED'}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5 pt-1 text-xs border-t border-zinc-800/80">
-                      <div className="flex justify-between text-zinc-400">
-                        <span className="flex items-center gap-1">
-                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" /> Rating:
-                        </span>
-                        <span className="text-white font-bold font-mono">{exp.rating} ({exp.reviewsCount} reviews)</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span className="flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Completed Jobs:
-                        </span>
-                        <span className="text-white font-mono font-bold">{exp.reviewsCount + 18} Services</span>
-                      </div>
-                      <div className="flex justify-between text-zinc-400">
-                        <span className="flex items-center gap-1">
-                          <Phone className="w-3.5 h-3.5 text-zinc-500" /> Direct Phone:
-                        </span>
-                        <span className="text-zinc-300 font-mono text-[11px]">+91 98450 {idx}0912</span>
-                      </div>
-                    </div>
-
+                  ))
+                ) : (
+                  <div className="col-span-full py-12 px-6 border border-dashed border-[#c5a059]/30 bg-[#07122a] rounded-3xl text-center space-y-3">
+                    <UserCheck className="w-10 h-10 text-[#c5a059] mx-auto opacity-75" />
+                    <h3 className="font-bold text-base text-white">No Authorized Workers in Fleet Yet</h3>
+                    <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                      Technicians who apply and get approved will appear here in the active fleet directory.
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
-
             </div>
           </section>
         )}

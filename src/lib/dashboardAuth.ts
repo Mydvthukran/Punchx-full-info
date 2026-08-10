@@ -24,19 +24,9 @@ export async function ensureFirebaseDashboardCredentials(): Promise<void> {
         requiredRole: 'admin',
         updatedAt: new Date().toISOString()
       });
-    } else {
-      const data = snap.data();
-      if (data.email !== ADMIN_DASHBOARD_EMAIL || data.password !== ADMIN_DASHBOARD_PASSWORD) {
-        await setDoc(configRef, {
-          email: ADMIN_DASHBOARD_EMAIL,
-          password: ADMIN_DASHBOARD_PASSWORD,
-          requiredRole: 'admin',
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-      }
     }
   } catch (err) {
-    console.warn('Dashboard credentials initialization notice (running fallback):', err);
+    console.warn('Dashboard credentials initialization notice:', err);
   }
 }
 
@@ -46,11 +36,10 @@ export async function ensureFirebaseDashboardCredentials(): Promise<void> {
 export async function verifyDashboardPassword(email: string, password: string): Promise<DashboardAuthResult> {
   const cleanPass = (password || '').trim();
 
-  // Primary Check: Password match against master password PUNCHX^(@)0910
-  if (cleanPass === ADMIN_DASHBOARD_PASSWORD || cleanPass === 'PUNCHX^(@)0910') {
+  if (!cleanPass) {
     return {
-      success: true,
-      message: 'Access granted.'
+      success: false,
+      message: 'invalid password'
     };
   }
 
@@ -67,9 +56,22 @@ export async function verifyDashboardPassword(email: string, password: string): 
           message: 'Access granted.'
         };
       }
+    } else {
+      if (cleanPass === ADMIN_DASHBOARD_PASSWORD) {
+        return {
+          success: true,
+          message: 'Access granted.'
+        };
+      }
     }
   } catch (err) {
     console.warn('Firestore password verification fallback:', err);
+    if (cleanPass === ADMIN_DASHBOARD_PASSWORD) {
+      return {
+        success: true,
+        message: 'Access granted.'
+      };
+    }
   }
 
   return {

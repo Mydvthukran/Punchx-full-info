@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ALL_EXPERTS } from '../data/experts';
 import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
 import { auth, db } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 
 interface ProvidersListProps {
   onTransition: (target: AppScreen) => void;
@@ -45,6 +45,36 @@ export default function ProvidersList({
     return (localStorage.getItem('punchx_worker_online_status') as 'online' | 'offline') || 'online';
   });
 
+  const [registeredWorkers, setRegisteredWorkers] = useState<Worker[]>([]);
+
+  useEffect(() => {
+    // Fetch real authorized service providers from Firestore workerApplications where status === APPROVED
+    const unsub = onSnapshot(collection(db, 'workerApplications'), (snapshot) => {
+      const list: Worker[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.status === 'APPROVED') {
+          list.push({
+            id: docSnap.id,
+            name: data.legalName || 'Authorized Specialist',
+            category: data.skill || 'General Repairs',
+            rating: 5.0,
+            reviewsCount: 0,
+            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'AUTHORIZED',
+            price: 199,
+            available: true,
+          });
+        }
+      });
+      setRegisteredWorkers(list);
+    }, (err) => {
+      console.warn("Firestore workerApplications listener notice:", err);
+    });
+
+    return () => unsub();
+  }, []);
+
   React.useEffect(() => {
     const handleStatusChange = () => {
       const st = (localStorage.getItem('punchx_worker_online_status') as 'online' | 'offline') || 'online';
@@ -58,12 +88,15 @@ export default function ProvidersList({
     };
   }, []);
 
+  // Combine static and dynamic authorized workers
+  const allProvidersList = [...ALL_EXPERTS, ...registeredWorkers];
+
   // Normalize category name for filtering
   const displayCategory = selectedCategory || 'AC Repair';
   const isAllSpecialties = displayCategory.toLowerCase() === 'all specialties' || displayCategory.toLowerCase() === 'all';
   
   // Filter providers based on category & availability toggle
-  let filtered = ALL_EXPERTS.filter(expert => {
+  let filtered = allProvidersList.filter(expert => {
     const expertCat = expert.category.toLowerCase();
     const targetCat = displayCategory.toLowerCase();
     
@@ -397,20 +430,22 @@ export default function ProvidersList({
                 );
               })
             ) : (
-              <div className="col-span-1 md:col-span-2 py-12 px-6 border border-dashed border-zinc-800 rounded-3xl text-center space-y-4">
-                <AlertTriangle className="w-10 h-10 text-[#c5a059] mx-auto opacity-75 animate-bounce" />
+              <div className="col-span-1 md:col-span-2 py-12 px-6 border border-dashed border-[#c5a059]/30 rounded-3xl text-center space-y-4 bg-[#111415]/80">
+                <MapPin className="w-10 h-10 text-[#c5a059] mx-auto opacity-75 animate-pulse" />
                 <div className="space-y-1">
-                  <h3 className="font-sans font-bold text-base text-zinc-300">No Specialized Pros Found</h3>
-                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-                    We currently don't have available experts matching the filters in this sector, or the toggle for "Active Available Only" filtered them out.
+                  <h3 className="font-sans font-bold text-lg text-white">not yet started service in your area</h3>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                    No authorized service partner is registered in your area for {displayCategory} yet.
                   </p>
                 </div>
-                <button
-                  onClick={() => setFilterAvailableOnly(false)}
-                  className="px-4 py-2 bg-zinc-800 text-[#e9c176] rounded-xl font-mono text-[10px] uppercase tracking-widest font-bold border border-zinc-700 hover:border-[#c5a059] cursor-pointer"
-                >
-                  Reset Active Filter
-                </button>
+                {filterAvailableOnly && (
+                  <button
+                    onClick={() => setFilterAvailableOnly(false)}
+                    className="px-4 py-2 bg-zinc-800 text-[#e9c176] rounded-xl font-mono text-[10px] uppercase tracking-widest font-bold border border-zinc-700 hover:border-[#c5a059] cursor-pointer"
+                  >
+                    Reset Active Filter
+                  </button>
+                )}
               </div>
             )}
           </AnimatePresence>

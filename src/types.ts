@@ -54,7 +54,7 @@ export interface Worker {
   rating: number;
   reviewsCount: number;
   avatar: string;
-  proBadge: 'PRO' | 'TOP' | 'VET';
+  proBadge: 'PRO' | 'TOP' | 'VET' | 'AUTHORIZED';
   price: number;
   available?: boolean;
   phone?: string;

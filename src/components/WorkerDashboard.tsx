@@ -44,15 +44,15 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     rating: number;
     completedJobs: number;
   }>({
-    uid: 'PX-WK-88192',
-    name: 'Rajesh Kumar',
-    email: 'rajesh.ac.expert@gmail.com',
-    phone: '+91 98765 43210',
-    photoURL: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
-    skill: 'Master AC & Thermal Specialist',
-    experience: '8 Years',
-    rating: 4.95,
-    completedJobs: 128
+    uid: '',
+    name: 'Verified Service Partner',
+    email: '',
+    phone: '',
+    photoURL: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+    skill: 'Service Specialist',
+    experience: 'Verified Professional',
+    rating: 5.0,
+    completedJobs: 0
   });
   const [isLoadingWorkerProfile, setIsLoadingWorkerProfile] = useState(true);
 
@@ -73,8 +73,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               photoURL: data.photoURL || user.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
               skill: data.workerSkill || 'Master Service Specialist',
               experience: data.workerExperience || '5 Years',
-              rating: data.workerRating || 4.95,
-              completedJobs: data.workerCompletedJobs || 128
+              rating: data.workerRating || 5.0,
+              completedJobs: data.workerCompletedJobs || 0
             });
           } else {
             const newWorkerProfile = {
@@ -85,9 +85,9 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               photoURL: user.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
               role: 'worker',
               workerSkill: 'Master Service Specialist',
-              workerExperience: '5 Years',
-              workerRating: 4.95,
-              workerCompletedJobs: 128,
+              workerExperience: '1 Year',
+              workerRating: 5.0,
+              workerCompletedJobs: 0,
               createdAt: new Date().toISOString()
             };
             await setDoc(doc(db, 'users', user.uid), newWorkerProfile);
@@ -217,102 +217,16 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   ]);
   const [botInput, setBotInput] = useState('');
 
-  // Sample Received Orders
-  const initialSampleOrders: OrderRecord[] = [
-    {
-      id: 'PX-9012',
-      category: 'AC Repair & Thermal',
-      workerName: 'Rajesh Kumar',
-      price: 450,
-      date: 'Today, 10:15 AM',
-      status: 'Pending',
-      customerName: 'Aarav Sharma',
-      customerAddress: '42nd Galaxy Towers, Block C, Apt 402, Indiranagar, Bengaluru',
-      customerPhone: '+91 98765 43210',
-      otpCode: '8842',
-      issueDescription: 'AC compressor circuit board causing system tripping on startup. High priority cooling breakdown.',
-      paymentMethod: 'UPI / Digital Transfer',
-      createdAt: '10:15 AM'
-    },
-    {
-      id: 'PX-9015',
-      category: 'Electrical Systems',
-      workerName: 'Rajesh Kumar',
-      price: 320,
-      date: 'Today, 11:45 AM',
-      status: 'Pending',
-      customerName: 'Priya Mukherjee',
-      customerAddress: 'House 108, 5th Main, Koramangala, Bengaluru',
-      customerPhone: '+91 98221 11400',
-      otpCode: '5192',
-      issueDescription: 'Main circuit breaker flickering with spark noise during peak air conditioner usage.',
-      paymentMethod: 'Cash on Delivery',
-      createdAt: '11:45 AM'
-    },
-    {
-      id: 'PX-9021',
-      category: 'Plumbing & Sanitary',
-      workerName: 'Rajesh Kumar',
-      price: 380,
-      date: 'Today, 01:10 PM',
-      status: 'Pending',
-      customerName: 'Ananya Rao',
-      customerAddress: 'B-704, Sovereign Park, HSR Layout, Bengaluru',
-      customerPhone: '+91 97110 88234',
-      otpCode: '4091',
-      issueDescription: 'Overhead tank supply pipe connector leaking in master bathroom. Immediate sealing required.',
-      paymentMethod: 'UPI / Digital Transfer',
-      createdAt: '01:10 PM'
-    },
-    {
-      id: 'PX-9025',
-      category: 'Home Appliances',
-      workerName: 'Rajesh Kumar',
-      price: 290,
-      date: 'Today, 02:30 PM',
-      status: 'Pending',
-      customerName: 'Rohan Mehta',
-      customerAddress: 'Flat 201, Maple Leaf Apartments, Jayanagar, Bengaluru',
-      customerPhone: '+91 99800 45120',
-      otpCode: '7310',
-      issueDescription: 'Front-load washing machine drum heavy vibration during spin cycle. Belt adjustment needed.',
-      paymentMethod: 'PunchX Wallet',
-      createdAt: '02:30 PM'
-    },
-    {
-      id: 'PX-8991',
-      category: 'AC Repair & Thermal',
-      workerName: 'Rajesh Kumar',
-      price: 580,
-      date: 'Today, 08:30 AM',
-      status: 'Done',
-      customerName: 'Vikramaditya Roy',
-      customerAddress: 'Villa 12, Palm Meadows, Whitefield, Bengaluru',
-      customerPhone: '+91 99012 33881',
-      otpCode: '1102',
-      issueDescription: 'Dual AC condenser gas refill and coil leak patching.',
-      paymentMethod: 'PunchX Wallet',
-      createdAt: '08:30 AM'
-    }
-  ];
+  // Real Received Orders
+  const initialSampleOrders: OrderRecord[] = [];
 
-  // Reset/Load demo orders helper
+  // Reset/Clear orders helper
   const resetToDemoOrders = async () => {
     setIsLoading(true);
-    setOrders(initialSampleOrders);
-    localStorage.setItem('punchx_order_history', JSON.stringify(initialSampleOrders));
-
-    // Save demo orders to Firestore
-    try {
-      for (const ord of initialSampleOrders) {
-        await setDoc(doc(db, 'orders', ord.id), ord);
-      }
-    } catch (e) {
-      console.error("Error writing demo orders to Firestore:", e);
-    }
-
-    showNotification('📦 Loaded fresh Demo Orders for verification!');
-    setTimeout(() => setIsLoading(false), 500);
+    setOrders([]);
+    localStorage.setItem('punchx_order_history', JSON.stringify([]));
+    showNotification('📦 Orders list refreshed!');
+    setTimeout(() => setIsLoading(false), 300);
   };
 
   // Load orders from localStorage / Firestore helper
@@ -322,7 +236,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     if (rawHistory) {
       try {
         const parsed = JSON.parse(rawHistory);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           setOrders(parsed);
           setTimeout(() => setIsLoading(false), 300);
           return;
@@ -331,26 +245,13 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
         console.error(e);
       }
     }
-    setOrders(initialSampleOrders);
+    setOrders([]);
     setTimeout(() => setIsLoading(false), 300);
   };
 
   // Load orders from localStorage / Firestore sync
   useEffect(() => {
     loadOrders();
-    setIsLoading(true);
-    const rawHistory = localStorage.getItem('punchx_order_history');
-    if (rawHistory) {
-      try {
-        const parsed = JSON.parse(rawHistory);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setOrders(parsed);
-          setIsLoading(false);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
 
     // Subscribe to real-time Firestore orders
     let unsubscribe: () => void;
@@ -361,17 +262,15 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
         snapshot.forEach((docSnap) => {
           live.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
         });
-        if (live.length > 0) {
-          setOrders(live);
-          localStorage.setItem('punchx_order_history', JSON.stringify(live));
-        }
+        setOrders(live);
+        localStorage.setItem('punchx_order_history', JSON.stringify(live));
         setIsLoading(false);
       }, (err) => {
-        console.warn("Firestore subscription offline:", err);
+        console.warn("Firestore subscription notice:", err);
         setIsLoading(false);
       });
     } catch (e) {
-      console.warn("Firestore listener setup error:", e);
+      console.warn("Firestore listener setup notice:", e);
       setIsLoading(false);
     }
 
