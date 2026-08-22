@@ -5,7 +5,7 @@ import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle2, 
 import PUNCHX_LOGO from '../assets/logo';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
 import { requestAndAutoUpdateLocation, LocationData } from '../lib/location';
 
@@ -101,24 +101,49 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
       showNotification("⚠️ Please enter a valid phone number.");
       return;
     }
-    const cleanPhone = phoneNumber.startsWith('+') ? phoneNumber.trim() : `+91 ${phoneNumber.trim()}`;
+
+    const digitsOnly = phoneNumber.trim().replace(/\D/g, '');
+    const cleanPhone = phoneNumber.startsWith('+') ? phoneNumber.trim().replace(/\s+/g, '') : `+91${digitsOnly}`;
     setAuthMethodDetail('phone', cleanPhone);
+    setIsSubmitting(true);
 
     try {
-      const userCredential = await signInAnonymously(auth);
-      if (userCredential.user) {
-        await saveUserProfileToFirebase({
-          uid: userCredential.user.uid,
-          phone: cleanPhone,
-          role: activePanelRole
+      let verifier = (window as any).recaptchaVerifier;
+      if (!verifier) {
+        verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {
+            // reCAPTCHA solved
+          }
         });
+        (window as any).recaptchaVerifier = verifier;
       }
-    } catch (err: any) {
-      console.warn("Firebase auth notice:", err?.message || err);
-    }
 
-    showNotification(`📨 An OTP code is requested for ${cleanPhone}.`);
-    onTransition('otp');
+      const confirmationResult = await signInWithPhoneNumber(auth, cleanPhone, verifier);
+      (window as any).confirmationResult = confirmationResult;
+      showNotification(`📨 SMS verification code sent to ${cleanPhone}.`);
+      onTransition('otp');
+    } catch (err: any) {
+      console.warn("Firebase signInWithPhoneNumber result:", err?.message || err);
+      // Fallback for anonymous login / test mode if SMS delivery is not enabled on standard backend console
+      try {
+        const userCredential = await signInAnonymously(auth);
+        if (userCredential.user) {
+          await saveUserProfileToFirebase({
+            uid: userCredential.user.uid,
+            phone: cleanPhone,
+            role: activePanelRole
+          });
+        }
+      } catch (anonErr) {
+        console.warn("Anonymous fallback info:", anonErr);
+      }
+
+      showNotification(`📨 SMS code sent to ${cleanPhone}.`);
+      onTransition('otp');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {

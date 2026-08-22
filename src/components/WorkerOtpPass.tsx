@@ -77,8 +77,8 @@ export default function WorkerOtpPass({
         localStorage.setItem(`punchx_worker_cred_${workerApplication.phone}`, JSON.stringify(workerAccount));
       }
 
-      showNotification('✓ Dual OTP verified & password set successfully! Details submitted to Company Dashboard.');
-      onTransition('worker-pending-approval');
+      showNotification('✓ Dual OTP verified & password set successfully! Proceed to set your Service Hub Location.');
+      onTransition('worker-setup');
     }, 1200);
   };
 

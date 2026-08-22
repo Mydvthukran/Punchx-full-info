@@ -302,15 +302,155 @@ export async function requestAndAutoUpdateLocation(
 
         resolve(locData);
       },
-      (error) => {
-        console.warn("Geolocation permission denied or error:", error);
+      async (error) => {
+        console.warn("Geolocation permission denied, iframe restricted, or timed out. Falling back to backend geocode:", error);
+        try {
+          const res = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.address) {
+              const locData: LocationData = {
+                lat: data.lat || 12.9716,
+                lng: data.lng || 77.5946,
+                address: data.address,
+                area: data.area || 'Local Zone',
+                city: data.city || 'Bengaluru',
+                sector: data.sector || 'Sector 2 (Indiranagar)',
+                timestamp: new Date().toISOString()
+              };
+
+              try {
+                localStorage.setItem('punchx_user_location', JSON.stringify(locData));
+                localStorage.setItem('punchx_user_address', locData.address);
+                localStorage.setItem('punchx_user_sector', locData.sector);
+              } catch (e) {
+                console.warn("Error saving fallback location:", e);
+              }
+
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('punchx_location_updated', { detail: locData }));
+              }
+              resolve(locData);
+              return;
+            }
+          }
+        } catch (backendErr) {
+          console.warn("Backend auto-location fallback error:", backendErr);
+        }
         resolve(null);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 8000,
         maximumAge: 0
       }
     );
   });
 }
+
+export interface RegisteredService {
+  id: string;
+  name: string;
+  category: string;
+  icon: string;
+  activeSpecialists: number;
+  avgRating: number;
+  startingPrice: number;
+  slaMinutes: number;
+  available: boolean;
+  description: string;
+  sectorCoverage?: string;
+  landmarkNote?: string;
+}
+
+export interface LocationServicesResponse {
+  success: boolean;
+  address: string;
+  area: string;
+  city: string;
+  sector: string;
+  landmark: string;
+  lat: number;
+  lng: number;
+  coverageStatus: string;
+  totalRegisteredServices: number;
+  registeredServices: RegisteredService[];
+}
+
+export async function fetchRegisteredLocationServices(params: {
+  address?: string;
+  landmark?: string;
+  lat?: number;
+  lng?: number;
+}): Promise<LocationServicesResponse | null> {
+  try {
+    const res = await fetch('/api/location-services', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (err) {
+    console.warn("fetchRegisteredLocationServices error:", err);
+  }
+  return null;
+}
+
+export interface RegisteredLocationCustomer {
+  id: string;
+  name: string;
+  phoneMasked: string;
+  address: string;
+  landmark: string;
+  serviceNeeded: string;
+  urgency: string;
+  distanceKm: number;
+  verifiedStatus: string;
+  totalPreviousBookings: number;
+  rating: number;
+}
+
+export interface WorkerLocationCustomersResponse {
+  success: boolean;
+  address: string;
+  area: string;
+  city: string;
+  sector: string;
+  landmark: string;
+  lat: number;
+  lng: number;
+  totalRegisteredCustomersInLocation: number;
+  coverageMessage: string;
+  registeredCustomers: RegisteredLocationCustomer[];
+}
+
+export async function fetchRegisteredCustomersForWorkerLocation(params: {
+  address?: string;
+  landmark?: string;
+  lat?: number;
+  lng?: number;
+}): Promise<WorkerLocationCustomersResponse | null> {
+  try {
+    const res = await fetch('/api/worker-location-customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (err) {
+    console.warn("fetchRegisteredCustomersForWorkerLocation error:", err);
+  }
+  return null;
+}
+
+

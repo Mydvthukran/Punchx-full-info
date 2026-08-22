@@ -15,6 +15,8 @@ interface HomeProps {
   onSelectCategory: (category: string) => void;
   hasActiveBooking: boolean;
   promoApplied: boolean;
+  hasClaimedBonus?: boolean;
+  hasUsedBonus?: boolean;
   onClaimPromo: () => void;
   citizenName: string;
   setCitizenName: (val: string) => void;
@@ -44,6 +46,8 @@ export default function HomeDashboard({
   onSelectCategory,
   hasActiveBooking,
   promoApplied,
+  hasClaimedBonus,
+  hasUsedBonus,
   onClaimPromo,
   citizenName,
   setCitizenName,
@@ -130,10 +134,14 @@ export default function HomeDashboard({
 
   // Synchronize dynamic booking history values with Firestore & localStorage
   useEffect(() => {
-    // 1. Initial fallback load from localStorage
+    // 1. Initial fallback load from localStorage (filtering demo orders)
+    const demoIds = ['PX-5510', 'PX-9012', 'PX-1120', 'PX-3344'];
     const raw = localStorage.getItem('punchx_order_history') || '[]';
     try {
-      setHistoryOrders(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      const cleaned = Array.isArray(parsed) ? parsed.filter((o: any) => !demoIds.includes(o.id)) : [];
+      setHistoryOrders(cleaned);
+      localStorage.setItem('punchx_order_history', JSON.stringify(cleaned));
     } catch {
       setHistoryOrders([]);
     }
@@ -154,7 +162,10 @@ export default function HomeDashboard({
       unsubscribe = onSnapshot(ordersCol, (snapshot) => {
         const liveOrders: OrderRecord[] = [];
         snapshot.forEach((docSnap) => {
-          liveOrders.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
+          const ord = { id: docSnap.id, ...docSnap.data() } as OrderRecord;
+          if (!demoIds.includes(ord.id)) {
+            liveOrders.push(ord);
+          }
         });
         setHistoryOrders(liveOrders);
         localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
@@ -178,7 +189,7 @@ export default function HomeDashboard({
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isProfileOpen]);
+  }, []);
 
   // Keep transient inputs in sync when global props update
   useEffect(() => {
@@ -402,14 +413,20 @@ export default function HomeDashboard({
               Unlock prestigious home repair and consultation services curated strictly for premium lifestyles.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button
-                id="claim-discount-btn"
-                onClick={onClaimPromo}
-                disabled={promoApplied}
-                className={`py-3 px-6 rounded-xl text-xs font-bold tracking-widest uppercase cursor-pointer transition-all active:scale-[0.98] ${promoApplied ? 'bg-zinc-800 text-zinc-500 border border-zinc-700' : 'bg-[#c5a059] text-black shadow-lg shadow-[#c5a059]/20 hover:brightness-110'}`}
-              >
-                {promoApplied ? '✓ 20% OFF Claimed' : 'Claim 20% OFF'}
-              </button>
+              {!hasClaimedBonus && !hasUsedBonus && !promoApplied ? (
+                <button
+                  id="claim-discount-btn"
+                  onClick={onClaimPromo}
+                  className="py-3 px-6 rounded-xl text-xs font-bold tracking-widest uppercase cursor-pointer transition-all active:scale-[0.98] bg-[#c5a059] text-black shadow-lg shadow-[#c5a059]/20 hover:brightness-110"
+                >
+                  Claim 20% OFF
+                </button>
+              ) : promoApplied && !hasUsedBonus ? (
+                <div className="py-2.5 px-4 rounded-xl text-xs font-bold tracking-wider uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 font-mono">
+                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <span>20% First Order Bonus Active</span>
+                </div>
+              ) : null}
               <button
                 id="explore-scroller-btn"
                 onClick={() => {
@@ -1121,7 +1138,11 @@ export default function HomeDashboard({
                           </div>
                         ))
                       ) : (
-                        <p className="text-[10px] font-sans text-zinc-500 italic text-left">No completed orders yet.</p>
+                        <div className="bg-[#111415] border border-zinc-850 rounded-xl p-4 text-center space-y-1">
+                          <CheckCircle className="w-5 h-5 text-zinc-600 mx-auto" />
+                          <p className="text-xs font-sans text-zinc-300 font-bold">No service done</p>
+                          <p className="text-[10px] text-zinc-500 font-sans">No completed orders yet. Completed jobs and digital receipts will appear here.</p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1175,7 +1196,9 @@ export default function HomeDashboard({
                           </div>
                         ))
                       ) : (
-                        <p className="text-[10px] font-sans text-zinc-500 italic text-left">No cancelled orders yet.</p>
+                        <div className="bg-[#111415] border border-zinc-850/60 rounded-xl p-3 text-center">
+                          <p className="text-[11px] font-sans text-zinc-500 italic">No cancelled orders</p>
+                        </div>
                       )}
                     </div>
                   </div>

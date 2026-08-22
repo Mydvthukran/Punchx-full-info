@@ -3,6 +3,8 @@ export type AppScreen =
   | 'panel-select'
   | 'auth' 
   | 'otp' 
+  | 'customer-setup'
+  | 'worker-setup'
   | 'worker-signup'
   | 'worker-otp-pass'
   | 'worker-pending-approval'
@@ -41,6 +43,7 @@ export interface UserProfile {
   photoURL?: string;
   role: 'citizen' | 'worker' | 'admin';
   address?: string;
+  landmark?: string;
   area?: string;
   sector?: string;
   phone?: string;

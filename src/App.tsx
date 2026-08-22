@@ -17,6 +17,8 @@ import PanelSelect from './components/PanelSelect';
 import WorkerSignup from './components/WorkerSignup';
 import WorkerOtpPass from './components/WorkerOtpPass';
 import WorkerPendingApproval from './components/WorkerPendingApproval';
+import CustomerLocationSetup from './components/CustomerLocationSetup';
+import WorkerLocationSetup from './components/WorkerLocationSetup';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
@@ -36,7 +38,15 @@ function AppMain() {
   const [authMethod, setAuthMethod] = useState<'phone' | 'gmail'>('phone');
   const [authTarget, setAuthTarget] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [promoApplied, setPromoApplied] = useState(false);
+  const [hasClaimedBonus, setHasClaimedBonus] = useState<boolean>(() => {
+    return localStorage.getItem('punchx_first_order_coupon_claimed') === 'true';
+  });
+  const [hasUsedBonus, setHasUsedBonus] = useState<boolean>(() => {
+    return localStorage.getItem('punchx_first_order_coupon_used') === 'true';
+  });
+  const [promoApplied, setPromoApplied] = useState<boolean>(() => {
+    return localStorage.getItem('punchx_active_coupon_applied') === 'true';
+  });
   const [issueDescription, setIssueDescription] = useState('AC compressor circuit board triggers system short circuit on startup.');
   const [bookingTime, setBookingTime] = useState('11:30 AM');
   const [bookingDate, setBookingDate] = useState('12');
@@ -67,6 +77,15 @@ function AppMain() {
     }
   }, [userProfile, isLoadingProfile, currentUser]);
 
+  // Step 4: Secure Routing Guard - Redirect to auth screen if unauthenticated user attempts to access protected screens
+  useEffect(() => {
+    const protectedScreens: AppScreen[] = ['home', 'customer-setup', 'worker-setup', 'worker-dashboard', 'admin-dashboard', 'tracking', 'booking', 'payment', 'providers', 'provider-details'];
+    if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen)) {
+      showToast("🔒 Active session required. Redirecting to login...");
+      setCurrentScreen('auth');
+    }
+  }, [currentUser, isLoadingProfile, currentScreen]);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
@@ -75,14 +94,40 @@ function AppMain() {
   };
 
   const onClaimPromo = () => {
+    if (hasClaimedBonus || hasUsedBonus) {
+      showToast("⚠️ 20% First Order Bonus coupon has already been claimed.");
+      return;
+    }
     setPromoApplied(true);
-    showToast("✓ Promotional 20% OFF bound dynamically! Enjoy Elite services.");
+    setHasClaimedBonus(true);
+    try {
+      localStorage.setItem('punchx_first_order_coupon_claimed', 'true');
+      localStorage.setItem('punchx_active_coupon_applied', 'true');
+    } catch (e) {
+      console.warn("Storage error saving promo status:", e);
+    }
+    showToast("✓ 20% First Order Bonus claimed! Discount applied to checkout.");
   };
 
   const handleApplyPromoCode = (code: string) => {
-    if (code.toUpperCase() === 'ELITE20' || code.toUpperCase() === 'PUNCHX20') {
+    const upper = code.trim().toUpperCase();
+    const validCodes = ['ELITE20', 'PUNCHX20', 'FIRST20', 'WELCOME20', 'BONUS20', 'SAVE20', 'DISCOUNT20'];
+    if (validCodes.includes(upper)) {
+      if (hasUsedBonus) {
+        showToast("⚠️ First-order promo coupon has already been redeemed on an earlier order.");
+        return;
+      }
       setPromoApplied(true);
-      showToast("✓ Exclusive coupon applied! Your checkout prices are minimized.");
+      setHasClaimedBonus(true);
+      try {
+        localStorage.setItem('punchx_first_order_coupon_claimed', 'true');
+        localStorage.setItem('punchx_active_coupon_applied', 'true');
+      } catch (e) {
+        console.warn("Storage error saving coupon status:", e);
+      }
+      showToast(`✓ Coupon '${upper}' applied! 20% discount added to order.`);
+    } else {
+      showToast("⚠️ Invalid coupon code. Try 'ELITE20' or 'PUNCHX20'.");
     }
   };
 
@@ -90,44 +135,21 @@ function AppMain() {
     setCurrentScreen(target);
   };
 
+  // Clean out any legacy mock demo orders and ensure clean actual order history
   useEffect(() => {
-    const existing = localStorage.getItem('punchx_order_history');
-    if (!existing) {
-      const defaultHistory = [
-        {
-          id: 'PX-5510',
-          category: 'AC Repair',
-          workerName: 'Rajesh Kumar',
-          price: 180,
-          date: 'May 24, 2026',
-          status: 'Done'
-        },
-        {
-          id: 'PX-9012',
-          category: 'Plumbing',
-          workerName: 'Rohan Das',
-          price: 130,
-          date: 'May 22, 2026',
-          status: 'Cancelled'
-        },
-        {
-          id: 'PX-1120',
-          category: 'Cleaning',
-          workerName: 'Sarah Jenkins',
-          price: 249,
-          date: 'May 18, 2026',
-          status: 'Done'
-        },
-        {
-          id: 'PX-3344',
-          category: 'Electrical',
-          workerName: 'Marcus Thorne',
-          price: 199,
-          date: 'May 12, 2026',
-          status: 'Cancelled'
-        }
-      ];
-      localStorage.setItem('punchx_order_history', JSON.stringify(defaultHistory));
+    try {
+      const existing = localStorage.getItem('punchx_order_history');
+      if (existing) {
+        const parsed = JSON.parse(existing);
+        const demoIds = ['PX-5510', 'PX-9012', 'PX-1120', 'PX-3344'];
+        const actualOrders = Array.isArray(parsed) ? parsed.filter((o: any) => !demoIds.includes(o.id)) : [];
+        localStorage.setItem('punchx_order_history', JSON.stringify(actualOrders));
+      } else {
+        localStorage.setItem('punchx_order_history', '[]');
+      }
+    } catch (e) {
+      console.warn("Error cleaning mock order history:", e);
+      localStorage.setItem('punchx_order_history', '[]');
     }
   }, []);
 
@@ -228,21 +250,10 @@ function AppMain() {
               </span>
             </div>
 
-            {/* Center: System Status */}
+            {/* Right: System Status */}
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-              <span className="text-[10px] text-emerald-400 font-bold tracking-wider hidden sm:inline">LIVE SYNC ACTIVE</span>
-            </div>
-
-            {/* Right: Network & Battery Indicators */}
-            <div className="flex items-center gap-2 text-zinc-300 text-[10px] font-bold">
-              <span>5G</span>
-              <svg className="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.3c-.2-.2-.2-.51 0-.71L12 11l7.65 7.59c.2.2.2.51 0 .71l-.62.61C20.26 18.07 21 16.12 21 14c0-4.97-4.03-9-9-9z"/>
-              </svg>
-              <div className="flex items-center gap-0.5 bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/40 text-[9px]">
-                <span>98%</span>
-              </div>
+              <span className="text-[10px] text-emerald-400 font-bold tracking-wider">LIVE SYNC ACTIVE</span>
             </div>
           </div>
 
@@ -315,6 +326,28 @@ function AppMain() {
                 activePanelRole={activePanelRole}
               />
             )}
+            {currentScreen === 'customer-setup' && (
+              <CustomerLocationSetup
+                onTransition={handleTransition}
+                citizenName={citizenName}
+                setCitizenName={setCitizenName}
+                citizenAddress={citizenAddress}
+                setCitizenAddress={setCitizenAddress}
+                showNotification={showToast}
+                authMethod={authMethod}
+                authTarget={authTarget}
+              />
+            )}
+            {currentScreen === 'worker-setup' && (
+              <WorkerLocationSetup
+                onTransition={handleTransition}
+                showNotification={showToast}
+                authMethod={authMethod}
+                authTarget={authTarget}
+                workerApplication={workerApplication}
+                setWorkerApplicationData={setWorkerApplication}
+              />
+            )}
             {currentScreen === 'home' && (
               <HomeDashboard
                 onTransition={handleTransition}
@@ -322,6 +355,8 @@ function AppMain() {
                 onSelectCategory={setSelectedCategory}
                 hasActiveBooking={true}
                 promoApplied={promoApplied}
+                hasClaimedBonus={hasClaimedBonus}
+                hasUsedBonus={hasUsedBonus}
                 onClaimPromo={onClaimPromo}
                 citizenName={citizenName}
                 setCitizenName={setCitizenName}
@@ -374,6 +409,19 @@ function AppMain() {
                 onTransition={handleTransition}
                 selectedWorker={selectedWorker}
                 promoApplied={promoApplied}
+                hasUsedBonus={hasUsedBonus}
+                onOrderFinalized={() => {
+                  if (promoApplied) {
+                    setHasUsedBonus(true);
+                    setPromoApplied(false);
+                    try {
+                      localStorage.setItem('punchx_first_order_coupon_used', 'true');
+                      localStorage.removeItem('punchx_active_coupon_applied');
+                    } catch (e) {
+                      console.warn(e);
+                    }
+                  }
+                }}
                 onApplyPromo={handleApplyPromoCode}
                 showNotification={showToast}
               />

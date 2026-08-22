@@ -9,6 +9,8 @@ interface ChoosePaymentProps {
   onTransition: (target: AppScreen) => void;
   selectedWorker: Worker | null;
   promoApplied: boolean;
+  hasUsedBonus?: boolean;
+  onOrderFinalized?: () => void;
   onApplyPromo: (code: string) => void;
   showNotification?: (msg: string) => void;
 }
@@ -44,6 +46,8 @@ export default function ChoosePayment({
   onTransition,
   selectedWorker,
   promoApplied,
+  hasUsedBonus,
+  onOrderFinalized,
   onApplyPromo,
   showNotification
 }: ChoosePaymentProps) {
@@ -73,17 +77,27 @@ export default function ChoosePayment({
   const companyCommission = 20; // Company Commission Fee
   const taxableSubtotal = baseFee + companyCommission;
   const gstAmount = Math.round(taxableSubtotal * 0.18); // 18% GST
-  const discount = promoApplied ? Math.round((taxableSubtotal + gstAmount) * 0.15) : 0;
-  const grandTotal = taxableSubtotal + gstAmount - discount + tipAmount;
+  const grossSubtotal = taxableSubtotal + gstAmount;
+  // 20% discount calculation
+  const discount = promoApplied ? Math.round(grossSubtotal * 0.20) : 0;
+  const grandTotal = Math.max(0, grossSubtotal - discount + tipAmount);
 
   const handleApplyPromoCode = () => {
     if (!couponInput.trim()) return;
-    if (couponInput.toUpperCase() === 'ELITE20') {
-      onApplyPromo('ELITE20');
+    const code = couponInput.trim().toUpperCase();
+    const validCodes = ['ELITE20', 'PUNCHX20', 'FIRST20', 'WELCOME20', 'BONUS20', 'SAVE20', 'DISCOUNT20'];
+    
+    if (hasUsedBonus) {
+      setCouponErr("⚠️ 20% First Order Bonus coupon has already been redeemed on an earlier order.");
+      return;
+    }
+
+    if (validCodes.includes(code)) {
+      onApplyPromo(code);
       setCouponInput('');
       setCouponErr('');
     } else {
-      setCouponErr("Invalid code. Try using 'ELITE20' promo code from DRAGO AI.");
+      setCouponErr("Invalid code. Try using 'ELITE20' or 'PUNCHX20'.");
     }
   };
 
@@ -98,6 +112,10 @@ export default function ChoosePayment({
       workerAvatar: selectedWorker ? selectedWorker.avatar : 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
       workerRating: selectedWorker ? (selectedWorker.rating || 4.9) : 4.9,
       price: grandTotal,
+      originalPrice: grossSubtotal + tipAmount,
+      discountApplied: discount,
+      couponUsed: promoApplied ? '20% BONUS COUPON' : null,
+      paymentMethod: selectedMethod === 'gpay' ? 'Google Pay UPI' : selectedMethod === 'phonepe' ? 'PhonePe UPI' : selectedMethod === 'card' ? 'HDFC Debit Card' : 'Cash on Delivery',
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       status: 'In Progress',
       customerName: 'Anand Sharma',
@@ -124,6 +142,10 @@ export default function ChoosePayment({
       localStorage.setItem('punchx_active_order', JSON.stringify(newOrder));
     } catch (e) {
       console.error("Error writing active order to localStorage:", e);
+    }
+
+    if (onOrderFinalized) {
+      onOrderFinalized();
     }
 
     setPaying(false);
@@ -349,7 +371,7 @@ export default function ChoosePayment({
                 )}
                 {promoApplied && (
                   <div className="flex justify-between items-center text-emerald-400 py-1.5 border-t border-dashed border-zinc-800 font-mono">
-                    <span>Promo Discount Claimed</span>
+                    <span>20% Promo Coupon Discount</span>
                     <span>-₹{discount}</span>
                   </div>
                 )}

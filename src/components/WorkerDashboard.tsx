@@ -322,7 +322,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       return;
     }
 
-    // Sector restriction check according to Rapido / Uber area model
+    // Sector restriction check according to PunchX sector dispatch model
     const workerSector = workerLocation?.sector || getSectorFromAddress(workerLocation?.address || workerProfile.skill);
     const orderSector = selectedOrder.sector || getSectorFromAddress(selectedOrder.customerAddress, selectedOrder.area);
 
@@ -333,7 +333,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     );
 
     if (!isSectorMatch) {
-      showNotification(`⛔ SECTOR LOCK (Rapido/Uber Rule): You are in ${workerSector}. You can ONLY accept orders from your sector (${orderSector}).`);
+      showNotification(`⛔ SECTOR LOCK (PunchX Rule): You are in ${workerSector}. You can ONLY accept orders from your sector (${orderSector}).`);
       return;
     }
 

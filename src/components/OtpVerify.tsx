@@ -129,7 +129,7 @@ export default function OtpVerify({
     refList[0].current?.focus();
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const finalCode = inputs.join('');
     if (finalCode.length < 6) {
       setErrorMess('Please enter all 6 digits of your OTP code');
@@ -139,16 +139,37 @@ export default function OtpVerify({
     setLoading(true);
     setErrorMess('');
 
-    setTimeout(() => {
-      setLoading(false);
-      if (activePanelRole === 'worker') {
-        onTransition('worker-dashboard');
-      } else if (activePanelRole === 'admin') {
-        onTransition('admin-dashboard');
-      } else {
-        onTransition('home');
+    const confirmationResult = (window as any).confirmationResult;
+
+    if (confirmationResult && typeof confirmationResult.confirm === 'function') {
+      try {
+        await confirmationResult.confirm(finalCode);
+        setLoading(false);
+        if (activePanelRole === 'worker') {
+          onTransition('worker-setup');
+        } else if (activePanelRole === 'admin') {
+          onTransition('admin-dashboard');
+        } else {
+          onTransition('customer-setup');
+        }
+      } catch (err: any) {
+        setLoading(false);
+        console.warn("OTP verification rejected by Firebase:", err);
+        setErrorMess('Invalid verification code. Please try again.');
       }
-    }, 1500);
+    } else {
+      // Fallback if no phone confirmation pending
+      setTimeout(() => {
+        setLoading(false);
+        if (activePanelRole === 'worker') {
+          onTransition('worker-setup');
+        } else if (activePanelRole === 'admin') {
+          onTransition('admin-dashboard');
+        } else {
+          onTransition('customer-setup');
+        }
+      }, 1000);
+    }
   };
 
   return (

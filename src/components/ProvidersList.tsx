@@ -204,7 +204,7 @@ export default function ProvidersList({
     };
   });
 
-  // Filter providers strictly by category AND sector & availability (Rapido / Uber Sector Model)
+  // Filter providers strictly by category AND sector & availability (PunchX Sector Model)
   let filtered = annotatedList.filter(expert => {
     const expertCat = expert.category.toLowerCase();
     const targetCat = displayCategory.toLowerCase();
@@ -580,8 +580,8 @@ export default function ProvidersList({
                 </div>
                 
                 <div className="space-y-2 max-w-lg mx-auto">
-                  <span className="text-[10px] font-mono font-extrabold uppercase bg-rose-500/20 text-rose-300 px-3 py-1 rounded-full border border-rose-500/30">
-                    RAPIDO & UBER SECTOR DISPATCH MODEL
+                  <span className="text-[10px] font-mono font-extrabold uppercase bg-[#c5a059]/20 text-[#e9c176] px-3 py-1 rounded-full border border-[#c5a059]/30">
+                    PUNCH X SECTOR DISPATCH MODEL
                   </span>
                   <h3 className="font-sans font-extrabold text-xl text-white tracking-tight">
                     NOT AVAILABLE IN YOUR SECTOR

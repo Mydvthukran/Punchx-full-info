@@ -25,7 +25,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
     try {
       setIsLoadingProfile(true);
       const userDocRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userDocRef);
+
+      // Wrap getDoc with a 2.5s timeout to prevent hanging when offline
+      const userSnap = await Promise.race([
+        getDoc(userDocRef),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Firestore connection timeout')), 2500)
+        )
+      ]);
 
       if (userSnap.exists()) {
         const existingData = userSnap.data() as UserProfile;
@@ -56,17 +63,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
           updatedAt: new Date().toISOString()
         };
 
-        await setDoc(userDocRef, newProfile);
+        try {
+          await Promise.race([
+            setDoc(userDocRef, newProfile),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Firestore setDoc timeout')), 2000)
+            )
+          ]);
+        } catch (e) {
+          console.warn("SetDoc offline fallback notice:", e);
+        }
         setUserProfile(newProfile);
       }
     } catch (error) {
-      console.error('Error fetching or creating user profile:', error);
+      console.warn('Notice fetching or creating user profile (offline mode active):', error);
       // Fallback in-memory profile if Firestore is temporarily offline
       setUserProfile({
         uid: user.uid,
-        name: user.displayName || user.email?.split('@')[0] || 'Authenticated User',
+        name: user.displayName || user.email?.split('@')[0] || 'PunchX Member',
         email: user.email || '',
-        photoURL: user.photoURL || '',
+        photoURL: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
         role: role,
         address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
         phone: user.phoneNumber || ''
