@@ -6,7 +6,8 @@ import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle
 import { CategoryProfileBadge } from './CategoryIcon';
 import { auth, db } from '../lib/firebase';
 import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
-import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress } from '../lib/location';
+import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress, getCoordinatesForAddressOrSector } from '../lib/location';
+import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';
 
 interface ProvidersListProps {
   onTransition: (target: AppScreen) => void;
@@ -34,8 +35,9 @@ export default function ProvidersList({
   setCitizenAddress
 }: ProvidersListProps) {
   const [filterAvailableOnly, setFilterAvailableOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<'rating' | 'price-low' | 'price-high'>('rating');
+  const [sortBy, setSortBy] = useState<'distance' | 'rating' | 'price-low' | 'price-high'>('distance');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [showRadiusRadarModal, setShowRadiusRadarModal] = useState(false);
   
   // Profile edit fields
   const [tempName, setTempName] = useState(citizenName);
@@ -180,31 +182,30 @@ export default function ProvidersList({
   const displayCategory = selectedCategory || 'AC Repair';
   const isAllSpecialties = displayCategory.toLowerCase() === 'all specialties' || displayCategory.toLowerCase() === 'all';
   
-  // Annotate providers with location & sector matching details
+  // Annotate providers with 15km distance calculation and sector details
   const annotatedList = allProvidersList.map(expert => {
     const workerSector = expert.sector || getSectorFromAddress(expert.address, expert.area);
-    const sectorMatches = (
-      workerSector.toLowerCase() === customerSector.toLowerCase() ||
-      workerSector.toLowerCase().includes(customerSector.toLowerCase()) ||
-      customerSector.toLowerCase().includes(workerSector.toLowerCase())
-    );
-
     const proximity = isSameAreaOrNearby(
       citizenAddress,
       expert.address,
       undefined,
       expert.location
     );
+
+    const distanceKm = proximity.distanceKm;
+    const isWithin15Km = proximity.isWithin15Km || distanceKm <= 15.0;
+
     return {
       ...expert,
       sector: workerSector,
-      sectorMatch: sectorMatches,
+      sectorMatch: isWithin15Km,
+      isWithin15Km: isWithin15Km,
       areaMatch: proximity.isMatch,
-      distanceKm: proximity.distanceKm
+      distanceKm: distanceKm
     };
   });
 
-  // Filter providers strictly by category AND sector & availability (PunchX Sector Model)
+  // Filter providers strictly by category AND 15km radius & availability
   let filtered = annotatedList.filter(expert => {
     const expertCat = expert.category.toLowerCase();
     const targetCat = displayCategory.toLowerCase();
@@ -215,15 +216,17 @@ export default function ProvidersList({
                      expertCat.includes(targetCat) || 
                      targetCat.includes(expertCat);
     
-    // Customer can ONLY see workers from their sector who are PRESENT / ON-DUTY
-    const isSectorAndAvailable = expert.sectorMatch && expert.available !== false;
+    // Customer can ONLY see workers within 15 km who are PRESENT / ON-DUTY
+    const is15KmAndAvailable = expert.isWithin15Km && (filterAvailableOnly ? expert.available !== false : true);
 
-    return isCategoryMatch && isSectorAndAvailable;
+    return isCategoryMatch && is15KmAndAvailable;
   });
 
-  // Sort by rating or price
+  // Sort by distance, rating or price
   filtered.sort((a, b) => {
-    if (sortBy === 'rating') {
+    if (sortBy === 'distance') {
+      return (a.distanceKm ?? 999) - (b.distanceKm ?? 999);
+    } else if (sortBy === 'rating') {
       return b.rating - a.rating;
     } else if (sortBy === 'price-low') {
       return a.price - b.price;
@@ -389,42 +392,56 @@ export default function ProvidersList({
         
         {/* Dynamic Controls layout */}
         <div className="flex flex-col sm:flex-row justify-between items-center bg-[#111415] border border-zinc-800 p-4 rounded-2xl gap-4 shadow">
-          {/* Availability filter */}
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          {/* Availability filter & 15km radar button */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+            <button
+              id="open-customer-15km-radar-btn"
+              onClick={() => setShowRadiusRadarModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-[#c5a059] hover:bg-[#e9c176] text-black rounded-xl font-mono text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-[#c5a059]/20"
+            >
+              <Compass className="w-3.5 h-3.5" /> 15km Map Radar
+            </button>
+
             <button
               id="toggle-available-only"
               onClick={() => setFilterAvailableOnly(!filterAvailableOnly)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border font-mono text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border font-mono text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                 filterAvailableOnly 
                   ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/60' 
                   : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-[#c5a059]'
               }`}
             >
-              <span className={`w-2.5 h-2.5 rounded-full ${filterAvailableOnly ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}></span>
-              Active Available Only
+              <span className={`w-2 h-2 rounded-full ${filterAvailableOnly ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}></span>
+              Active Only
             </button>
           </div>
 
           {/* Sorter tabs */}
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
             <Filter className="w-3.5 h-3.5 text-[#c5a059]" />
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mr-2">Sort:</span>
-            <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-900 text-[10px]">
+            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider mr-1">Sort:</span>
+            <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-900 text-[10px] flex-wrap gap-1">
+              <button
+                onClick={() => setSortBy('distance')}
+                className={`px-2.5 py-1.5 rounded-lg font-mono font-bold uppercase ${sortBy === 'distance' ? 'bg-[#c5a059] text-black font-extrabold' : 'text-zinc-400'}`}
+              >
+                Nearest
+              </button>
               <button
                 onClick={() => setSortBy('rating')}
-                className={`px-3 py-1.5 rounded-lg font-mono font-bold uppercase ${sortBy === 'rating' ? 'bg-[#c5a059] text-black font-extrabold' : 'text-zinc-400'}`}
+                className={`px-2.5 py-1.5 rounded-lg font-mono font-bold uppercase ${sortBy === 'rating' ? 'bg-[#c5a059] text-black font-extrabold' : 'text-zinc-400'}`}
               >
-                Top Rating
+                Rating
               </button>
               <button
                 onClick={() => setSortBy('price-low')}
-                className={`px-3 py-1.5 rounded-lg font-mono font-bold uppercase ${sortBy === 'price-low' ? 'bg-[#c5a059] text-black font-extrabold' : 'text-zinc-400'}`}
+                className={`px-2.5 py-1.5 rounded-lg font-mono font-bold uppercase ${sortBy === 'price-low' ? 'bg-[#c5a059] text-black font-extrabold' : 'text-zinc-400'}`}
               >
                 Price: Low
               </button>
               <button
                 onClick={() => setSortBy('price-high')}
-                className={`px-3 py-1.5 rounded-lg font-mono font-bold uppercase ${sortBy === 'price-high' ? 'bg-[#c5a059] text-black font-extrabold' : 'text-zinc-400'}`}
+                className={`px-2.5 py-1.5 rounded-lg font-mono font-bold uppercase ${sortBy === 'price-high' ? 'bg-[#c5a059] text-black font-extrabold' : 'text-zinc-400'}`}
               >
                 Price: High
               </button>
@@ -497,19 +514,17 @@ export default function ProvidersList({
                             {worker.category} Specialist
                           </p>
 
-                          {/* Location & Same Area Match Badge */}
+                          {/* Location & 15km Distance Match Badge */}
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400 font-sans">
                               <MapPin className="w-3 h-3 text-[#c5a059]" />
                               {worker.area || extractAreaFromAddress(worker.address || '')}
                             </span>
 
-                            {worker.areaMatch && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-mono font-extrabold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">
-                                <Compass className="w-2.5 h-2.5 text-emerald-400" />
-                                SAME AREA MATCH
-                              </span>
-                            )}
+                            <span className="inline-flex items-center gap-1 text-[9px] font-mono font-extrabold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">
+                              <Compass className="w-2.5 h-2.5 text-emerald-400" />
+                              📍 {worker.distanceKm} km away (Inside 15km)
+                            </span>
                           </div>
 
                           <div className="flex items-center gap-1.5 mt-2">
@@ -638,6 +653,25 @@ export default function ProvidersList({
           <span className="text-[10px] font-bold font-sans uppercase">Directory</span>
         </button>
       </nav>
+
+      {/* 15 KM RADIUS DISPATCH RADAR MODAL FOR CITIZENS */}
+      <ServiceRadiusRadarModal
+        isOpen={showRadiusRadarModal}
+        onClose={() => setShowRadiusRadarModal(false)}
+        mode="customer"
+        centerLocation={{
+          lat: 12.9716,
+          lng: 77.5946,
+          address: citizenAddress || 'Customer Residence',
+          name: citizenName || 'Your Location'
+        }}
+        workers={annotatedList.filter(w => w.available !== false)}
+        onSelectWorker={(w) => {
+          setShowRadiusRadarModal(false);
+          handleSelect(w);
+        }}
+        onRecalibrateGps={handleRefreshLocation}
+      />
     </div>
   );
 }

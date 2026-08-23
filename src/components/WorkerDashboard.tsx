@@ -5,7 +5,13 @@ import PUNCHX_LOGO from '../assets/logo';
 import { db, auth } from '../lib/firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { requestAndAutoUpdateLocation, LocationData, getSectorFromAddress } from '../lib/location';
+import { requestAndAutoUpdateLocation, LocationData, getSectorFromAddress, calculateDistanceKm, getCoordinatesForAddressOrSector, checkIsWithin15KmRadius } from '../lib/location';
+import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';
+import { 
+  simulateWorkerAcceptedAlert, 
+  simulateWorkerTravelAlert, 
+  dispatchPushNotification 
+} from '../lib/pushNotifications';
 import { 
   Wrench, ShieldCheck, CheckCircle2, Clock, MapPin, Phone, 
   Upload, Navigation, DollarSign, Star, UserCheck, AlertCircle, 
@@ -45,6 +51,9 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     visitingFee: number;
     rating: number;
     completedJobs: number;
+    address?: string;
+    area?: string;
+    sector?: string;
   }>({
     uid: '',
     name: 'Verified Service Partner',
@@ -55,7 +64,10 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     experience: 'Verified Professional',
     visitingFee: 199,
     rating: 5.0,
-    completedJobs: 0
+    completedJobs: 0,
+    address: 'Indiranagar 100ft Road, Sector 2, Bengaluru',
+    area: 'Indiranagar',
+    sector: 'Sector 2'
   });
   const [isLoadingWorkerProfile, setIsLoadingWorkerProfile] = useState(true);
   const [editFeeModal, setEditFeeModal] = useState(false);
@@ -185,6 +197,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   
   // Active workflow modal states
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showRadiusRadarModal, setShowRadiusRadarModal] = useState(false);
   const [showLiveNavigationModal, setShowLiveNavigationModal] = useState(false);
   const [showCompletionGate, setShowCompletionGate] = useState(false);
   const [showCongratulationsModal, setShowCongratulationsModal] = useState(false);
@@ -322,20 +335,23 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       return;
     }
 
-    // Sector restriction check according to PunchX sector dispatch model
-    const workerSector = workerLocation?.sector || getSectorFromAddress(workerLocation?.address || workerProfile.skill);
-    const orderSector = selectedOrder.sector || getSectorFromAddress(selectedOrder.customerAddress, selectedOrder.area);
+    // 15 km Radius check: worker can ONLY accept orders from customers within 15 kilometer radius
+    const workerCoords = workerLocation?.lat && workerLocation?.lng 
+      ? { lat: workerLocation.lat, lng: workerLocation.lng }
+      : getCoordinatesForAddressOrSector(workerLocation?.address || workerProfile.skill);
+    
+    const customerCoords = (selectedOrder as any).customerLocation?.lat
+      ? (selectedOrder as any).customerLocation
+      : getCoordinatesForAddressOrSector(selectedOrder.customerAddress, selectedOrder.area, selectedOrder.sector);
 
-    const isSectorMatch = (
-      workerSector.toLowerCase() === orderSector.toLowerCase() ||
-      workerSector.toLowerCase().includes(orderSector.toLowerCase()) ||
-      orderSector.toLowerCase().includes(workerSector.toLowerCase())
-    );
+    const dist = calculateDistanceKm(workerCoords.lat, workerCoords.lng, customerCoords.lat, customerCoords.lng);
 
-    if (!isSectorMatch) {
-      showNotification(`⛔ SECTOR LOCK (PunchX Rule): You are in ${workerSector}. You can ONLY accept orders from your sector (${orderSector}).`);
+    if (dist > 15.0) {
+      showNotification(`⛔ 15 KM DISPATCH LIMIT: Customer is ${dist} km away (exceeds 15 km maximum radius). You can only accept orders within 15 km of your service hub.`);
       return;
     }
+
+    const workerSector = workerLocation?.sector || getSectorFromAddress(workerLocation?.address || workerProfile.skill);
 
     const updated = orders.map(o => o.id === selectedOrder.id ? { ...o, status: 'In-Progress' as const } : o);
     updateOrdersInStateAndStorage(updated);
@@ -347,7 +363,16 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       console.error("Firestore accept order update failed:", e);
     }
 
-    showNotification(`⚡ Order ${selectedOrder.id} ACCEPTED! Location & route unlocked in ${workerSector}.`);
+    // Trigger Real-Time Push Notification to Customer
+    simulateWorkerAcceptedAlert({
+      orderId: selectedOrder.id,
+      workerName: workerProfile.name || 'Rajesh Kumar',
+      category: selectedOrder.category || 'AC Repair',
+      workerAvatar: workerProfile.photoURL,
+      customerAddress: selectedOrder.customerAddress
+    });
+
+    showNotification(`⚡ Order ${selectedOrder.id} ACCEPTED (${dist} km away)! Location & live route unlocked.`);
   };
 
   // Handle Reject Order
@@ -372,6 +397,18 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     if (!selectedOrder) return;
     setShowOrderModal(false);
     setShowLiveNavigationModal(true);
+
+    // Trigger Real-Time Push Notification: Worker Began Travel
+    simulateWorkerTravelAlert({
+      orderId: selectedOrder.id,
+      workerName: workerProfile.name || 'Rajesh Kumar',
+      category: selectedOrder.category || 'AC Repair',
+      etaMinutes: etaMinutes || 8,
+      distanceKm: distanceKm || 2.1,
+      workerAvatar: workerProfile.photoURL,
+      customerAddress: selectedOrder.customerAddress
+    });
+
     showNotification(`🚚 OUT FOR DELIVERY! Opening live order navigation map...`);
   };
 
@@ -515,6 +552,16 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     setShowOrderModal(false);
     setShowCongratulationsModal(true);
 
+    // Dispatch Service Completed Push Notification
+    dispatchPushNotification({
+      type: 'service_completed',
+      title: '✓ Service Successfully Completed & Verified',
+      body: `${workerProfile.name || 'Specialist'} has completed your ${selectedOrder.category || 'service'} with digital signature & quality photo proof.`,
+      workerName: workerProfile.name,
+      orderId: selectedOrder.id,
+      actionScreen: 'home'
+    });
+
     // Reset inputs
     setPhotoProof(null);
     setHasSigned(false);
@@ -641,18 +688,31 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
             {/* Header Hero Banner */}
             <div className="bg-gradient-to-r from-[#11192e] via-[#15203b] to-[#0d1527] border border-[#c5a059]/30 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <span className="text-[10px] font-mono uppercase bg-[#c5a059]/20 text-[#e9c176] px-2.5 py-1 rounded-full font-bold border border-[#c5a059]/30">
-                  WORKER DISPATCH HOME
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono uppercase bg-[#c5a059]/20 text-[#e9c176] px-2.5 py-1 rounded-full font-bold border border-[#c5a059]/30">
+                    WORKER DISPATCH HUB
+                  </span>
+                  <span className="text-[10px] font-mono uppercase bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full font-bold border border-emerald-500/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    15 KM ACCEPTANCE ZONE
+                  </span>
+                </div>
                 <h2 className="text-xl font-extrabold text-white tracking-tight mt-1.5">
                   RECEIVED SERVICE ORDERS
                 </h2>
                 <p className="text-xs text-zinc-300">
-                  Touch any order card to view customer details, accept/reject order, or initiate live delivery.
+                  Accept customer service requests located strictly within 15 km of your service hub.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  id="open-worker-15km-radar-btn"
+                  onClick={() => setShowRadiusRadarModal(true)}
+                  className="px-3.5 py-2 bg-[#c5a059] hover:bg-[#e9c176] text-black rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shadow-[#c5a059]/20"
+                >
+                  <Compass className="w-3.5 h-3.5" /> 15km Map Radar
+                </button>
                 <button
                   onClick={loadOrders}
                   className="px-3.5 py-2 bg-[#07122a] border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 rounded-xl text-xs font-mono font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5"
@@ -703,6 +763,18 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                 orders.filter(o => o.status === 'Pending' || o.status === 'In-Progress').map((order) => {
                   const isInProgress = order.status === 'In-Progress';
 
+                  // Calculate worker-to-customer distance
+                  const workerCoords = workerLocation?.lat && workerLocation?.lng 
+                    ? { lat: workerLocation.lat, lng: workerLocation.lng }
+                    : getCoordinatesForAddressOrSector(workerLocation?.address || workerProfile.address);
+                  
+                  const customerCoords = (order as any).customerLocation?.lat
+                    ? (order as any).customerLocation
+                    : getCoordinatesForAddressOrSector(order.customerAddress, order.area, order.sector);
+
+                  const orderDistanceKm = calculateDistanceKm(workerCoords.lat, workerCoords.lng, customerCoords.lat, customerCoords.lng);
+                  const isWithin15Km = orderDistanceKm <= 15.0;
+
                   return (
                     <motion.div
                       key={order.id}
@@ -722,12 +794,22 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                           <span className="text-xs font-bold text-[#e9c176]">{order.category}</span>
                         </div>
 
-                        <span className={`text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-full uppercase border ${
-                          isInProgress ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse' :
-                          'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                        }`}>
-                          {isInProgress ? 'ACCEPTED / IN TRANSIT' : 'PENDING DISPATCH'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                            isWithin15Km 
+                              ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' 
+                              : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
+                          }`}>
+                            {isWithin15Km ? `📍 ${orderDistanceKm} km (Inside 15km)` : `⛔ ${orderDistanceKm} km (>15km)`}
+                          </span>
+
+                          <span className={`text-[10px] font-mono font-extrabold px-2.5 py-1 rounded-full uppercase border ${
+                            isInProgress ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse' :
+                            'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                          }`}>
+                            {isInProgress ? 'ACCEPTED / IN TRANSIT' : 'PENDING DISPATCH'}
+                          </span>
+                        </div>
                       </div>
 
                       <p className="text-xs text-zinc-300 line-clamp-2 leading-relaxed">
@@ -1229,6 +1311,46 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                   </span>
                 </div>
 
+                {/* 15 KM Distance Verification Status Box */}
+                {(() => {
+                  const workerCoords = workerLocation?.lat && workerLocation?.lng 
+                    ? { lat: workerLocation.lat, lng: workerLocation.lng }
+                    : getCoordinatesForAddressOrSector(workerLocation?.address || workerProfile.address);
+                  
+                  const customerCoords = (selectedOrder as any).customerLocation?.lat
+                    ? (selectedOrder as any).customerLocation
+                    : getCoordinatesForAddressOrSector(selectedOrder.customerAddress, selectedOrder.area, selectedOrder.sector);
+
+                  const orderDistanceKm = calculateDistanceKm(workerCoords.lat, workerCoords.lng, customerCoords.lat, customerCoords.lng);
+                  const isWithin15Km = orderDistanceKm <= 15.0;
+
+                  return (
+                    <div className={`p-3 rounded-2xl border ${
+                      isWithin15Km 
+                        ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' 
+                        : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {isWithin15Km ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                        )}
+                        <span className="font-bold text-xs font-mono">
+                          {isWithin15Km 
+                            ? `✓ VERIFIED WITHIN 15 KM RADIUS (${orderDistanceKm} km)` 
+                            : `⛔ EXCEEDS 15 KM SERVICE RADIUS (${orderDistanceKm} km)`}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-300 mt-1 leading-relaxed">
+                        {isWithin15Km 
+                          ? `Customer is located ${orderDistanceKm} km from your registered service hub. You are fully authorized to accept this order.`
+                          : `Customer is located ${orderDistanceKm} km away. PunchX dispatch rules strictly limit orders to a 15 km radius from your active service hub.`}
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 space-y-1">
                   <span className="text-[10px] font-mono text-zinc-400 block">Issue Description</span>
                   <p className="text-zinc-200 leading-relaxed">
@@ -1243,23 +1365,42 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
               </div>
 
               {/* ACTION BUTTONS */}
-              {selectedOrder.status === 'Pending' && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <button
-                    onClick={handleAcceptOrder}
-                    className="py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider font-mono rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-lg"
-                  >
-                    <Check className="w-4 h-4" /> Accept Order
-                  </button>
+              {selectedOrder.status === 'Pending' && (() => {
+                const workerCoords = workerLocation?.lat && workerLocation?.lng 
+                  ? { lat: workerLocation.lat, lng: workerLocation.lng }
+                  : getCoordinatesForAddressOrSector(workerLocation?.address || workerProfile.address);
+                
+                const customerCoords = (selectedOrder as any).customerLocation?.lat
+                  ? (selectedOrder as any).customerLocation
+                  : getCoordinatesForAddressOrSector(selectedOrder.customerAddress, selectedOrder.area, selectedOrder.sector);
 
-                  <button
-                    onClick={handleRejectOrder}
-                    className="py-3.5 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/40 font-extrabold text-xs uppercase tracking-wider font-mono rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <XCircle className="w-4 h-4" /> Reject Order
-                  </button>
-                </div>
-              )}
+                const orderDistanceKm = calculateDistanceKm(workerCoords.lat, workerCoords.lng, customerCoords.lat, customerCoords.lng);
+                const isWithin15Km = orderDistanceKm <= 15.0;
+
+                return (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                      disabled={!isWithin15Km}
+                      onClick={handleAcceptOrder}
+                      className={`py-3.5 font-extrabold text-xs uppercase tracking-wider font-mono rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-lg ${
+                        isWithin15Km 
+                          ? 'bg-emerald-500 hover:bg-emerald-400 text-black' 
+                          : 'bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed'
+                      }`}
+                      title={isWithin15Km ? 'Accept Order' : 'Order is beyond 15 km radius'}
+                    >
+                      <Check className="w-4 h-4" /> {isWithin15Km ? 'Accept Order' : 'Beyond 15km'}
+                    </button>
+
+                    <button
+                      onClick={handleRejectOrder}
+                      className="py-3.5 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white border border-rose-500/40 font-extrabold text-xs uppercase tracking-wider font-mono rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <XCircle className="w-4 h-4" /> Reject Order
+                    </button>
+                  </div>
+                );
+              })()}
 
               {selectedOrder.status === 'In-Progress' && (
                 <div className="space-y-3 pt-2">
@@ -1718,6 +1859,26 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
           </div>
         )}
       </AnimatePresence>
+
+      {/* 15 KM RADIUS DISPATCH RADAR MODAL */}
+      <ServiceRadiusRadarModal
+        isOpen={showRadiusRadarModal}
+        onClose={() => setShowRadiusRadarModal(false)}
+        mode="worker"
+        centerLocation={{
+          lat: workerLocation?.lat || 12.9716,
+          lng: workerLocation?.lng || 77.5946,
+          address: workerLocation?.address || workerProfile.address || 'Worker Registered Hub',
+          name: workerProfile.name || 'Worker Service Hub'
+        }}
+        orders={orders.filter(o => o.status === 'Pending' || o.status === 'In-Progress')}
+        onSelectOrder={(ord) => {
+          setSelectedOrder(ord);
+          setShowRadiusRadarModal(false);
+          setShowOrderModal(true);
+        }}
+        onRecalibrateGps={handleSyncWorkerGPS}
+      />
 
     </div>
   );

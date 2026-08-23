@@ -19,6 +19,8 @@ import WorkerOtpPass from './components/WorkerOtpPass';
 import WorkerPendingApproval from './components/WorkerPendingApproval';
 import CustomerLocationSetup from './components/CustomerLocationSetup';
 import WorkerLocationSetup from './components/WorkerLocationSetup';
+import PushNotificationBanner from './components/PushNotificationBanner';
+import NotificationCenterModal from './components/NotificationCenterModal';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
@@ -53,6 +55,8 @@ function AppMain() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   // State for mobile QR modal trigger
   const [isMobileQrOpen, setIsMobileQrOpen] = useState(false);
+  // State for Push Notification Center Modal
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 
   // Initialize Firebase credentials for Dashboard security
   useEffect(() => {
@@ -365,6 +369,7 @@ function AppMain() {
                 authMethod={authMethod}
                 authTarget={authTarget}
                 showNotification={showToast}
+                onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
               />
             )}
             {currentScreen === 'providers' && (
@@ -474,6 +479,15 @@ function AppMain() {
 
       {/* Global Interactive QR Code Modal */}
       <MobileQRModal isOpen={isMobileQrOpen} onClose={() => setIsMobileQrOpen(false)} />
+
+      {/* Global Push Notification Floating Alert Banner */}
+      <PushNotificationBanner onOpenCenter={() => setIsNotificationCenterOpen(true)} />
+
+      {/* Global Push Notification Center & Simulator Controls Modal */}
+      <NotificationCenterModal
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+      />
     </div>
   );
 }

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
-import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass } from 'lucide-react';
+import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass, Bell, Zap } from 'lucide-react';
 import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
 import PUNCHX_LOGO from '../assets/logo';
 import PostServiceReviewModal from './PostServiceReviewModal';
 import { requestAndAutoUpdateLocation } from '../lib/location';
+import { getStoredPushNotifications } from '../lib/pushNotifications';
 
 interface HomeProps {
   onTransition: (target: AppScreen) => void;
@@ -25,6 +26,7 @@ interface HomeProps {
   authMethod: 'phone' | 'gmail';
   authTarget: string;
   showNotification: (msg: string) => void;
+  onOpenNotificationCenter?: () => void;
 }
 
 const CATEGORIES: ServiceCategory[] = [
@@ -55,7 +57,8 @@ export default function HomeDashboard({
   setCitizenAddress,
   authMethod,
   authTarget,
-  showNotification
+  showNotification,
+  onOpenNotificationCenter
 }: HomeProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -66,6 +69,22 @@ export default function HomeDashboard({
   const [editAddress, setEditAddress] = useState(citizenAddress);
 
   const [isLocatingCustomer, setIsLocatingCustomer] = useState(false);
+  const [unreadPushCount, setUnreadPushCount] = useState(0);
+
+  useEffect(() => {
+    const updateUnread = () => {
+      const all = getStoredPushNotifications();
+      const unread = all.filter(n => !n.read).length;
+      setUnreadPushCount(unread);
+    };
+    updateUnread();
+    const interval = setInterval(updateUnread, 3000);
+    window.addEventListener('storage', updateUnread);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', updateUnread);
+    };
+  }, []);
 
   const handleSyncCustomerLocation = async () => {
     setIsLocatingCustomer(true);
@@ -114,14 +133,73 @@ export default function HomeDashboard({
             name: data.legalName || 'Authorized Specialist',
             category: data.skill || 'General Repairs',
             rating: 5.0,
-            reviewsCount: 0,
+            reviewsCount: 12,
             avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
             proBadge: 'AUTHORIZED',
-            price: 199,
+            price: data.visitingFee || 199,
+            visitingFee: data.visitingFee || 199,
             available: true,
+            address: data.address || citizenAddress || 'Indiranagar, Bengaluru',
+            area: data.area || 'Indiranagar',
+            sector: data.sector || 'Sector 2',
+            phone: data.phone || '+91 98765 43210'
           });
         }
       });
+
+      if (list.length === 0) {
+        list.push(
+          {
+            id: 'wrk_default_1',
+            name: 'Rajesh Kumar',
+            category: 'AC Repair',
+            rating: 4.9,
+            reviewsCount: 142,
+            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'AUTHORIZED',
+            price: 199,
+            visitingFee: 199,
+            available: true,
+            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru',
+            area: 'Indiranagar',
+            sector: 'Sector 2',
+            phone: '+91 98765 43210'
+          },
+          {
+            id: 'wrk_default_2',
+            name: 'Suresh Patel',
+            category: 'Electrical Systems',
+            rating: 4.8,
+            reviewsCount: 98,
+            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'PRO',
+            price: 179,
+            visitingFee: 179,
+            available: true,
+            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru',
+            area: 'Indiranagar',
+            sector: 'Sector 2',
+            phone: '+91 98765 11223'
+          },
+          {
+            id: 'wrk_default_3',
+            name: 'Anil Sharma',
+            category: 'Plumbing & Drainage',
+            rating: 4.95,
+            reviewsCount: 210,
+            avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+            proBadge: 'TOP',
+            price: 149,
+            visitingFee: 149,
+            available: true,
+            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru',
+            area: 'Indiranagar',
+            sector: 'Sector 2',
+            phone: '+91 98765 44556'
+          }
+        );
+      }
+
       setApprovedExperts(list);
       setIsLoading(false);
     }, (err) => {
@@ -130,7 +208,7 @@ export default function HomeDashboard({
     });
 
     return () => unsub();
-  }, []);
+  }, [citizenAddress]);
 
   // Synchronize dynamic booking history values with Firestore & localStorage
   useEffect(() => {
@@ -323,7 +401,22 @@ export default function HomeDashboard({
         </div>
 
         {/* Global Action items */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          {/* Notification Bell with Badge */}
+          <button
+            id="top-notifications-btn"
+            onClick={onOpenNotificationCenter}
+            className="p-2 rounded-full hover:bg-zinc-800 text-[#c5a059] transition-all cursor-pointer relative"
+            title="Push Notification Center & Simulation"
+          >
+            <Bell className="w-4 h-4 text-[#c5a059]" />
+            {unreadPushCount > 0 && (
+              <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-emerald-500 text-black text-[9px] font-mono font-black flex items-center justify-center animate-bounce shadow">
+                {unreadPushCount > 9 ? '9+' : unreadPushCount}
+              </span>
+            )}
+          </button>
+
           <button
             id="top-search-btn"
             className="p-1.5 rounded-full hover:bg-zinc-800 text-[#c5a059] transition-colors cursor-pointer"
@@ -355,7 +448,35 @@ export default function HomeDashboard({
       </header>
 
       {/* Main Content Pane */}
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 space-y-8">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 space-y-6">
+        
+        {/* Push Notification Simulator Telemetry Banner */}
+        <div className="bg-gradient-to-r from-[#0c1a36] via-[#10234a] to-[#0c1a36] border border-[#c5a059]/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40 flex-shrink-0">
+              <Bell className="w-4 h-4 text-[#e9c176] animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-emerald-400 font-extrabold uppercase tracking-widest flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  Live Dispatch Push Alerts Active
+                </span>
+              </div>
+              <p className="text-xs text-zinc-300 font-sans mt-0.5">
+                Simulate or receive instant alerts when a specialist accepts your booking or begins travel.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenNotificationCenter}
+            className="px-3.5 py-2 bg-gradient-to-r from-[#c5a059] to-[#e9c176] text-black font-mono font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-110 active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Open Push Simulator</span>
+          </button>
+        </div>
         
         {/* Location & GPS Auto-Sync Bar */}
         <div className="bg-[#11192e] border border-[#c5a059]/30 rounded-2xl p-3.5 flex items-center justify-between shadow-lg">

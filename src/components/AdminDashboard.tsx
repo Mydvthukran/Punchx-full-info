@@ -193,8 +193,35 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     setWorkerApps(updated);
     localStorage.setItem('punchx_worker_applications', JSON.stringify(updated));
 
+    // Update credential mapping if phone is known
+    if (target?.phone) {
+      const credKey = `punchx_worker_cred_${target.phone}`;
+      try {
+        const existingCred = JSON.parse(localStorage.getItem(credKey) || '{}');
+        localStorage.setItem(credKey, JSON.stringify({ ...existingCred, status: 'APPROVED' }));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    // Set approval signal and trigger storage event
+    localStorage.setItem('punchx_worker_approved', JSON.stringify({ appId, phone: target?.phone, status: 'APPROVED', timestamp: Date.now() }));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('punchx_worker_approved', { detail: { appId, phone: target?.phone, status: 'APPROVED' } }));
+    }
+
     try {
-      await updateDoc(doc(db, 'workerApplications', appId), { status: 'APPROVED' });
+      await setDoc(doc(db, 'workerApplications', appId), { status: 'APPROVED', approvedAt: new Date().toISOString() }, { merge: true });
+      
+      // Also query users collection for matching phone/applicationId
+      const usersCol = collection(db, 'users');
+      const userSnaps = await getDocs(usersCol);
+      userSnaps.forEach(async (uDoc) => {
+        const uData = uDoc.data();
+        if (uData.applicationId === appId || (target?.phone && uData.phone === target.phone) || (target?.email && uData.email === target.email)) {
+          await updateDoc(doc(db, 'users', uDoc.id), { status: 'APPROVED', approvedAt: new Date().toISOString() });
+        }
+      });
     } catch (e) {
       console.error("Error updating worker application status in Firestore:", e);
     }
@@ -207,12 +234,28 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   const handleRejectWorker = async () => {
     if (!rejectModal) return;
     const { appId, applicantName } = rejectModal;
+    const target = workerApps.find(a => a.id === appId);
     const updated = workerApps.map(a => a.id === appId ? { ...a, status: 'REJECTED' as const } : a);
     setWorkerApps(updated);
     localStorage.setItem('punchx_worker_applications', JSON.stringify(updated));
 
+    if (target?.phone) {
+      const credKey = `punchx_worker_cred_${target.phone}`;
+      try {
+        const existingCred = JSON.parse(localStorage.getItem(credKey) || '{}');
+        localStorage.setItem(credKey, JSON.stringify({ ...existingCred, status: 'REJECTED' }));
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+
+    localStorage.setItem('punchx_worker_approved', JSON.stringify({ appId, phone: target?.phone, status: 'REJECTED', timestamp: Date.now() }));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('punchx_worker_approved', { detail: { appId, phone: target?.phone, status: 'REJECTED' } }));
+    }
+
     try {
-      await updateDoc(doc(db, 'workerApplications', appId), { status: 'REJECTED' });
+      await setDoc(doc(db, 'workerApplications', appId), { status: 'REJECTED', rejectReason, rejectedAt: new Date().toISOString() }, { merge: true });
     } catch (e) {
       console.error("Error updating worker application status in Firestore:", e);
     }

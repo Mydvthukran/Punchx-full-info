@@ -6,14 +6,13 @@ import {
   User, MapPin, Compass, Navigation, CheckCircle, ArrowRight, 
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Hammer, Phone, Star,
-  Briefcase, Users, Clock
+  Briefcase, Users, Clock, Shield, Lock, Radio
 } from 'lucide-react';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { 
   requestAndAutoUpdateLocation, 
-  fetchRegisteredCustomersForWorkerLocation, 
-  RegisteredLocationCustomer 
+  fetchRegisteredCustomersForWorkerLocation
 } from '../lib/location';
 
 interface WorkerLocationSetupProps {
@@ -63,7 +62,6 @@ export default function WorkerLocationSetup({
   const [resolvedSector, setResolvedSector] = useState('Sector 2 (Indiranagar)');
   const [resolvedArea, setResolvedArea] = useState('Indiranagar');
   const [resolvedCity, setResolvedCity] = useState('Bengaluru');
-  const [registeredCustomers, setRegisteredCustomers] = useState<RegisteredLocationCustomer[]>([]);
   const [coverageMessage, setCoverageMessage] = useState('Connecting to location dispatch server...');
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
 
@@ -76,7 +74,7 @@ export default function WorkerLocationSetup({
     'Carpentry & Security Locks'
   ];
 
-  // Query backend for registered customers in this location
+  // Query backend for location sector and telemetry (Customer details remain strictly hidden for privacy)
   const resolveWorkerLocationFromBackend = useCallback(async (
     targetAddress?: string,
     targetLandmark?: string,
@@ -96,7 +94,6 @@ export default function WorkerLocationSetup({
         setResolvedSector(resp.sector || 'Sector 2 (Indiranagar)');
         setResolvedArea(resp.area || 'Indiranagar');
         setResolvedCity(resp.city || 'Bengaluru');
-        setRegisteredCustomers(resp.registeredCustomers || []);
         setCoverageMessage(resp.coverageMessage || `Service partner visibility active for ${resp.sector}`);
         if (resp.lat && resp.lng) {
           setCoords({ lat: resp.lat, lng: resp.lng });
@@ -138,7 +135,7 @@ export default function WorkerLocationSetup({
         setResolvedCity(loc.city);
         setResolvedSector(loc.sector);
 
-        // Query backend with GPS coordinates to fetch registered customers for this exact zone
+        // Query backend with GPS coordinates to bind operational sector
         await resolveWorkerLocationFromBackend(loc.address, landmark, loc.lat, loc.lng);
         showNotification(`✓ GPS Location Auto-Detected: ${loc.area || loc.sector}`);
       } else {
@@ -166,7 +163,7 @@ export default function WorkerLocationSetup({
       return;
     }
     if (address.trim().length < 5) {
-      setErrorMessage('Please provide a more specific address for accurate customer dispatch matching.');
+      setErrorMessage('Please provide a more specific address for accurate operational dispatch matching.');
       return;
     }
 
@@ -196,8 +193,26 @@ export default function WorkerLocationSetup({
       console.warn("LocalStorage save error:", err);
     }
 
-    // Save/Update in Firestore
+    // Save/Update in Firestore with PENDING status for Admin Approval
     const activeUid = auth.currentUser?.uid || `worker_${Date.now()}`;
+    const generatedAppId = workerApplication?.id || `APP-${Date.now().toString().slice(-6)}`;
+
+    const appData: WorkerApplication = {
+      id: generatedAppId,
+      legalName: legalName.trim(),
+      address: finalFormattedAddress,
+      area: resolvedArea,
+      sector: resolvedSector,
+      skill: selectedSkill,
+      experienceYears: workerApplication?.experienceYears || '3-5 Years',
+      phone: authMethod === 'phone' ? authTarget : (workerApplication?.phone || auth.currentUser?.phoneNumber || '+91 98765 43210'),
+      email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || auth.currentUser?.email || 'partner@punchx.com'),
+      visitingFee: workerApplication?.visitingFee || 199,
+      termsAccepted: true,
+      status: 'PENDING',
+      appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today'
+    };
+
     try {
       await setDoc(doc(db, 'users', activeUid), {
         uid: activeUid,
@@ -211,40 +226,42 @@ export default function WorkerLocationSetup({
         workerSkill: selectedSkill,
         location: { lat: coords.lat, lng: coords.lng },
         role: 'worker',
-        phone: authMethod === 'phone' ? authTarget : (auth.currentUser?.phoneNumber || ''),
-        email: authMethod === 'gmail' ? authTarget : (auth.currentUser?.email || ''),
+        phone: appData.phone,
+        email: appData.email,
         isProfileCompleted: true,
-        status: 'APPROVED',
+        status: 'PENDING',
+        applicationId: generatedAppId,
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
-      // If worker application data setter is provided, update application state
+      // Save application document to Firestore workerApplications collection
+      await setDoc(doc(db, 'workerApplications', generatedAppId), appData, { merge: true });
+
       if (setWorkerApplicationData) {
-        const appData: WorkerApplication = {
-          id: workerApplication?.id || `APP-${Date.now().toString().slice(-6)}`,
-          legalName: legalName.trim(),
-          address: finalFormattedAddress,
-          area: resolvedArea,
-          sector: resolvedSector,
-          skill: selectedSkill,
-          experienceYears: workerApplication?.experienceYears || '3-5 Years',
-          phone: authMethod === 'phone' ? authTarget : (workerApplication?.phone || '+91 98765 43210'),
-          email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || 'partner@punchx.com'),
-          visitingFee: workerApplication?.visitingFee || 199,
-          termsAccepted: true,
-          status: 'APPROVED',
-          appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today'
-        };
         setWorkerApplicationData(appData);
-        await setDoc(doc(db, 'workerApplications', appData.id), appData, { merge: true });
       }
+
+      // Update in LocalStorage
+      const existingApps = JSON.parse(localStorage.getItem('punchx_worker_applications') || '[]');
+      const filtered = existingApps.filter((a: WorkerApplication) => a.id !== generatedAppId);
+      localStorage.setItem('punchx_worker_applications', JSON.stringify([appData, ...filtered]));
+
+      // Save credential mapping
+      const workerAccount = {
+        email: appData.email,
+        phone: appData.phone,
+        legalName: appData.legalName,
+        status: 'PENDING',
+        applicationId: generatedAppId
+      };
+      localStorage.setItem(`punchx_worker_cred_${appData.phone}`, JSON.stringify(workerAccount));
     } catch (dbErr) {
       console.warn("Firestore worker profile save error:", dbErr);
     }
 
     setIsSubmitting(false);
-    showNotification(`⚡ Partner Profile Activated! Connected to ${registeredCustomers.length} registered customers in ${resolvedSector}.`);
-    onTransition('worker-dashboard');
+    showNotification(`📋 Hub Registered! Request submitted to Company Admin Dashboard for authorization review.`);
+    onTransition('worker-pending-approval');
   };
 
   return (
@@ -266,13 +283,13 @@ export default function WorkerLocationSetup({
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#c5a059]/15 border border-[#c5a059]/40 text-[#c5a059] text-[11px] font-mono font-bold uppercase tracking-wider">
             <Wrench className="w-3.5 h-3.5" />
-            <span>Service Partner Location & Dispatch Link</span>
+            <span>Service Partner Hub & Dispatch Setup</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Service Hub & Operational Area
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400 max-w-lg font-sans">
-            Enter your service address or auto-detect via GPS. The backend connects and displays <strong className="text-[#c5a059]">only registered customers in your location</strong> for rapid 15-minute dispatch.
+            Set your workshop or base location. Your profile will be automatically linked to nearby dispatch sectors for rapid 15-minute emergency routing.
           </p>
         </div>
 
@@ -375,14 +392,14 @@ export default function WorkerLocationSetup({
               />
             </div>
             <p className="text-[10px] font-sans text-zinc-400">
-              💡 Type your workshop address or tap <strong className="text-[#c5a059]">Auto-Update GPS Location</strong> to bind your dispatch sector.
+              💡 Type your workshop address or tap <strong className="text-[#c5a059]">Auto-Update GPS Location</strong> to bind your operational dispatch sector.
             </p>
           </div>
 
           {/* 4. Landmark */}
           <div className="space-y-1.5">
             <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
-              Prominent Landmark <span className="text-zinc-500 font-normal">(For customer dispatch proximity)</span>
+              Prominent Landmark <span className="text-zinc-500 font-normal">(For operational zone proximity)</span>
             </label>
             <div className="relative flex items-center">
               <Compass className="absolute left-3.5 w-4 h-4 text-emerald-400" />
@@ -397,7 +414,7 @@ export default function WorkerLocationSetup({
             </div>
           </div>
 
-          {/* 5. Registered Customers in Location (Backend Filtered) */}
+          {/* 5. Operational Sector & Dispatch Zone Readiness */}
           <div className="bg-[#09152e]/95 border border-zinc-800 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
               <div className="flex items-center gap-2">
@@ -413,60 +430,40 @@ export default function WorkerLocationSetup({
               </div>
               <div className="flex items-center gap-1 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-mono text-emerald-400 font-semibold">
                 <CheckCircle className="w-3 h-3" />
-                <span>Sector Matched</span>
+                <span>Sector Active</span>
               </div>
             </div>
 
-            {/* List of Registered Customers in this Location */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-[#c5a059] font-bold flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-[#c5a059]" />
-                  Registered Customers of this Location ({registeredCustomers.length})
-                </span>
-                {isResolvingBackend && (
-                  <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
-                    <Loader2 className="w-2.5 h-2.5 animate-spin text-[#c5a059]" />
-                    <span>Filtering zone customers...</span>
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                {registeredCustomers.map((cust) => (
-                  <div
-                    key={cust.id}
-                    className="bg-[#07122a] border border-zinc-800/90 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:border-[#c5a059]/40 transition-colors"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white">
-                          {cust.name}
-                        </span>
-                        <span className="bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[9px] font-mono px-1.5 py-0.2 rounded">
-                          {cust.verifiedStatus}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-zinc-400 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-[#c5a059] flex-shrink-0" />
-                        <span className="truncate">{cust.address} ({cust.landmark})</span>
-                      </div>
-                      <div className="text-[10px] text-emerald-400 font-mono flex items-center gap-2">
-                        <span>🔧 Request: <strong>{cust.serviceNeeded}</strong></span>
-                      </div>
-                    </div>
-
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-1.5 sm:pt-0 border-zinc-800 text-[10px] font-mono">
-                      <span className="text-[#c5a059] font-bold">📍 {cust.distanceKm} km away</span>
-                      <span className="text-zinc-400">{cust.urgency}</span>
-                    </div>
+            {/* Operational Telemetry & Privacy Shield Display */}
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-[#07122a] border border-zinc-800/80 p-2.5 rounded-lg flex items-center gap-2">
+                  <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                  <div>
+                    <p className="text-[10px] text-zinc-400 uppercase font-mono">Dispatch Radius</p>
+                    <p className="font-bold text-white text-xs">15-Km High Priority Zone</p>
                   </div>
-                ))}
+                </div>
+                <div className="bg-[#07122a] border border-zinc-800/80 p-2.5 rounded-lg flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#c5a059]" />
+                  <div>
+                    <p className="text-[10px] text-zinc-400 uppercase font-mono">Routing Protocol</p>
+                    <p className="font-bold text-white text-xs">Direct Emergency Queue</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-2.5 p-2 bg-[#07122a]/80 border border-zinc-800/80 rounded-lg text-[10px] font-sans text-zinc-400 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#c5a059] flex-shrink-0" />
-                <span>Backend rule: You are matched strictly with verified registered citizens located in <strong>{resolvedSector}</strong>.</span>
+              {/* Data Privacy Shield Notice */}
+              <div className="p-3 bg-zinc-950/60 border border-zinc-800/90 rounded-xl flex items-start gap-2.5 text-left">
+                <Lock className="w-4 h-4 text-[#c5a059] flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="text-[11px] font-mono font-bold text-[#e9c176] uppercase">
+                    Customer Privacy Shield Enforced
+                  </p>
+                  <p className="text-[10px] text-zinc-400 font-sans leading-relaxed">
+                    Customer identities, contact numbers, and private residential addresses remain strictly confidential and will only be displayed when a live service request is dispatched and accepted by you.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -481,7 +478,7 @@ export default function WorkerLocationSetup({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-black" />
-                <span>Linking Location & Customers...</span>
+                <span>Activating Service Hub...</span>
               </>
             ) : (
               <>
@@ -501,3 +498,4 @@ export default function WorkerLocationSetup({
     </main>
   );
 }
+

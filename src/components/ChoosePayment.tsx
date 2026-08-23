@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Check, Lock, ShieldCheck, Ticket, Plus, X, ArrowRight, Wallet, CreditCard, Landmark, Coins } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { startAutomatedOrderLifecycle } from '../lib/pushNotifications';
 
 interface ChoosePaymentProps {
   onTransition: (target: AppScreen) => void;
@@ -104,6 +105,22 @@ export default function ChoosePayment({
   const handlePayNow = async () => {
     setPaying(true);
     
+    const currentCitizenName = localStorage.getItem('punchx_citizen_name') || auth.currentUser?.displayName || 'Elite Customer';
+    const currentCitizenAddress = localStorage.getItem('punchx_user_address') || 'HSR Layout, Bengaluru';
+    const currentCitizenPhone = auth.currentUser?.phoneNumber || '+91 98765 43210';
+    let customerCoords = { lat: 12.9716, lng: 77.5946 };
+    try {
+      const locRaw = localStorage.getItem('punchx_user_location');
+      if (locRaw) {
+        const parsedLoc = JSON.parse(locRaw);
+        if (parsedLoc.lat && parsedLoc.lng) {
+          customerCoords = { lat: parsedLoc.lat, lng: parsedLoc.lng };
+        }
+      }
+    } catch (e) {
+      console.warn("Could not read location coordinates for order", e);
+    }
+
     const newOrderId = `PX-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder = {
       id: newOrderId,
@@ -118,9 +135,10 @@ export default function ChoosePayment({
       paymentMethod: selectedMethod === 'gpay' ? 'Google Pay UPI' : selectedMethod === 'phonepe' ? 'PhonePe UPI' : selectedMethod === 'card' ? 'HDFC Debit Card' : 'Cash on Delivery',
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       status: 'In Progress',
-      customerName: 'Anand Sharma',
-      customerAddress: 'HSR Layout, Sector 1, Bengaluru',
-      customerPhone: '+91 98765 43210',
+      customerName: currentCitizenName,
+      customerAddress: currentCitizenAddress,
+      customerPhone: currentCitizenPhone,
+      customerLocation: customerCoords,
       createdAt: new Date().toISOString()
     };
 
@@ -143,6 +161,15 @@ export default function ChoosePayment({
     } catch (e) {
       console.error("Error writing active order to localStorage:", e);
     }
+
+    // 3. Initiate Real-Time Push Notification Simulation Lifecycle
+    startAutomatedOrderLifecycle({
+      id: newOrderId,
+      workerName: newOrder.workerName,
+      category: newOrder.category,
+      workerAvatar: newOrder.workerAvatar,
+      customerAddress: currentCitizenAddress
+    });
 
     if (onOrderFinalized) {
       onOrderFinalized();
