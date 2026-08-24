@@ -1,14 +1,45 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel, Firestore } from 'firebase/firestore';
+import rawConfig from '../../firebase-applet-config.json';
 
 // Silence non-fatal transient connection warnings and log only errors
-setLogLevel('error');
+try {
+  setLogLevel('error');
+} catch (e) {
+  // Ignored in strict environments
+}
 
-const app = initializeApp(firebaseConfig);
+const fallbackConfig = {
+  projectId: "gen-lang-client-0120647960",
+  appId: "1:657136107440:web:1456f92b13b6e13f44e075",
+  apiKey: "AIzaSyDNH2eC_XcMCrWWSL4cTHemb4hH0-9kCcc",
+  authDomain: "gen-lang-client-0120647960.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38",
+  storageBucket: "gen-lang-client-0120647960.firebasestorage.app",
+  messagingSenderId: "657136107440",
+  measurementId: "G-HXBW3TPMF9",
+  oAuthClientId: "657136107440-3k02uag8mn3cbsqus25jcme9rpa022bo.apps.googleusercontent.com"
+};
 
-let firestoreInstance;
+const firebaseConfig = {
+  ...fallbackConfig,
+  ...(rawConfig || {})
+};
+
+let app: FirebaseApp;
+try {
+  app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+} catch (initErr) {
+  console.warn("Firebase App initialization notice, re-trying fallback:", initErr);
+  try {
+    app = initializeApp(fallbackConfig);
+  } catch (err2) {
+    app = getApps()[0] || ({} as FirebaseApp);
+  }
+}
+
+let firestoreInstance: Firestore;
 try {
   const dbSettings = {
     localCache: memoryLocalCache(),
@@ -20,9 +51,14 @@ try {
     : initializeFirestore(app, dbSettings);
 } catch (e) {
   console.warn("Firestore initializeFirestore fallback to getFirestore:", e);
-  firestoreInstance = firebaseConfig.firestoreDatabaseId 
-    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-    : getFirestore(app);
+  try {
+    firestoreInstance = firebaseConfig.firestoreDatabaseId 
+      ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+      : getFirestore(app);
+  } catch (err3) {
+    console.warn("Firestore fallback initialization notice:", err3);
+    firestoreInstance = getFirestore(app);
+  }
 }
 
 // Global window safety handler for transient network/offline Firestore events
@@ -45,8 +81,16 @@ if (typeof window !== 'undefined') {
   });
 }
 
+let authInstance: Auth;
+try {
+  authInstance = getAuth(app);
+} catch (authErr) {
+  console.warn("Auth initialization notice:", authErr);
+  authInstance = {} as Auth;
+}
+
 export const db = firestoreInstance;
-export const auth = getAuth(app);
+export const auth = authInstance;
 
 export enum OperationType {
   CREATE = 'create',
