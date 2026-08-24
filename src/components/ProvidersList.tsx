@@ -182,7 +182,7 @@ export default function ProvidersList({
   const displayCategory = selectedCategory || 'AC Repair';
   const isAllSpecialties = displayCategory.toLowerCase() === 'all specialties' || displayCategory.toLowerCase() === 'all';
   
-  // Annotate providers with 15km distance calculation and sector details
+  // Annotate providers with proximity distance calculation and sector details
   const annotatedList = allProvidersList.map(expert => {
     const workerSector = expert.sector || getSectorFromAddress(expert.address, expert.area);
     const proximity = isSameAreaOrNearby(
@@ -193,19 +193,18 @@ export default function ProvidersList({
     );
 
     const distanceKm = proximity.distanceKm;
-    const isWithin15Km = proximity.isWithin15Km || distanceKm <= 15.0;
 
     return {
       ...expert,
       sector: workerSector,
-      sectorMatch: isWithin15Km,
-      isWithin15Km: isWithin15Km,
+      sectorMatch: true,
+      isWithin15Km: true,
       areaMatch: proximity.isMatch,
       distanceKm: distanceKm
     };
   });
 
-  // Filter providers strictly by category AND 15km radius & availability
+  // Filter providers strictly by category & availability
   let filtered = annotatedList.filter(expert => {
     const expertCat = expert.category.toLowerCase();
     const targetCat = displayCategory.toLowerCase();
@@ -216,10 +215,10 @@ export default function ProvidersList({
                      expertCat.includes(targetCat) || 
                      targetCat.includes(expertCat);
     
-    // Customer can ONLY see workers within 15 km who are PRESENT / ON-DUTY
-    const is15KmAndAvailable = expert.isWithin15Km && (filterAvailableOnly ? expert.available !== false : true);
+    // Check if worker is active / on-duty
+    const isAvailable = filterAvailableOnly ? expert.available !== false : true;
 
-    return isCategoryMatch && is15KmAndAvailable;
+    return isCategoryMatch && isAvailable;
   });
 
   // Sort by distance, rating or price
@@ -395,11 +394,11 @@ export default function ProvidersList({
           {/* Availability filter & 15km radar button */}
           <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
             <button
-              id="open-customer-15km-radar-btn"
+              id="open-customer-radar-btn"
               onClick={() => setShowRadiusRadarModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-2.5 bg-[#c5a059] hover:bg-[#e9c176] text-black rounded-xl font-mono text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-[#c5a059]/20"
             >
-              <Compass className="w-3.5 h-3.5" /> 15km Map Radar
+              <Compass className="w-3.5 h-3.5" /> Map Radar
             </button>
 
             <button
@@ -514,7 +513,7 @@ export default function ProvidersList({
                             {worker.category} Specialist
                           </p>
 
-                          {/* Location & 15km Distance Match Badge */}
+                          {/* Location & Proximity Distance Match Badge */}
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400 font-sans">
                               <MapPin className="w-3 h-3 text-[#c5a059]" />
@@ -523,7 +522,7 @@ export default function ProvidersList({
 
                             <span className="inline-flex items-center gap-1 text-[9px] font-mono font-extrabold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">
                               <Compass className="w-2.5 h-2.5 text-emerald-400" />
-                              📍 {worker.distanceKm} km away (Inside 15km)
+                              📍 {worker.distanceKm} km away
                             </span>
                           </div>
 

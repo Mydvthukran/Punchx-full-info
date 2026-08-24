@@ -7,6 +7,11 @@ import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from 
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
 import PUNCHX_LOGO from '../assets/logo';
 import PostServiceReviewModal from './PostServiceReviewModal';
+import ServicePriceEstimator from './ServicePriceEstimator';
+import CustomerTestimonials from './CustomerTestimonials';
+import WebsiteFAQ from './WebsiteFAQ';
+import EnterpriseInquiryModal from './EnterpriseInquiryModal';
+import InvoiceReceiptModal from './InvoiceReceiptModal';
 import { requestAndAutoUpdateLocation } from '../lib/location';
 import { getStoredPushNotifications } from '../lib/pushNotifications';
 
@@ -70,6 +75,8 @@ export default function HomeDashboard({
 
   const [isLocatingCustomer, setIsLocatingCustomer] = useState(false);
   const [unreadPushCount, setUnreadPushCount] = useState(0);
+  const [isEnterpriseModalOpen, setIsEnterpriseModalOpen] = useState(false);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
 
   useEffect(() => {
     const updateUnread = () => {
@@ -383,72 +390,9 @@ export default function HomeDashboard({
   };
 
   return (
-    <div id="home-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-24 overflow-x-hidden">
-      {/* Top Android App Bar */}
-      <header id="home-topappbar" className="sticky top-0 z-40 w-full bg-[#07122a]/95 backdrop-blur-md border-b border-[#c5a059]/20 shadow-md flex justify-between items-center px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-white border border-[#c5a059]/60 flex items-center justify-center p-0.5 overflow-hidden flex-shrink-0 shadow-md">
-            <img
-              id="bar-brand-logo"
-              alt="PunchX Logo"
-              className="w-full h-full object-contain"
-              src={PUNCHX_LOGO}
-            />
-          </div>
-          <span className="font-sans font-extrabold text-base text-white tracking-tight">
-            PUNCH<span className="text-[#c5a059]">X</span>
-          </span>
-        </div>
-
-        {/* Global Action items */}
-        <div className="flex items-center gap-2">
-          {/* Notification Bell with Badge */}
-          <button
-            id="top-notifications-btn"
-            onClick={onOpenNotificationCenter}
-            className="p-2 rounded-full hover:bg-zinc-800 text-[#c5a059] transition-all cursor-pointer relative"
-            title="Push Notification Center & Simulation"
-          >
-            <Bell className="w-4 h-4 text-[#c5a059]" />
-            {unreadPushCount > 0 && (
-              <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-emerald-500 text-black text-[9px] font-mono font-black flex items-center justify-center animate-bounce shadow">
-                {unreadPushCount > 9 ? '9+' : unreadPushCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            id="top-search-btn"
-            className="p-1.5 rounded-full hover:bg-zinc-800 text-[#c5a059] transition-colors cursor-pointer"
-            onClick={() => {
-              const el = document.getElementById('dashboard-search-bar');
-              el?.focus();
-              el?.scrollIntoView({ behavior: 'smooth' });
-            }}
-          >
-            <Search className="w-4 h-4 text-[#c5a059]" />
-          </button>
-          
-          {/* Easy-to-touch Profile Avatar Toggle */}
-          <button
-            id="top-profile-toggle-btn"
-            onClick={() => setIsProfileOpen(true)}
-            className="w-8 h-8 rounded-full border border-[#c5a059] p-0.5 overflow-hidden active:scale-95 transition-all cursor-pointer focus:outline-none flex items-center justify-center bg-zinc-900"
-            title="View User Profile & Orders"
-          >
-            <img
-              id="top-avatar-img"
-              alt="Profile"
-              className="w-full h-full object-cover rounded-full"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfBtABLKSPqddxrtWDSdl9c5daP9YVcbg3P_EfbjjHvQNdNJvYYmMzLoAMTez0tdXrxqAJdUuy8KgettOAxfIpaQOSUIGXnMHO2yJ0A1ge_YxS8OPbgyA8xyvIx_APQVn5R2ZCbaBPwIFLH-P4TGnMmmmSIIkQ4Kh6YxwSeWCPjs7ZpX2gTQN7OWHlEhjzheYXdrCKknsAwVPuDggLTM0sMcv26ZlNwDDU-zeEm3vQpo6PValfhRBMBP2rndZh-fksKGFua62D8uQ"
-              referrerPolicy="no-referrer"
-            />
-          </button>
-        </div>
-      </header>
-
+    <div id="home-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-16 overflow-x-hidden">
       {/* Main Content Pane */}
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24 space-y-6">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12 space-y-6">
         
         {/* Push Notification Simulator Telemetry Banner */}
         <div className="bg-gradient-to-r from-[#0c1a36] via-[#10234a] to-[#0c1a36] border border-[#c5a059]/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
@@ -731,6 +675,92 @@ export default function HomeDashboard({
           )}
         </section>
 
+        {/* Real-time Platform Key Performance Indicators */}
+        <section id="platform-metrics-counter" className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+          <div className="p-4 rounded-2xl bg-[#09152e] border border-[#c5a059]/25 text-center shadow-lg">
+            <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">500+</div>
+            <p className="text-[11px] text-[#e9c176] font-mono font-bold mt-0.5">VETTED MASTER TECHS</p>
+            <span className="text-[9px] text-zinc-500 block">Aadhaar & Police Verified</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#09152e] border border-[#c5a059]/25 text-center shadow-lg">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-tight">15-30m</div>
+            <p className="text-[11px] text-emerald-400 font-mono font-bold mt-0.5">DOORSTEP ARRIVAL</p>
+            <span className="text-[9px] text-zinc-500 block">Pan-Bengaluru Smart Radar</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#09152e] border border-[#c5a059]/25 text-center shadow-lg">
+            <div className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">48,000+</div>
+            <p className="text-[11px] text-[#e9c176] font-mono font-bold mt-0.5">HOMES SERVICED</p>
+            <span className="text-[9px] text-zinc-500 block">Across 85+ City Sectors</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-[#09152e] border border-[#c5a059]/25 text-center shadow-lg">
+            <div className="text-2xl sm:text-3xl font-black text-[#e9c176] font-mono tracking-tight">4.92 ★</div>
+            <p className="text-[11px] text-[#e9c176] font-mono font-bold mt-0.5">VERIFIED RATING</p>
+            <span className="text-[9px] text-zinc-500 block">30-Day Guarantee Backed</span>
+          </div>
+        </section>
+
+        {/* Interactive Service Price Estimator & Instant Quote Calculator */}
+        <ServicePriceEstimator
+          onTransition={onTransition}
+          onSelectCategory={onSelectCategory}
+          showNotification={showNotification}
+        />
+
+        {/* Website How It Works Section */}
+        <section id="how-it-works" className="pt-4 space-y-4">
+          <div className="flex justify-between items-end">
+            <div>
+              <h2 className="font-sans font-bold text-xl sm:text-2xl text-white">
+                How PunchX Works
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-400">
+                Precision 3-step rapid dispatch across Bengaluru
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-6 rounded-2xl bg-[#0e1628] border border-zinc-800 relative shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40 font-mono font-black text-sm flex items-center justify-center mb-4">
+                01
+              </div>
+              <h3 className="font-bold text-white text-base">Select Your Requirement</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Choose from AC repair, electrical diagnostics, plumbing, or cleaning. Describe the issue in seconds.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-[#0e1628] border border-zinc-800 relative shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono font-black text-sm flex items-center justify-center mb-4">
+                02
+              </div>
+              <h3 className="font-bold text-white text-base">Smart Proximity GPS Dispatch</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Our radar allocates the closest verified specialist in your neighborhood with real-time ETA and live route tracking.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-[#0e1628] border border-zinc-800 relative shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40 font-mono font-black text-sm flex items-center justify-center mb-4">
+                03
+              </div>
+              <h3 className="font-bold text-white text-base">Secure OTP & 30-Day Warranty</h3>
+              <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                Verify the 4-digit security code on arrival. Pay safely with complete 30-day revisit warranty protection.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Customer Testimonials & Verified Reviews Showcase */}
+        <CustomerTestimonials />
+
+        {/* Interactive Knowledge Base FAQ Section */}
+        <WebsiteFAQ />
+
         {/* Bento Board Sections */}
         <section id="bento-board" className="space-y-4">
           <h2 id="bento-heading-label" className="font-sans font-bold text-lg text-white">Explore Solutions</h2>
@@ -739,17 +769,17 @@ export default function HomeDashboard({
             {/* Corporate Care Block */}
             <div id="corporate-bento-tile" className="md:col-span-2 bg-[#111415] border border-zinc-800 p-6 rounded-3xl relative overflow-hidden h-44 flex flex-col justify-between">
               <div>
-                <h3 className="font-sans font-bold text-white text-base">Corporate Care Portfolio</h3>
+                <h3 className="font-sans font-bold text-white text-base">Corporate & Society AMC Portfolio</h3>
                 <p className="text-xs text-zinc-400 mt-1 max-w-sm">
-                  Sub-surface structural maintenance audits for modern enterprise workspaces and embassies.
+                  Comprehensive preventive maintenance audits and dedicated on-site technicians for apartment societies and tech parks.
                 </p>
               </div>
               <button
                 id="corporate-pkg-btn"
-                onClick={() => handleCategoryClick('Corporate Care')}
-                className="text-xs font-bold text-[#e1e3e4] flex items-center gap-1 hover:text-[#c5a059]"
+                onClick={() => setIsEnterpriseModalOpen(true)}
+                className="text-xs font-bold text-[#e9c176] flex items-center gap-1 hover:text-white cursor-pointer bg-[#c5a059]/15 border border-[#c5a059]/30 px-3.5 py-1.5 rounded-xl w-fit"
               >
-                Inquire details <ChevronRight className="w-4 h-4" />
+                Inquire AMC Proposal <ChevronRight className="w-4 h-4" />
               </button>
               <div className="absolute right-0 bottom-0 opacity-15 pointer-events-none w-1/3">
                 <Laptop className="w-24 h-24 text-[#c5a059]" />
@@ -782,44 +812,11 @@ export default function HomeDashboard({
           onTransition('providers');
           showNotification("✓ Showing all service providers.");
         }}
-        className="fixed bottom-24 right-24 md:right-28 w-14 h-14 bg-[#c5a059] text-black hover:bg-[#e9c176] rounded-2xl flex items-center justify-center shadow-2xl transition-all cursor-pointer z-20 hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-[#c5a059] text-black hover:bg-[#e9c176] rounded-2xl flex items-center justify-center shadow-2xl transition-all cursor-pointer z-30 hover:scale-105 active:scale-95"
         title="Show all registered service providers from all categories"
       >
         <Plus className="w-6 h-6 text-black" />
       </button>
-
-      {/* Bottom Floating App Navigation Bar with blur filters */}
-      <nav id="bottom-glass-navbar" className="fixed bottom-0 left-0 w-full z-45 bg-[#07122a]/95 border-t border-[#c5a059]/20 flex justify-around items-center h-20 shadow-2xl px-6">
-        <button
-          id="nav-btn-home"
-          onClick={() => onTransition('home')}
-          className="flex flex-col items-center justify-center gap-1 text-[#e9c176] bg-[#c5a059]/10 px-4 py-1.5 rounded-xl border border-[#c5a059]/30"
-        >
-          <Home className="w-5 h-5 text-[#e9c176]" />
-          <span className="text-[10px] font-bold font-sans uppercase">Home</span>
-        </button>
-
-        <button
-          id="nav-btn-services"
-          onClick={() => {
-            onSelectCategory('Electrical');
-            onTransition('providers');
-          }}
-          className="flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-[#e9c176] transition-colors"
-        >
-          <Wrench className="w-5 h-5" />
-          <span className="text-[10px] font-sans">Services</span>
-        </button>
-
-        <button
-          id="nav-btn-tracking"
-          onClick={() => onTransition('tracking')}
-          className="flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-[#e9c176] transition-colors"
-        >
-          <Navigation className="w-5 h-5" />
-          <span className="text-[10px] font-sans">Track</span>
-        </button>
-      </nav>
 
       {/* Dynamic Profile Side Drawer Panel with Order history */}
       <AnimatePresence>
@@ -1230,13 +1227,22 @@ export default function HomeDashboard({
                             {/* Conditional Rendering of Submitted Review vs Active Rating Fields */}
                             {order.isRated ? (
                               <div className="bg-[#0b1325] border border-[#c5a059]/15 rounded-xl p-2.5 mt-1 space-y-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[9px] text-[#e9c176] uppercase font-bold font-sans">Rating Given:</span>
-                                  <div className="flex text-[#e9c176] gap-0.5">
-                                    {[...Array(order.userRating || 5)].map((_, idx) => (
-                                      <Star key={idx} className="w-2.5 h-2.5 fill-current text-[#e9c176]" />
-                                    ))}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[9px] text-[#e9c176] uppercase font-bold font-sans">Rating Given:</span>
+                                    <div className="flex text-[#e9c176] gap-0.5">
+                                      {[...Array(order.userRating || 5)].map((_, idx) => (
+                                        <Star key={idx} className="w-2.5 h-2.5 fill-current text-[#e9c176]" />
+                                      ))}
+                                    </div>
                                   </div>
+                                  <button
+                                    onClick={() => setSelectedInvoiceOrder(order)}
+                                    className="text-[9px] font-mono text-[#c5a059] hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    <span>Tax Invoice</span>
+                                  </button>
                                 </div>
                                 <div className="text-[11px] text-zinc-350 leading-relaxed font-sans mt-1">
                                   <span className="text-[9.5px] text-zinc-500 font-bold block uppercase not-italic">Behaviour Description:</span>
@@ -1245,14 +1251,20 @@ export default function HomeDashboard({
                               </div>
                             ) : (
                               <div className="flex justify-between items-center gap-2 mt-1 pt-2 border-t border-zinc-900 flex-wrap">
-                                <span className="text-[9px] text-zinc-500 italic font-sans">No feedback submitted yet.</span>
+                                <button
+                                  onClick={() => setSelectedInvoiceOrder(order)}
+                                  className="text-[9px] font-mono text-[#c5a059] hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  <span>Tax Invoice</span>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => setReviewModalOrder(order)}
                                   className="text-[10px] bg-[#c5a059]/10 hover:bg-[#c5a059] text-[#e9c176] hover:text-black hover:font-bold border border-[#c5a059]/30 px-3 py-1 rounded-xl transition-all font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
                                 >
                                   <Star className="w-3.5 h-3.5 text-[#e9c176]" />
-                                  Rate & Review Behaviour
+                                  Rate & Review
                                 </button>
                               </div>
                             )}
@@ -1384,6 +1396,19 @@ export default function HomeDashboard({
           showNotification={showNotification}
         />
       )}
+      {/* Corporate & Society AMC Inquiry Modal */}
+      <EnterpriseInquiryModal
+        isOpen={isEnterpriseModalOpen}
+        onClose={() => setIsEnterpriseModalOpen(false)}
+        showNotification={showNotification}
+      />
+
+      {/* Official Tax Invoice & Warranty Certificate Modal */}
+      <InvoiceReceiptModal
+        isOpen={!!selectedInvoiceOrder}
+        onClose={() => setSelectedInvoiceOrder(null)}
+        order={selectedInvoiceOrder}
+      />
     </div>
   );
 }

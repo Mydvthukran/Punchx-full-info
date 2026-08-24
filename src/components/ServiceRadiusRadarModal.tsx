@@ -103,7 +103,7 @@ export default function ServiceRadiusRadarModal({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-mono font-extrabold uppercase tracking-widest text-[#e9c176] bg-[#c5a059]/10 px-2 py-0.5 rounded border border-[#c5a059]/30">
-                  15 KM Precision Geofence
+                  Smart Proximity Geofence
                 </span>
                 <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
@@ -111,7 +111,7 @@ export default function ServiceRadiusRadarModal({
                 </span>
               </div>
               <h2 id="radar-dialog-title" className="text-base sm:text-lg font-bold text-white tracking-tight">
-                {mode === 'customer' ? 'Nearby Certified Service Specialists' : '15 KM Customer Order Dispatch Zone'}
+                {mode === 'customer' ? 'Nearby Certified Service Specialists' : 'Customer Order Proximity Dispatch Radar'}
               </h2>
             </div>
           </div>
@@ -151,7 +151,7 @@ export default function ServiceRadiusRadarModal({
             <div className="flex items-center gap-1.5 bg-[#c5a059]/10 border border-[#c5a059]/30 px-3 py-1 rounded-full text-[#e9c176] font-mono text-[11px] font-bold">
               <span>Coverage:</span>
               <span className="text-white font-extrabold">{filterRadius} km</span>
-              <span className="text-zinc-400">({totalWithin15Km} Active in 15km)</span>
+              <span className="text-zinc-400">({visibleItems.length} in Active Radius)</span>
             </div>
 
             <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg">
@@ -334,28 +334,16 @@ export default function ServiceRadiusRadarModal({
                   </div>
                 </div>
 
-                {/* 15 km Radius Verification Notice */}
-                <div className={`p-3 rounded-2xl border ${
-                  selectedItem.distanceKm <= 15 
-                    ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200' 
-                    : 'bg-red-950/40 border-red-500/30 text-red-200'
-                }`}>
+                {/* Proximity Verification Notice */}
+                <div className="p-3 rounded-2xl border bg-emerald-950/40 border-emerald-500/30 text-emerald-200">
                   <div className="flex items-center gap-2">
-                    {selectedItem.distanceKm <= 15 ? (
-                      <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    )}
+                    <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                     <span className="font-bold text-xs font-mono">
-                      {selectedItem.distanceKm <= 15 
-                        ? `✓ VERIFIED WITHIN 15 KM (${selectedItem.distanceKm} km)` 
-                        : `⛔ BEYOND 15 KM RADIUS (${selectedItem.distanceKm} km)`}
+                      ✓ PROXIMITY RADAR MATCH ({selectedItem.distanceKm} km Away)
                     </span>
                   </div>
                   <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                    {selectedItem.distanceKm <= 15
-                      ? 'Technician is in active geofenced proximity. Rapid arrival and dispatched assistance guaranteed.'
-                      : 'This address is located outside the active 15 km operational zone. Booking is restricted to within 15 km.'}
+                    Technician is in active geofenced proximity. Rapid arrival and dispatched assistance guaranteed.
                   </p>
                 </div>
 
@@ -378,20 +366,15 @@ export default function ServiceRadiusRadarModal({
                   ) : (
                     <button
                       id="radar-accept-selected-order"
-                      disabled={selectedItem.distanceKm > 15}
                       onClick={() => {
                         if (onSelectOrder) {
                           onSelectOrder(selectedItem);
                         }
                         onClose();
                       }}
-                      className={`w-full py-3 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 ${
-                        selectedItem.distanceKm <= 15 
-                          ? 'bg-[#c5a059] hover:bg-[#e9c176] text-black' 
-                          : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'
-                      }`}
+                      className="w-full py-3 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 bg-[#c5a059] hover:bg-[#e9c176] text-black"
                     >
-                      <span>{selectedItem.distanceKm <= 15 ? 'Open Order for Acceptance' : 'Outside 15km Zone'}</span>
+                      <span>Open Order for Acceptance</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   )}
@@ -409,7 +392,7 @@ export default function ServiceRadiusRadarModal({
               <div className="space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
                   <h4 className="font-bold text-xs uppercase text-zinc-300 font-mono">
-                    {mode === 'customer' ? 'Certified Specialists in 15 KM' : 'Orders within 15 KM Zone'}
+                    {mode === 'customer' ? 'Certified Specialists' : 'Proximity Dispatch Feed'}
                   </h4>
                   <span className="text-[10px] font-mono text-[#e9c176] font-bold">
                     {visibleItems.length} available
@@ -420,7 +403,7 @@ export default function ServiceRadiusRadarModal({
                   <div className="p-6 text-center space-y-2 bg-[#081021] rounded-2xl border border-dashed border-zinc-800">
                     <MapPin className="w-8 h-8 text-zinc-600 mx-auto" />
                     <p className="font-bold text-xs text-zinc-300">not yet started service in your area</p>
-                    <p className="text-[11px] text-zinc-500">No active service specialists detected within the 15 km radius of your location.</p>
+                    <p className="text-[11px] text-zinc-500">No active service specialists detected in your vicinity.</p>
                   </div>
                 ) : (
                   <div className="space-y-2 overflow-y-auto max-h-[340px] pr-1">
@@ -457,7 +440,7 @@ export default function ServiceRadiusRadarModal({
                               {item.distanceKm} km
                             </span>
                             <span className="text-[9px] font-mono text-emerald-400 font-bold">
-                              Inside 15km
+                              Live Route
                             </span>
                           </div>
                         </div>
@@ -471,7 +454,7 @@ export default function ServiceRadiusRadarModal({
             {/* Footer Summary note */}
             <div className="pt-3 border-t border-zinc-800/80 text-[10px] text-zinc-500 font-mono flex items-center justify-between">
               <span>Google Maps Grounded GPS</span>
-              <span>Radius limit: 15.0 km</span>
+              <span>Proximity Dispatch Active</span>
             </div>
 
           </div>
