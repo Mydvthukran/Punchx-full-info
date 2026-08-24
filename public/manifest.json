@@ -1,0 +1,21 @@
+{
+  "name": "PunchX — Prestige Service Utility",
+  "short_name": "PunchX",
+  "description": "India's premium on-demand home services platform. Book verified professionals instantly.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07122a",
+  "theme_color": "#07122a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}
