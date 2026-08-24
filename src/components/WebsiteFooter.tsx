@@ -104,8 +104,8 @@ export default function WebsiteFooter({
           </div>
         </div>
 
-        {/* 4 Main Footer Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-zinc-800/80">
+        {/* 3 Main Footer Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pb-12 border-b border-zinc-800/80">
           
           {/* Column 1: Brand & Mission */}
           <div className="space-y-4">
@@ -155,22 +155,7 @@ export default function WebsiteFooter({
             </ul>
           </div>
 
-          {/* Column 3: Bengaluru Hub Coverage */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-[#c5a059]">
-              Citywide Coverage Hubs
-            </h3>
-            <ul className="space-y-1.5 text-xs text-zinc-400">
-              {bangaloreHubs.map((hub) => (
-                <li key={hub} className="flex items-center gap-1.5">
-                  <MapPin className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                  <span className="truncate">{hub}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Column 4: Ecosystem & Emergency Contact */}
+          {/* Column 3: Ecosystem & Emergency Contact */}
           <div className="space-y-4">
             <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-[#c5a059]">
               Emergency & Portals
@@ -222,8 +207,6 @@ export default function WebsiteFooter({
             <span>© {new Date().getFullYear()} PUNCHX SERVICE PLATFORM PVT. LTD.</span>
             <span>•</span>
             <span>CIN: U74999KA2026PTC189012</span>
-            <span>•</span>
-            <span className="text-[#c5a059] font-mono font-bold">BANGALORE SMART UTILITY</span>
           </div>
 
           {/* Legal Links */}
