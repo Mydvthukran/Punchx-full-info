@@ -6,7 +6,7 @@ import {
   MapPin, Briefcase, Award, Phone, Mail, RefreshCw, ArrowRight, Sparkles, AlertCircle, ShieldCheck
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
-import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
 
 interface WorkerPendingApprovalProps {
   onTransition: (target: AppScreen) => void;
@@ -101,7 +101,7 @@ export default function WorkerPendingApproval({
       // Check Firestore
       if (workerApplication?.id) {
         const docRef = doc(db, 'workerApplications', workerApplication.id);
-        const docSnap = await (await import('firebase/firestore')).getDoc(docRef);
+        const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data() as WorkerApplication;
           if (data.status) {

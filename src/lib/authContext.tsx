@@ -93,17 +93,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        await fetchOrCreateProfile(user);
+    let unsubscribe = () => {};
+    try {
+      if (auth && typeof auth === 'object' && ('currentUser' in auth || 'app' in auth)) {
+        unsubscribe = onAuthStateChanged(
+          auth,
+          async (user) => {
+            setCurrentUser(user);
+            if (user) {
+              await fetchOrCreateProfile(user);
+            } else {
+              setUserProfile(null);
+              setIsLoadingProfile(false);
+            }
+          },
+          (authError) => {
+            console.warn("Auth state observer notice:", authError);
+            setIsLoadingProfile(false);
+          }
+        );
       } else {
-        setUserProfile(null);
         setIsLoadingProfile(false);
       }
-    });
+    } catch (err) {
+      console.warn("Could not attach auth state listener:", err);
+      setIsLoadingProfile(false);
+    }
 
-    return () => unsubscribe();
+    return () => {
+      try {
+        unsubscribe();
+      } catch (e) {
+        // Safe unmount
+      }
+    };
   }, []);
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
