@@ -76,7 +76,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error && (
               <div className="w-full bg-[#040914] border border-zinc-800 rounded-xl p-3 mb-6 text-left overflow-x-auto">
                 <p className="text-[11px] font-mono text-rose-400 font-bold break-all">
-                  {this.state.error.toString()}
+                  An unexpected error occurred. Support has been notified.
                 </p>
               </div>
             )}

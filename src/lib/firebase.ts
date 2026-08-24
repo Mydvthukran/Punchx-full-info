@@ -121,3 +121,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 
 
+export const authSession: any = {
+  recaptchaVerifier: null,
+  confirmationResult: null
+};

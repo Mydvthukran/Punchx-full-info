@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen } from '../types';
 import { Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, CheckCircle2, User, KeyRound, MapPin, Compass } from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
-import { auth, db } from '../lib/firebase';
+import { auth, db, authSession } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
@@ -108,39 +108,22 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
     setIsSubmitting(true);
 
     try {
-      let verifier = (window as any).recaptchaVerifier;
-      if (!verifier) {
-        verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      if (!authSession.recaptchaVerifier) {
+        authSession.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
           size: 'invisible',
           callback: () => {
             // reCAPTCHA solved
           }
         });
-        (window as any).recaptchaVerifier = verifier;
       }
 
-      const confirmationResult = await signInWithPhoneNumber(auth, cleanPhone, verifier);
-      (window as any).confirmationResult = confirmationResult;
+      const confirmationResult = await signInWithPhoneNumber(auth, cleanPhone, authSession.recaptchaVerifier);
+      authSession.confirmationResult = confirmationResult;
       showNotification(`📨 SMS verification code sent to ${cleanPhone}.`);
       onTransition('otp');
     } catch (err: any) {
       console.warn("Firebase signInWithPhoneNumber result:", err?.message || err);
-      // Fallback for anonymous login / test mode if SMS delivery is not enabled on standard backend console
-      try {
-        const userCredential = await signInAnonymously(auth);
-        if (userCredential.user) {
-          await saveUserProfileToFirebase({
-            uid: userCredential.user.uid,
-            phone: cleanPhone,
-            role: activePanelRole
-          });
-        }
-      } catch (anonErr) {
-        console.warn("Anonymous fallback info:", anonErr);
-      }
-
-      showNotification(`📨 SMS code sent to ${cleanPhone}.`);
-      onTransition('otp');
+      showNotification("⚠️ Failed to send SMS code. Please try again or use email login.");
     } finally {
       setIsSubmitting(false);
     }
