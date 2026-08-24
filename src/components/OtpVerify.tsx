@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { AppScreen } from '../types';
 import { ArrowRight, Delete, RotateCw, RefreshCw, KeyRound, ShieldAlert } from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
+import { authSession } from '../lib/firebase';
 
 interface OtpVerifyProps {
   onTransition: (target: AppScreen) => void;
@@ -139,7 +140,7 @@ export default function OtpVerify({
     setLoading(true);
     setErrorMess('');
 
-    const confirmationResult = (window as any).confirmationResult;
+    const confirmationResult = authSession.confirmationResult;
 
     if (confirmationResult && typeof confirmationResult.confirm === 'function') {
       try {

@@ -6,7 +6,7 @@ import {
   ChevronRight, Lock, Key, Eye, EyeOff, AlertCircle, X, ShieldAlert, CheckCircle2
 } from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
-import { ADMIN_DASHBOARD_EMAIL, ADMIN_DASHBOARD_PASSWORD } from '../lib/dashboardAuth';
+import { ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
 
 interface PanelSelectProps {
   onSelectPanel: (panel: 'customer' | 'worker' | 'admin', action?: 'login' | 'signup') => void;
@@ -84,9 +84,8 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
     setAdminPinError('');
 
     const pin = adminPinInput.trim();
-    // Allow either the Master Dashboard password, or 'admin', or 'PUNCHX2026', or empty click if already master
+    // Allow either 'admin', or 'PUNCHX2026', or empty click if already master
     if (
-      pin === ADMIN_DASHBOARD_PASSWORD ||
       pin.toUpperCase() === 'PUNCHX2026' ||
       pin.toLowerCase() === 'admin' ||
       pin === '0910' ||

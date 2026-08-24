@@ -2,7 +2,6 @@ import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export const ADMIN_DASHBOARD_EMAIL = 'businressguy@gmail.com';
-export const ADMIN_DASHBOARD_PASSWORD = 'PUNCHX^(@)0910';
 
 export interface DashboardAuthResult {
   success: boolean;
@@ -10,8 +9,7 @@ export interface DashboardAuthResult {
 }
 
 /**
- * Initializes and persists the admin dashboard credentials document in Firebase Firestore.
- * This ensures that post-deployment, the password and email configuration remains saved in Firebase.
+ * Ensures the admin dashboard credentials document exists in Firebase Firestore.
  */
 export async function ensureFirebaseDashboardCredentials(): Promise<void> {
   try {
@@ -20,7 +18,7 @@ export async function ensureFirebaseDashboardCredentials(): Promise<void> {
     if (!snap.exists()) {
       await setDoc(configRef, {
         email: ADMIN_DASHBOARD_EMAIL,
-        password: ADMIN_DASHBOARD_PASSWORD,
+        password: 'CHANGE_ME_IN_FIRESTORE', // Do not hardcode real password in source
         requiredRole: 'admin',
         updatedAt: new Date().toISOString()
       });
@@ -48,16 +46,9 @@ export async function verifyDashboardPassword(email: string, password: string): 
     const snap = await getDoc(configRef);
     if (snap.exists()) {
       const data = snap.data();
-      const storedPass = (data.password || ADMIN_DASHBOARD_PASSWORD).trim();
+      const storedPass = (data.password || '').trim();
 
-      if (cleanPass === storedPass) {
-        return {
-          success: true,
-          message: 'Access granted.'
-        };
-      }
-    } else {
-      if (cleanPass === ADMIN_DASHBOARD_PASSWORD) {
+      if (storedPass && cleanPass === storedPass && storedPass !== 'CHANGE_ME_IN_FIRESTORE') {
         return {
           success: true,
           message: 'Access granted.'
@@ -65,13 +56,7 @@ export async function verifyDashboardPassword(email: string, password: string): 
       }
     }
   } catch (err) {
-    console.warn('Firestore password verification fallback:', err);
-    if (cleanPass === ADMIN_DASHBOARD_PASSWORD) {
-      return {
-        success: true,
-        message: 'Access granted.'
-      };
-    }
+    console.warn('Firestore password verification failed:', err);
   }
 
   return {
