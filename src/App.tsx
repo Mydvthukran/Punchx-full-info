@@ -10,7 +10,9 @@ import PushNotificationBanner from './components/PushNotificationBanner';
 import NotificationCenterModal from './components/NotificationCenterModal';
 import WebsiteNavbar from './components/WebsiteNavbar';
 import WebsiteFooter from './components/WebsiteFooter';
-
+import { AppScreen, Worker, WorkerApplication } from './types';
+import { AuthProvider, useAuth } from './lib/authContext';
+import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
 const ProvidersList = lazy(() => import('./components/ProvidersList'));
@@ -25,9 +27,6 @@ const WorkerOtpPass = lazy(() => import('./components/WorkerOtpPass'));
 const WorkerPendingApproval = lazy(() => import('./components/WorkerPendingApproval'));
 const CustomerLocationSetup = lazy(() => import('./components/CustomerLocationSetup'));
 const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'));
-import { AppScreen, Worker, WorkerApplication } from './types';
-import { AuthProvider, useAuth } from './lib/authContext';
-import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 
 function AppMain() {
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
