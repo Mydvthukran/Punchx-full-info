@@ -27,20 +27,20 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('react') || id.includes('react-dom')) {
+              if (id.includes('lucide-react')) {
+                return 'vendor-lucide';
+              }
+              if (id.includes('@vis.gl/react-google-maps')) {
+                return 'vendor-maps';
+              }
+              if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/')) {
                 return 'vendor-react';
               }
               if (id.includes('firebase')) {
                 return 'vendor-firebase';
               }
-              if (id.includes('lucide-react')) {
-                return 'vendor-lucide';
-              }
               if (id.includes('motion')) {
                 return 'vendor-motion';
-              }
-              if (id.includes('@vis.gl/react-google-maps')) {
-                return 'vendor-maps';
               }
               return 'vendor-core';
             }
