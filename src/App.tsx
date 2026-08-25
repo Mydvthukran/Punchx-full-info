@@ -1,28 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import OtpVerify from './components/OtpVerify';
-import HomeDashboard from './components/Home';
-import ProvidersList from './components/ProvidersList';
-import ProviderDetails from './components/ProviderDetails';
-import ConfirmBooking from './components/ConfirmBooking';
-import ChoosePayment from './components/ChoosePayment';
-import LiveTracking from './components/LiveTracking';
 import DragoAssistant from './components/DragoAssistant';
 import MobileQRModal from './components/MobileQRModal';
-import WorkerDashboard from './components/WorkerDashboard';
-import AdminDashboard from './components/AdminDashboard';
 import ModuleSwitcher from './components/ModuleSwitcher';
 import PanelSelect from './components/PanelSelect';
-import WorkerSignup from './components/WorkerSignup';
-import WorkerOtpPass from './components/WorkerOtpPass';
-import WorkerPendingApproval from './components/WorkerPendingApproval';
-import CustomerLocationSetup from './components/CustomerLocationSetup';
-import WorkerLocationSetup from './components/WorkerLocationSetup';
 import PushNotificationBanner from './components/PushNotificationBanner';
 import NotificationCenterModal from './components/NotificationCenterModal';
 import WebsiteNavbar from './components/WebsiteNavbar';
 import WebsiteFooter from './components/WebsiteFooter';
+
+// Lazy-loaded heavy screens to improve initial load time
+const HomeDashboard = lazy(() => import('./components/Home'));
+const ProvidersList = lazy(() => import('./components/ProvidersList'));
+const ProviderDetails = lazy(() => import('./components/ProviderDetails'));
+const ConfirmBooking = lazy(() => import('./components/ConfirmBooking'));
+const ChoosePayment = lazy(() => import('./components/ChoosePayment'));
+const LiveTracking = lazy(() => import('./components/LiveTracking'));
+const WorkerDashboard = lazy(() => import('./components/WorkerDashboard'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const WorkerSignup = lazy(() => import('./components/WorkerSignup'));
+const WorkerOtpPass = lazy(() => import('./components/WorkerOtpPass'));
+const WorkerPendingApproval = lazy(() => import('./components/WorkerPendingApproval'));
+const CustomerLocationSetup = lazy(() => import('./components/CustomerLocationSetup'));
+const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'));
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
@@ -217,6 +219,11 @@ function AppMain() {
 
       {/* Website Main Content Area */}
       <main className="relative z-10 w-full flex-grow flex flex-col bg-[#07122a]">
+        <Suspense fallback={
+          <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
+            <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
+          </div>
+        }>
         {currentScreen === 'splash' && (
           <Splash onTransition={handleTransition} />
         )}
@@ -396,6 +403,7 @@ function AppMain() {
             showNotification={showToast}
           />
         )}
+        </Suspense>
       </main>
 
       {/* Global Website Footer (Shown on all pages except initial splash screen) */}
