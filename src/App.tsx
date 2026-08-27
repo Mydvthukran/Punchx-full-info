@@ -472,9 +472,11 @@ function AppMain() {
   );
 }
 
+const NAMOID_CLIENT_ID = import.meta.env.VITE_NAMOID_CLIENT_ID || 'namoid_client_live_6SHiIOdLuGIBZmiJjC5Iu5KCbqB2QQjd';
+
 export default function App() {
   return (
-    <NamoIDProvider clientId="namoid_client_test_SMduSEg8bBVymzU0s1gjK_TIKxdYWkSB">
+    <NamoIDProvider clientId={NAMOID_CLIENT_ID}>
       <AuthProvider>
         <AppMain />
       </AuthProvider>
