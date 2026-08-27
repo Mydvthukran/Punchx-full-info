@@ -473,8 +473,9 @@ function AppMain() {
 }
 
 export default function App() {
+  const clientId = import.meta.env.VITE_NAMOID_CLIENT_ID || "namoid_client_live_6SHiI0dLuG1BZmiJjC51u5KCbqBZQQjd";
   return (
-    <NamoIDProvider clientId="namoid_client_test_SMduSEg8bBVymzU0s1gjK_TIKxdYWkSB">
+    <NamoIDProvider clientId={clientId}>
       <AuthProvider>
         <AppMain />
       </AuthProvider>
