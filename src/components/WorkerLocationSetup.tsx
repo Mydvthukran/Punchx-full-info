@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../lib/authContext';
 import { 
   requestAndAutoUpdateLocation, 
   fetchRegisteredCustomersForWorkerLocation
@@ -32,6 +33,7 @@ export default function WorkerLocationSetup({
   workerApplication,
   setWorkerApplicationData
 }: WorkerLocationSetupProps) {
+  const { currentUser } = useAuth() as any;
   const [legalName, setLegalName] = useState(
     workerApplication?.legalName ||
     (authMethod === 'gmail' && authTarget ? authTarget.split('@')[0] : '') ||
@@ -194,7 +196,7 @@ export default function WorkerLocationSetup({
     }
 
     // Save/Update in Firestore with PENDING status for Admin Approval
-    const activeUid = auth.currentUser?.uid || `worker_${Date.now()}`;
+    const activeUid = currentUser?.sub || `worker_${Date.now()}`;
     const generatedAppId = workerApplication?.id || `APP-${Date.now().toString().slice(-6)}`;
 
     const appData: WorkerApplication = {
@@ -205,8 +207,8 @@ export default function WorkerLocationSetup({
       sector: resolvedSector,
       skill: selectedSkill,
       experienceYears: workerApplication?.experienceYears || '3-5 Years',
-      phone: authMethod === 'phone' ? authTarget : (workerApplication?.phone || auth.currentUser?.phoneNumber || '+91 98765 43210'),
-      email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || auth.currentUser?.email || 'partner@punchx.com'),
+      phone: authMethod === 'phone' ? authTarget : (workerApplication?.phone || currentUser?.phone_number || '+91 98765 43210'),
+      email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || currentUser?.email || 'partner@punchx.com'),
       visitingFee: workerApplication?.visitingFee || 199,
       termsAccepted: true,
       status: 'PENDING',

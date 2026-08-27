@@ -931,7 +931,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                 <button
                   onClick={async () => {
                     try {
-                      await signOut(auth);
+                      await logout();
                     } catch (e) {
                       console.error(e);
                     }
@@ -1778,8 +1778,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                   onClick={async () => {
                     if (!tempVisitingFee || tempVisitingFee <= 0) return;
                     try {
-                      if (auth.currentUser) {
-                        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                      if (currentUser?.sub) {
+                        await updateDoc(doc(db, 'users', currentUser.sub), {
                           visitingFee: Number(tempVisitingFee),
                           price: Number(tempVisitingFee)
                         });

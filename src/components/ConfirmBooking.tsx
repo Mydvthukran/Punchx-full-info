@@ -4,6 +4,7 @@ import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Clock, Calendar, MapPin, Camera, Clipboard, Terminal, ShoppingBag, CheckCircle, ShieldAlert } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '../lib/authContext';
 
 interface ConfirmBookingProps {
   onTransition: (target: AppScreen) => void;
@@ -44,6 +45,7 @@ export default function ConfirmBooking({
   citizenAddress,
   setCitizenAddress
 }: ConfirmBookingProps) {
+  const { currentUser } = useAuth() as any;
   const [photoAdded, setPhotoAdded] = useState(false);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editAddressVal, setEditAddressVal] = useState(citizenAddress);
@@ -191,9 +193,9 @@ export default function ConfirmBooking({
                     if (editAddressVal.trim()) {
                       const newAddr = editAddressVal.trim();
                       setCitizenAddress(newAddr);
-                      if (auth.currentUser?.uid) {
+                      if (currentUser?.sub) {
                         try {
-                          await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+                          await updateDoc(doc(db, 'users', currentUser.sub), {
                             address: newAddr,
                             updatedAt: new Date().toISOString()
                           });
