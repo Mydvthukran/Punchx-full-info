@@ -450,7 +450,7 @@ function AppMain() {
       {/* Global Bot Companion DRAGO AI Assist */}
       <DragoAssistant
         currentScreen={currentScreen}
-        onAutoFillOtp={(code) => setOtpCode(code)}
+        onAutoFillOtp={() => {}}
         onApplyPromo={(code) => setPromoApplied(true)}
         onAutoFillBooking={() =>
           setIssueDescription("AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.")
