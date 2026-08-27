@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Check, Lock, ShieldCheck, Ticket, Plus, X, ArrowRight, Wallet, CreditCard, Landmark, Coins } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { startAutomatedOrderLifecycle } from '../lib/pushNotifications';
+import { useAuth } from '../lib/authContext';
 
 interface ChoosePaymentProps {
   onTransition: (target: AppScreen) => void;
@@ -52,6 +53,7 @@ export default function ChoosePayment({
   onApplyPromo,
   showNotification
 }: ChoosePaymentProps) {
+  const { userProfile } = useAuth() as any;
   const [selectedMethod, setSelectedMethod] = useState('gpay');
   const [couponInput, setCouponInput] = useState('');
   const [couponErr, setCouponErr] = useState('');
@@ -105,9 +107,9 @@ export default function ChoosePayment({
   const handlePayNow = async () => {
     setPaying(true);
     
-    const currentCitizenName = localStorage.getItem('punchx_citizen_name') || auth.currentUser?.displayName || 'Elite Customer';
+    const currentCitizenName = localStorage.getItem('punchx_citizen_name') || userProfile?.name || 'Elite Customer';
     const currentCitizenAddress = localStorage.getItem('punchx_user_address') || 'HSR Layout, Bengaluru';
-    const currentCitizenPhone = auth.currentUser?.phoneNumber || '+91 98765 43210';
+    const currentCitizenPhone = userProfile?.phone || '+91 98765 43210';
     let customerCoords = { lat: 12.9716, lng: 77.5946 };
     try {
       const locRaw = localStorage.getItem('punchx_user_location');

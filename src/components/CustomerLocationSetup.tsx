@@ -7,8 +7,9 @@ import {
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Paintbrush, Hammer, Bug, Truck, Tv
 } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, fetchRegisteredLocationServices, RegisteredService } from '../lib/location';
 
 interface CustomerLocationSetupProps {
@@ -32,6 +33,7 @@ export default function CustomerLocationSetup({
   authMethod,
   authTarget
 }: CustomerLocationSetupProps) {
+  const { currentUser } = useAuth() as any;
   const [name, setName] = useState(
     citizenName && !citizenName.includes('PunchX Citizen') && !citizenName.includes('Loading')
       ? citizenName
@@ -181,7 +183,7 @@ export default function CustomerLocationSetup({
     }
 
     // Save to Firestore users collection
-    const activeUid = auth.currentUser?.uid || `cust_${Date.now()}`;
+    const activeUid = currentUser?.sub || `cust_${Date.now()}`;
     try {
       await setDoc(doc(db, 'users', activeUid), {
         uid: activeUid,
@@ -194,8 +196,8 @@ export default function CustomerLocationSetup({
         sector: resolvedSector,
         location: { lat: coords.lat, lng: coords.lng },
         role: 'citizen',
-        phone: authMethod === 'phone' ? authTarget : (auth.currentUser?.phoneNumber || ''),
-        email: authMethod === 'gmail' ? authTarget : (auth.currentUser?.email || ''),
+        phone: authMethod === 'phone' ? authTarget : (currentUser?.phone_number || ''),
+        email: authMethod === 'gmail' ? authTarget : (currentUser?.email || ''),
         isProfileCompleted: true,
         updatedAt: new Date().toISOString()
       }, { merge: true });

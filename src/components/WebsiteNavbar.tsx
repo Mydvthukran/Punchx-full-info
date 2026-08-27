@@ -358,6 +358,7 @@ export default function WebsiteNavbar({
           {/* Mobile Hamburger Toggle */}
           <button
             id="navbar-mobile-toggle"
+            aria-label="Toggle mobile menu"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden p-2 rounded-xl bg-[#0a152e] border border-zinc-800 text-zinc-300 hover:text-white cursor-pointer"
           >

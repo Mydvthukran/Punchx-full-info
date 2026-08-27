@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { useAuth } from '../lib/authContext';
 import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass, Bell, Zap } from 'lucide-react';
 import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
@@ -65,7 +66,9 @@ export default function HomeDashboard({
   showNotification,
   onOpenNotificationCenter
 }: HomeProps) {
+  const { currentUser } = useAuth() as any;
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'home' | 'categories' | 'bookings' | 'profile'>('home');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -292,9 +295,9 @@ export default function HomeDashboard({
     setCitizenAddress(cleanAddress);
     setIsEditing(false);
 
-    if (auth.currentUser?.uid) {
+    if (currentUser?.sub) {
       try {
-        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        await updateDoc(doc(db, 'users', currentUser.sub), {
           name: editName.trim(),
           address: cleanAddress,
           updatedAt: new Date().toISOString()

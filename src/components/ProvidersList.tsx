@@ -4,8 +4,9 @@ import { AppScreen, Worker } from '../types';
 import { ALL_EXPERTS } from '../data/experts';
 import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar, Compass, RefreshCw } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress, getCoordinatesForAddressOrSector } from '../lib/location';
 import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';
 
@@ -34,6 +35,7 @@ export default function ProvidersList({
   citizenAddress,
   setCitizenAddress
 }: ProvidersListProps) {
+  const { currentUser } = useAuth() as any;
   const [filterAvailableOnly, setFilterAvailableOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'distance' | 'rating' | 'price-low' | 'price-high'>('distance');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -255,9 +257,9 @@ export default function ProvidersList({
     setCitizenAddress(cleanAddress);
     setIsEditingProfile(false);
 
-    if (auth.currentUser?.uid) {
+    if (currentUser?.sub) {
       try {
-        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        await updateDoc(doc(db, 'users', currentUser.sub), {
           name: tempName.trim(),
           address: cleanAddress,
           updatedAt: new Date().toISOString()

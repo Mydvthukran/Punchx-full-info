@@ -1,7 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
-import OtpVerify from './components/OtpVerify';
 import DragoAssistant from './components/DragoAssistant';
 import MobileQRModal from './components/MobileQRModal';
 import ModuleSwitcher from './components/ModuleSwitcher';
@@ -13,6 +12,7 @@ import WebsiteFooter from './components/WebsiteFooter';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
+import { NamoIDProvider, useNamoID, completeHostedAuthRedirect } from "@namoidhq/react";
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
 const ProvidersList = lazy(() => import('./components/ProvidersList'));
@@ -28,11 +28,52 @@ const WorkerPendingApproval = lazy(() => import('./components/WorkerPendingAppro
 const CustomerLocationSetup = lazy(() => import('./components/CustomerLocationSetup'));
 const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'));
 
-function AppMain() {
-  const { currentUser, userProfile, isLoadingProfile } = useAuth();
+function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => void }) {
+  const client = useNamoID();
+  const { loginWithNamoID } = useAuth();
+  
+  useEffect(() => {
+    async function processCallback() {
+      try {
+        const result = await completeHostedAuthRedirect(client, window.location.href);
+        const savedRole = localStorage.getItem('punchx_auth_role') as 'citizen' | 'worker' | 'admin' || 'citizen';
+        await loginWithNamoID(result.identity, savedRole);
+        
+        window.history.replaceState({}, document.title, '/');
+        
+        if (savedRole === 'admin') onTransition('admin-dashboard');
+        else if (savedRole === 'worker') onTransition('worker-dashboard');
+        else onTransition('home');
+      } catch (e) {
+        console.error("Auth callback error:", e);
+        onTransition('auth');
+      }
+    }
+    processCallback();
+  }, [client, loginWithNamoID, onTransition]);
 
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>('splash');
-  const [activePanelRole, setActivePanelRole] = useState<'customer' | 'worker' | 'admin'>('customer');
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
+      <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
+      <p className="mt-4 text-zinc-400 font-mono text-sm animate-pulse">Authenticating with NamoID...</p>
+    </div>
+  );
+}
+
+function AppMain() {
+  const { currentUser, userProfile, isLoadingProfile, loginWithNamoID } = useAuth() as any;
+
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
+    if (window.location.pathname === '/auth/callback') return 'auth-callback' as any;
+    return 'splash';
+  });
+  const [activePanelRole, setActivePanelRole] = useState<'customer' | 'worker' | 'admin'>(() => {
+    return (localStorage.getItem('punchx_auth_role') as 'customer' | 'worker' | 'admin') || 'customer';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('punchx_auth_role', activePanelRole);
+  }, [activePanelRole]);
   const [workerApplication, setWorkerApplication] = useState<WorkerApplication | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('AC Repair');
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -42,7 +83,6 @@ function AppMain() {
 
   const [authMethod, setAuthMethod] = useState<'phone' | 'gmail'>('phone');
   const [authTarget, setAuthTarget] = useState('');
-  const [otpCode, setOtpCode] = useState('');
   const [hasClaimedBonus, setHasClaimedBonus] = useState<boolean>(() => {
     return localStorage.getItem('punchx_first_order_coupon_claimed') === 'true';
   });
@@ -223,6 +263,9 @@ function AppMain() {
             <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
           </div>
         }>
+        {currentScreen === 'auth-callback' as any && (
+          <AuthCallback onTransition={handleTransition} />
+        )}
         {currentScreen === 'splash' && (
           <Splash onTransition={handleTransition} />
         )}
@@ -270,16 +313,6 @@ function AppMain() {
               setAuthMethod(method);
               setAuthTarget(target);
             }}
-            activePanelRole={activePanelRole}
-          />
-        )}
-        {currentScreen === 'otp' && (
-          <OtpVerify
-            onTransition={handleTransition}
-            otpCode={otpCode}
-            setOtpCode={setOtpCode}
-            authMethod={authMethod}
-            authTarget={authTarget}
             activePanelRole={activePanelRole}
           />
         )}
@@ -417,7 +450,7 @@ function AppMain() {
       {/* Global Bot Companion DRAGO AI Assist */}
       <DragoAssistant
         currentScreen={currentScreen}
-        onAutoFillOtp={(code) => setOtpCode(code)}
+        onAutoFillOtp={() => {}}
         onApplyPromo={(code) => setPromoApplied(true)}
         onAutoFillBooking={() =>
           setIssueDescription("AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.")
@@ -441,8 +474,10 @@ function AppMain() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppMain />
-    </AuthProvider>
+    <NamoIDProvider clientId="namoid_client_test_SMduSEg8bBVymzU0s1gjK_TIKxdYWkSB">
+      <AuthProvider>
+        <AppMain />
+      </AuthProvider>
+    </NamoIDProvider>
   );
 }

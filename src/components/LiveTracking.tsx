@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { doc, updateDoc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { AppScreen } from '../types';
 import {
   ArrowLeft, Star, Phone, MessageSquare, MapPin, Send, X, Compass,
