@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Clock, Calendar, MapPin, Camera, Clipboard, Terminal, ShoppingBag, CheckCircle, ShieldAlert } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 
 interface ConfirmBookingProps {

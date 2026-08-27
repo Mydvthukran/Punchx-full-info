@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, OrderRecord, CustomerReview } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, LocationData, getSectorFromAddress, calculateDistanceKm, getCoordinatesForAddressOrSector, checkIsWithin15KmRadius } from '../lib/location';
 import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';
 import WorkerAcademyModal from './WorkerAcademyModal';
@@ -30,6 +30,7 @@ interface WorkerDashboardProps {
 }
 
 export default function WorkerDashboard({ onTransition, showNotification }: WorkerDashboardProps) {
+  const { currentUser, userProfile, logout } = useAuth() as any;
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     const saved = localStorage.getItem('punchx_worker_online_status');
     return saved !== 'offline';
@@ -100,71 +101,29 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     handleSyncWorkerGPS();
   }, [workerProfile.uid]);
 
-  // Sync authenticated worker profile from Firestore
+  // Sync authenticated worker profile from Context
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setIsLoadingWorkerProfile(true);
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            const fee = data.visitingFee || data.price || 199;
-            setWorkerProfile({
-              uid: user.uid,
-              name: data.name || user.displayName || 'Verified Worker',
-              email: data.email || user.email || 'Not provided',
-              phone: data.phone || user.phoneNumber || 'Not provided',
-              photoURL: data.photoURL || user.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
-              skill: data.workerSkill || 'Master Service Specialist',
-              experience: data.workerExperience || '5 Years',
-              visitingFee: fee,
-              rating: data.workerRating || 5.0,
-              completedJobs: data.workerCompletedJobs || 0
-            });
-            setTempVisitingFee(fee);
-          } else {
-            const newWorkerProfile = {
-              uid: user.uid,
-              name: user.displayName || (user.email ? user.email.split('@')[0] : 'Verified Worker'),
-              email: user.email || 'Not provided',
-              phone: user.phoneNumber || 'Not provided',
-              photoURL: user.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
-              role: 'worker',
-              workerSkill: 'Master Service Specialist',
-              workerExperience: '1 Year',
-              visitingFee: 199,
-              workerRating: 5.0,
-              workerCompletedJobs: 0,
-              createdAt: new Date().toISOString()
-            };
-            await setDoc(doc(db, 'users', user.uid), newWorkerProfile);
-            setWorkerProfile({
-              uid: user.uid,
-              name: newWorkerProfile.name,
-              email: newWorkerProfile.email,
-              phone: newWorkerProfile.phone,
-              photoURL: newWorkerProfile.photoURL,
-              skill: newWorkerProfile.workerSkill,
-              experience: newWorkerProfile.workerExperience,
-              visitingFee: 199,
-              rating: newWorkerProfile.workerRating,
-              completedJobs: newWorkerProfile.workerCompletedJobs
-            });
-            setTempVisitingFee(199);
-          }
-        } catch (e) {
-          console.error("Error loading worker profile:", e);
-        } finally {
-          setIsLoadingWorkerProfile(false);
-        }
-      } else {
-        setIsLoadingWorkerProfile(false);
-      }
-    });
-
-    return () => unsub();
-  }, []);
+    if (userProfile && currentUser) {
+      setIsLoadingWorkerProfile(true);
+      const fee = userProfile.visitingFee || userProfile.price || 199;
+      setWorkerProfile({
+        uid: userProfile.uid,
+        name: userProfile.name || 'Verified Worker',
+        email: userProfile.email || 'Not provided',
+        phone: userProfile.phone || 'Not provided',
+        photoURL: userProfile.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+        skill: userProfile.workerSkill || 'Master Service Specialist',
+        experience: userProfile.workerExperience || '1 Year',
+        visitingFee: fee,
+        rating: userProfile.workerRating || 5.0,
+        completedJobs: userProfile.workerCompletedJobs || 0
+      });
+      setTempVisitingFee(fee);
+      setIsLoadingWorkerProfile(false);
+    } else if (!userProfile) {
+      setIsLoadingWorkerProfile(false);
+    }
+  }, [userProfile, currentUser]);
 
   // Loading state for Firestore/data sync simulation
   const [isLoading, setIsLoading] = useState(true);
@@ -641,7 +600,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
           </button>
 
           <button
-            onClick={() => {
+            onClick={async () => {
+              await logout();
               showNotification('🚪 Logged out from Worker Dashboard');
               onTransition('panel-select');
             }}

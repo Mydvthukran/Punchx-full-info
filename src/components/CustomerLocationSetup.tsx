@@ -7,7 +7,7 @@ import {
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Paintbrush, Hammer, Bug, Truck, Tv
 } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { requestAndAutoUpdateLocation, fetchRegisteredLocationServices, RegisteredService } from '../lib/location';
 

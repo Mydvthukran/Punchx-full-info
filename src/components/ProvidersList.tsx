@@ -4,7 +4,7 @@ import { AppScreen, Worker } from '../types';
 import { ALL_EXPERTS } from '../data/experts';
 import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar, Compass, RefreshCw } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress, getCoordinatesForAddressOrSector } from '../lib/location';
 import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';

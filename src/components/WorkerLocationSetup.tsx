@@ -8,7 +8,7 @@ import {
   Zap, Droplets, SprayCan as SparkleIcon, Hammer, Phone, Star,
   Briefcase, Users, Clock, Shield, Lock, Radio
 } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { 
   requestAndAutoUpdateLocation, 

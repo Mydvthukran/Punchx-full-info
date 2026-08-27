@@ -1,5 +1,5 @@
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
-import { db, auth } from './firebase';
+import { db } from './firebase';
 
 export interface LocationData {
   lat: number;

@@ -5,7 +5,7 @@ import {
   Building2, Clock, CheckCircle2, ShieldAlert, UserCheck, 
   MapPin, Briefcase, Award, Phone, Mail, RefreshCw, ArrowRight, Sparkles, AlertCircle, ShieldCheck
 } from 'lucide-react';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { doc, onSnapshot, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
 
 interface WorkerPendingApprovalProps {
