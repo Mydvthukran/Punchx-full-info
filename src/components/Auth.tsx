@@ -8,6 +8,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import { verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
 import { requestAndAutoUpdateLocation, LocationData } from '../lib/location';
+import { SignIn } from "@namoidhq/react";
 
 interface AuthProps {
   onTransition: (target: AppScreen) => void;
@@ -930,6 +931,20 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
         )}
       </AnimatePresence>
         </div>
+
+        {/* Global Alternative Sign-In Options */}
+        {activePanelRole === 'customer' && (
+          <div className="mt-6 w-full text-center space-y-4">
+             <div className="flex items-center gap-2">
+                 <div className="flex-1 h-px bg-zinc-800"></div>
+                 <span className="text-[10px] text-zinc-500 font-mono tracking-wider">OR SIGN IN WITH</span>
+                 <div className="flex-1 h-px bg-zinc-800"></div>
+             </div>
+             <div className="flex justify-center bg-[#07122a] border border-[#c5a059]/30 rounded-xl p-4 shadow-md transition-all hover:border-[#c5a059]">
+                 <SignIn redirectUri={window.location.origin + "/auth/callback"} />
+             </div>
+          </div>
+        )}
       </div>
 
       {/* Trust Signatures footer */}

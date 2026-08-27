@@ -13,6 +13,7 @@ import WebsiteFooter from './components/WebsiteFooter';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
+import { NamoIDProvider } from "@namoidhq/react";
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
 const ProvidersList = lazy(() => import('./components/ProvidersList'));
@@ -441,8 +442,10 @@ function AppMain() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppMain />
-    </AuthProvider>
+    <NamoIDProvider clientId="namoid_client_test_SMduSEg8bBVymzU0s1gjK_TIKxdYWkSB">
+      <AuthProvider>
+        <AppMain />
+      </AuthProvider>
+    </NamoIDProvider>
   );
 }
