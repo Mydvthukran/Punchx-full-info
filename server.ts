@@ -8,10 +8,57 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   // Health check
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // NamoID Proxy API (routes requests server-side to prevent browser CORS blocks)
+  app.all("/api/namoid-proxy", async (req, res) => {
+    const targetUrl = req.query.url as string;
+    if (!targetUrl || (!targetUrl.startsWith("https://punch-x-747dd7.id.namoid.in/") && !targetUrl.startsWith("https://api.namoid.in/"))) {
+      return res.status(400).json({ error: "Invalid target URL" });
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        accept: (req.headers["accept"] as string) || "application/json",
+      };
+      if (req.headers["content-type"]) {
+        headers["content-type"] = req.headers["content-type"] as string;
+      }
+      if (req.headers["authorization"]) {
+        headers["authorization"] = req.headers["authorization"] as string;
+      }
+
+      let body: string | undefined = undefined;
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        if (req.headers["content-type"]?.includes("application/x-www-form-urlencoded")) {
+          body = typeof req.body === "object" ? new URLSearchParams(req.body).toString() : String(req.body);
+        } else if (typeof req.body === "object") {
+          body = JSON.stringify(req.body);
+        } else {
+          body = req.body;
+        }
+      }
+
+      const response = await fetch(targetUrl, {
+        method: req.method,
+        headers,
+        body,
+      });
+
+      const responseBody = await response.text();
+      res.status(response.status);
+      const contentType = response.headers.get("content-type");
+      if (contentType) res.setHeader("content-type", contentType);
+      res.send(responseBody);
+    } catch (error: any) {
+      console.error("NamoID proxy error:", error);
+      res.status(502).json({ error: error.message || "Failed to proxy request" });
+    }
   });
 
   // Google Maps Platform Public Client Config API

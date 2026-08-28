@@ -13,6 +13,7 @@ import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 import { NamoIDProvider, useNamoID, completeHostedAuthRedirect } from "@namoidhq/react";
+import { namoidFetcher } from './lib/namoidFetcher';
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
 const ProvidersList = lazy(() => import('./components/ProvidersList'));
@@ -33,6 +34,7 @@ const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'))
 function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => void }) {
   const client = useNamoID();
   const { loginWithNamoID } = useAuth();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   useEffect(() => {
     async function processCallback() {
@@ -48,13 +50,30 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
         if (role === 'admin') onTransition('admin-dashboard');
         else if (role === 'worker') onTransition('worker-dashboard');
         else onTransition('home');
-      } catch (e) {
+      } catch (e: any) {
         console.error("Auth callback error:", e);
-        onTransition('auth');
+        setErrorMessage(e?.message || "Authentication callback could not be completed.");
       }
     }
     processCallback();
   }, [client, loginWithNamoID, onTransition]);
+
+  if (errorMessage) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
+        <div className="max-w-md bg-[#11192e] border border-red-500/30 p-6 rounded-2xl shadow-xl">
+          <p className="text-red-400 font-bold text-base mb-2">Sign In Notice</p>
+          <p className="text-zinc-400 text-xs mb-4 leading-relaxed">{errorMessage}</p>
+          <button
+            onClick={() => onTransition('auth')}
+            className="px-4 py-2 bg-[#c5a059] text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-[#d8b46e] transition-all cursor-pointer"
+          >
+            Return to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
@@ -538,7 +557,7 @@ const NAMOID_CLIENT_ID = import.meta.env.VITE_NAMOID_CLIENT_ID || 'namoid_client
 
 export default function App() {
   return (
-    <NamoIDProvider clientId={NAMOID_CLIENT_ID}>
+    <NamoIDProvider clientId={NAMOID_CLIENT_ID} fetcher={namoidFetcher}>
       <AuthProvider>
         <AppMain />
       </AuthProvider>
