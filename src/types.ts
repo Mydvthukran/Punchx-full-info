@@ -16,7 +16,9 @@ export type AppScreen =
   | 'payment' 
   | 'tracking' 
   | 'worker-dashboard' 
-  | 'admin-dashboard';
+  | 'admin-dashboard'
+  | 'privacy-policy'
+  | 'terms-and-conditions';
 
 export interface WorkerApplication {
   id: string;

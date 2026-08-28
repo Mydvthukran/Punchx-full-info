@@ -104,9 +104,27 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
 
           <div className="text-center pt-4 border-t border-zinc-800 text-xs text-zinc-400">
             By signing in, you agree to our{' '}
-            <button onClick={() => setShowPolicyModal('privacy')} className="text-[#e9c176] underline hover:text-[#ffdea5]">Privacy Policy</button>{' '}
+            <a
+              href="/privacy-policy"
+              onClick={(e) => {
+                e.preventDefault();
+                onTransition('privacy-policy');
+              }}
+              className="text-[#e9c176] underline hover:text-[#ffdea5] cursor-pointer"
+            >
+              Privacy Policy
+            </a>{' '}
             and{' '}
-            <button onClick={() => setShowPolicyModal('terms')} className="text-[#e9c176] underline hover:text-[#ffdea5]">Terms & Conditions</button>.
+            <a
+              href="/terms-and-conditions"
+              onClick={(e) => {
+                e.preventDefault();
+                onTransition('terms-and-conditions');
+              }}
+              className="text-[#e9c176] underline hover:text-[#ffdea5] cursor-pointer"
+            >
+              Terms & Conditions
+            </a>.
           </div>
         </div>
       </div>

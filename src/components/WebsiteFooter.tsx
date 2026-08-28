@@ -210,20 +210,32 @@ export default function WebsiteFooter({
           </div>
 
           {/* Legal Links */}
-          <div className="flex items-center gap-4 font-mono text-[11px]">
-            <button
-              onClick={() => setIsTermsModalOpen(true)}
-              className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+          <div className="flex flex-wrap items-center gap-4 font-mono text-[11px]">
+            <a
+              id="footer-link-terms"
+              href="/terms-and-conditions"
+              onClick={(e) => {
+                e.preventDefault();
+                onTransition('terms-and-conditions');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-zinc-400 hover:text-[#e9c176] transition-colors cursor-pointer hover:underline"
             >
-              Terms of Service
-            </button>
+              Terms & Conditions
+            </a>
             <span>•</span>
-            <button
-              onClick={() => setIsPrivacyModalOpen(true)}
-              className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            <a
+              id="footer-link-privacy"
+              href="/privacy-policy"
+              onClick={(e) => {
+                e.preventDefault();
+                onTransition('privacy-policy');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-zinc-400 hover:text-[#e9c176] transition-colors cursor-pointer hover:underline"
             >
               Privacy Policy
-            </button>
+            </a>
             <span>•</span>
             <button
               onClick={() => setIsRefundModalOpen(true)}
