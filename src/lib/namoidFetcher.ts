@@ -70,7 +70,128 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     });
   }
 
-  // 3. For token exchange and userinfo requests:
+  // 3. For token exchange requests:
+  // NamoID token endpoint strictly requires server-to-server POST with application/x-www-form-urlencoded.
+  // Direct browser-to-NamoID fetch is blocked by CORS, so route through the backend proxy.
+  if (url.includes("/v1/oauth/token") || url.includes("/oauth/token")) {
+    const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";
+    const proxyUrl = `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
+
+    const headers = new Headers(init?.headers);
+    headers.set("accept", "application/json");
+    headers.set("content-type", "application/x-www-form-urlencoded");
+
+    let params = new URLSearchParams();
+    if (init?.body instanceof URLSearchParams) {
+      params = new URLSearchParams(init.body);
+    } else if (typeof init?.body === "string") {
+      params = new URLSearchParams(init.body);
+    } else if (init?.body instanceof FormData) {
+      init.body.forEach((val, key) => {
+        if (typeof val === "string") params.append(key, val);
+      });
+    } else if (init?.body && typeof init.body === "object") {
+      try {
+        params = new URLSearchParams(init.body as unknown as Record<string, string>);
+      } catch {
+        params = new URLSearchParams(String(init.body));
+      }
+    }
+
+    // Ensure mandatory OAuth parameters
+    if (!params.get("grant_type")) params.set("grant_type", "authorization_code");
+    if (!params.get("client_id")) params.set("client_id", "namoid_client_live_6SHiIOdLuGIBZmiJjC5Iu5KCbqB2QQjd");
+    if (!params.get("redirect_uri")) params.set("redirect_uri", "https://www.punchxapp.co.in/auth/callback");
+
+    const bodyStr = params.toString();
+
+    try {
+      const proxyRes = await fetch(proxyUrl, {
+        method: "POST",
+        headers,
+        body: bodyStr,
+        cache: "no-store",
+      });
+
+      // If the proxy responds with 405 (e.g. static GitHub Pages host where POST /api/namoid-proxy is unhandled),
+      // attempt direct fetch as fallback before returning a structured error.
+      if (proxyRes.status === 405) {
+        console.warn("Backend proxy returned 405 Method Not Allowed. Attempting direct token endpoint fetch...");
+        try {
+          const directRes = await fetch(url, {
+            method: "POST",
+            headers,
+            body: bodyStr,
+          });
+          if (directRes.status !== 405) {
+            return directRes;
+          }
+        } catch {
+          // Direct fetch failed (e.g. browser CORS blocked)
+        }
+
+        const text = await proxyRes.text();
+        return new Response(
+          JSON.stringify({
+            error: "proxy_method_not_allowed",
+            error_description: "The backend proxy (/api/namoid-proxy) returned 405. Please ensure the full-stack server is running.",
+            detail: text.slice(0, 200),
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // If proxy response is not ok and contains HTML (e.g. 502/504 HTML page), wrap it in JSON
+      // so the NamoID SDK readErrorMessage() never fails to parse error_description.
+      if (!proxyRes.ok) {
+        const ct = proxyRes.headers.get("content-type") || "";
+        if (!ct.includes("application/json")) {
+          const text = await proxyRes.text();
+          return new Response(
+            JSON.stringify({
+              error: "token_request_failed",
+              error_description: `Token request failed with status ${proxyRes.status}`,
+              detail: text.slice(0, 200),
+            }),
+            {
+              status: proxyRes.status,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        }
+      }
+
+      return proxyRes;
+    } catch (proxyErr) {
+      console.error("Backend proxy unreachable for token exchange:", proxyErr);
+      // Fallback attempt to direct endpoint if proxy fails to connect
+      try {
+        const directRes = await fetch(input, {
+          ...init,
+          method: "POST",
+          headers,
+          body: bodyStr,
+        });
+        return directRes;
+      } catch {
+        return new Response(
+          JSON.stringify({
+            error: "token_exchange_network_error",
+            error_description: "Failed to reach both backend proxy and token endpoint.",
+          }),
+          {
+            status: 502,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
+  }
+
+  // 4. Default handler for other endpoints (e.g. userinfo)
   try {
     const res = await fetch(input, init);
     if (res.ok || (res.status >= 400 && res.status !== 400)) {
@@ -84,16 +205,17 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     }
     return res;
   } catch (err) {
-    // Attempt backend proxy if available
+    // Attempt backend proxy fallback
     if (typeof window !== "undefined") {
       try {
-        const proxyUrl = `/api/namoid-proxy?url=${encodeURIComponent(url)}`;
+        const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";
+        const proxyUrl = `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
         const proxyRes = await fetch(proxyUrl, init);
-        if (proxyRes.ok || proxyRes.status < 500) {
+        if (proxyRes.ok || (proxyRes.status < 500 && proxyRes.status !== 405)) {
           return proxyRes;
         }
       } catch {
-        // Backend proxy not reachable (e.g. static GitHub Pages)
+        // Backend proxy not reachable
       }
     }
     throw err;

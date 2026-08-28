@@ -23,6 +23,24 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
         if (loc) setLocationData(loc);
       });
     }
+
+    // Persist NamoID PKCE transaction from sessionStorage to localStorage so callback survives
+    const syncOidcTransaction = () => {
+      try {
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith("namoid_oidc")) {
+            const val = sessionStorage.getItem(k);
+            if (val) localStorage.setItem(k, val);
+          }
+        }
+      } catch {
+        // Storage access guard
+      }
+    };
+
+    window.addEventListener("beforeunload", syncOidcTransaction);
+    return () => window.removeEventListener("beforeunload", syncOidcTransaction);
   }, [activePanelRole]);
 
   const handleRequestLocation = async () => {
@@ -101,7 +119,11 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
             <SignIn 
               redirectUri={
                 import.meta.env.VITE_NAMOID_REDIRECT_URI || 
-                (typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : 'https://www.punchxapp.co.in/auth/callback')
+                (typeof window !== 'undefined' && window.location.hostname.includes('punchxapp.co.in')
+                  ? 'https://www.punchxapp.co.in/auth/callback'
+                  : typeof window !== 'undefined'
+                    ? `${window.location.origin}/auth/callback`
+                    : 'https://www.punchxapp.co.in/auth/callback')
               } 
             />
           </div>

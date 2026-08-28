@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import DragoAssistant from './components/DragoAssistant';
@@ -35,10 +35,27 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
   const client = useNamoID();
   const { loginWithNamoID } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasProcessedRef = useRef(false);
   
   useEffect(() => {
+    if (hasProcessedRef.current) return;
+    hasProcessedRef.current = true;
+
     async function processCallback() {
       try {
+        // Restore PKCE transaction from localStorage backup if missing in sessionStorage
+        try {
+          const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
+          if (!sessionStorage.getItem(storageKey)) {
+            const backup = localStorage.getItem(storageKey);
+            if (backup) {
+              sessionStorage.setItem(storageKey, backup);
+            }
+          }
+        } catch {
+          // storage access guard
+        }
+
         const result = await completeHostedAuthRedirect(client, window.location.href);
         const rawRole = localStorage.getItem('punchx_auth_role') || 'citizen';
         const role: 'citizen' | 'worker' | 'admin' = 
