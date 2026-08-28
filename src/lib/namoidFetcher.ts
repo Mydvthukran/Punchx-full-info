@@ -105,6 +105,11 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
 
     const bodyStr = params.toString();
 
+    // Strategy:
+    // 1. First attempt to route through the backend proxy (/api/namoid-proxy)
+    // 2. If the proxy returns 404 (e.g. host without serverless functions), 405 (static host), or network failure,
+    //    seamlessly fall back to direct POST to the NamoID token endpoint.
+    let proxyFailed = false;
     try {
       const proxyRes = await fetch(proxyUrl, {
         method: "POST",
@@ -113,77 +118,44 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
         cache: "no-store",
       });
 
-      // If the proxy responds with 405 (e.g. static GitHub Pages host where POST /api/namoid-proxy is unhandled),
-      // attempt direct fetch as fallback before returning a structured error.
-      if (proxyRes.status === 405) {
-        console.warn("Backend proxy returned 405 Method Not Allowed. Attempting direct token endpoint fetch...");
-        try {
-          const directRes = await fetch(url, {
-            method: "POST",
-            headers,
-            body: bodyStr,
-          });
-          if (directRes.status !== 405) {
-            return directRes;
-          }
-        } catch {
-          // Direct fetch failed (e.g. browser CORS blocked)
-        }
-
-        const text = await proxyRes.text();
-        return new Response(
-          JSON.stringify({
-            error: "proxy_method_not_allowed",
-            error_description: "The backend proxy (/api/namoid-proxy) returned 405. Please ensure the full-stack server is running.",
-            detail: text.slice(0, 200),
-          }),
-          {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+      // If proxy succeeded or returned a valid JSON OAuth response (e.g. 200 with tokens or 400 with OAuth error)
+      if (proxyRes.ok) {
+        return proxyRes;
       }
 
-      // If proxy response is not ok and contains HTML (e.g. 502/504 HTML page), wrap it in JSON
-      // so the NamoID SDK readErrorMessage() never fails to parse error_description.
-      if (!proxyRes.ok) {
-        const ct = proxyRes.headers.get("content-type") || "";
-        if (!ct.includes("application/json")) {
-          const text = await proxyRes.text();
-          return new Response(
-            JSON.stringify({
-              error: "token_request_failed",
-              error_description: `Token request failed with status ${proxyRes.status}`,
-              detail: text.slice(0, 200),
-            }),
-            {
-              status: proxyRes.status,
-              headers: { "Content-Type": "application/json" },
-            }
-          );
-        }
+      // If proxy returned 404/405 (proxy not implemented on this host) or HTML error page
+      const contentType = proxyRes.headers.get("content-type") || "";
+      if (proxyRes.status === 404 || proxyRes.status === 405 || !contentType.includes("application/json")) {
+        console.warn(`Backend proxy returned status ${proxyRes.status} (${contentType}). Attempting direct token endpoint...`);
+        proxyFailed = true;
+      } else {
+        // Proxy returned valid JSON error from NamoID (e.g. invalid_grant)
+        return proxyRes;
       }
-
-      return proxyRes;
     } catch (proxyErr) {
-      console.error("Backend proxy unreachable for token exchange:", proxyErr);
-      // Fallback attempt to direct endpoint if proxy fails to connect
+      console.warn("Backend proxy fetch failed, attempting direct token endpoint fetch:", proxyErr);
+      proxyFailed = true;
+    }
+
+    if (proxyFailed) {
       try {
-        const directRes = await fetch(input, {
-          ...init,
+        const directRes = await fetch(url, {
           method: "POST",
           headers,
           body: bodyStr,
+          cache: "no-store",
         });
         return directRes;
-      } catch {
+      } catch (directErr: any) {
+        console.error("Direct token exchange failed:", directErr);
         return new Response(
           JSON.stringify({
-            error: "token_exchange_network_error",
-            error_description: "Failed to reach both backend proxy and token endpoint.",
+            error: "token_request_failed",
+            error_description: "Unable to exchange authorization code. Please verify network connection or try again.",
+            detail: String(directErr?.message || directErr),
           }),
           {
-            status: 502,
+            status: 400,
             headers: { "Content-Type": "application/json" },
           }
         );
@@ -211,7 +183,7 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
         const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";
         const proxyUrl = `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
         const proxyRes = await fetch(proxyUrl, init);
-        if (proxyRes.ok || (proxyRes.status < 500 && proxyRes.status !== 405)) {
+        if (proxyRes.ok || (proxyRes.status < 500 && proxyRes.status !== 404 && proxyRes.status !== 405)) {
           return proxyRes;
         }
       } catch {

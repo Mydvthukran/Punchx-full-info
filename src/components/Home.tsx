@@ -66,15 +66,16 @@ export default function HomeDashboard({
   showNotification,
   onOpenNotificationCenter
 }: HomeProps) {
-  const { currentUser } = useAuth() as any;
+  const { currentUser, userProfile, updateUserProfile } = useAuth() as any;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'home' | 'categories' | 'bookings' | 'profile'>('home');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   
-  const [editName, setEditName] = useState(citizenName);
-  const [editAddress, setEditAddress] = useState(citizenAddress);
+  const [editName, setEditName] = useState(citizenName || userProfile?.name || '');
+  const [editDob, setEditDob] = useState(userProfile?.dob || userProfile?.birthdate || localStorage.getItem('punchx_user_dob') || '');
+  const [editAddress, setEditAddress] = useState(citizenAddress || userProfile?.address || '');
 
   const [isLocatingCustomer, setIsLocatingCustomer] = useState(false);
   const [unreadPushCount, setUnreadPushCount] = useState(0);
@@ -279,15 +280,22 @@ export default function HomeDashboard({
     };
   }, []);
 
-  // Keep transient inputs in sync when global props update
+  // Keep transient inputs in sync when global props or userProfile update
   useEffect(() => {
-    setEditName(citizenName);
-    setEditAddress(citizenAddress);
-  }, [citizenName, citizenAddress]);
+    if (citizenName) setEditName(citizenName);
+    if (citizenAddress) setEditAddress(citizenAddress);
+    if (userProfile?.dob || userProfile?.birthdate) {
+      setEditDob(userProfile.dob || userProfile.birthdate);
+    }
+  }, [citizenName, citizenAddress, userProfile]);
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
-      showNotification("⚠️ Please fill out all profile fields.");
+      showNotification("⚠️ Please enter your full name.");
+      return;
+    }
+    if (!editDob.trim()) {
+      showNotification("⚠️ Please enter your date of birth.");
       return;
     }
     const cleanAddress = editAddress.trim() || 'Address not provided';
@@ -295,10 +303,20 @@ export default function HomeDashboard({
     setCitizenAddress(cleanAddress);
     setIsEditing(false);
 
+    try {
+      localStorage.setItem('punchx_user_name', editName.trim());
+      localStorage.setItem('punchx_user_dob', editDob.trim());
+      localStorage.setItem('punchx_user_address', cleanAddress);
+    } catch {
+      // storage fallback
+    }
+
     if (currentUser?.sub) {
       try {
         await updateDoc(doc(db, 'users', currentUser.sub), {
           name: editName.trim(),
+          dob: editDob.trim(),
+          birthdate: editDob.trim(),
           address: cleanAddress,
           updatedAt: new Date().toISOString()
         });
@@ -306,7 +324,15 @@ export default function HomeDashboard({
         console.error("Firestore profile update error:", e);
       }
     }
-    showNotification("✓ Profile updated successfully.");
+    if (updateUserProfile) {
+      await updateUserProfile({
+        name: editName.trim(),
+        dob: editDob.trim(),
+        birthdate: editDob.trim(),
+        address: cleanAddress
+      });
+    }
+    showNotification("✓ NamoID profile updated successfully.");
   };
 
   const handleCancelBooking = async (orderId: string) => {
@@ -881,16 +907,27 @@ export default function HomeDashboard({
                   {isEditing ? (
                     <div className="space-y-3 pt-1">
                       <div className="space-y-1 bg-[#11192e] text-left">
-                        <label className="text-[9px] font-sans uppercase tracking-wider text-zinc-500 font-bold block">First & Last Name</label>
+                        <label className="text-[9px] font-sans uppercase tracking-wider text-zinc-400 font-bold block">Full Legal Name</label>
                         <input
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
+                          placeholder="e.g. Anand Sharma"
                           className="w-full bg-[#07122a] border border-[#c5a059]/40 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700 outline-none focus:border-[#c5a059]"
                         />
                       </div>
                       <div className="space-y-1 bg-[#11192e] text-left">
-                        <label className="text-[9px] font-sans uppercase tracking-wider text-zinc-500 font-bold block">Delivery Address</label>
+                        <label className="text-[9px] font-sans uppercase tracking-wider text-zinc-400 font-bold block">Date of Birth (NamoID)</label>
+                        <input
+                          type="date"
+                          max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                          value={editDob}
+                          onChange={(e) => setEditDob(e.target.value)}
+                          className="w-full bg-[#07122a] border border-[#c5a059]/40 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-700 outline-none focus:border-[#c5a059] [color-scheme:dark]"
+                        />
+                      </div>
+                      <div className="space-y-1 bg-[#11192e] text-left">
+                        <label className="text-[9px] font-sans uppercase tracking-wider text-zinc-400 font-bold block">Delivery Address</label>
                         <textarea
                           value={editAddress}
                           onChange={(e) => setEditAddress(e.target.value)}
@@ -917,17 +954,30 @@ export default function HomeDashboard({
                         </div>
                         <div className="space-y-1 overflow-hidden font-sans">
                           <h4 className="font-extrabold text-sm text-white tracking-wide">
-                            {citizenName}
+                            {citizenName || editName || 'PunchX Member'}
                           </h4>
                           <p className="text-xs font-sans text-zinc-300 font-medium flex items-center gap-1.5 flex-wrap">
                             {authMethod === 'gmail' ? <Mail className="w-3.5 h-3.5 text-[#e9c176]" /> : <Phone className="w-3.5 h-3.5 text-[#e9c176]" />}
                             <span className="text-[#e9c176] font-extrabold bg-[#c5a059]/15 px-2 py-0.5 rounded border border-[#c5a059]/25 shadow-sm">{authTarget || 'citizen@punchx.app'}</span>
-                            <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-black">Logged In</span>
+                            <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-black">NamoID Verified</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="border-t border-zinc-800/60 pt-3 text-left">
+                      {/* Date of Birth info */}
+                      {(editDob || userProfile?.dob || userProfile?.birthdate) && (
+                        <div className="border-t border-zinc-800/60 pt-2.5 text-left">
+                          <span className="text-[9px] font-sans uppercase tracking-wider text-zinc-500 font-bold block mb-1">
+                            Date of Birth:
+                          </span>
+                          <div className="flex items-center gap-1.5 text-xs text-zinc-300 font-mono">
+                            <Calendar className="w-3.5 h-3.5 text-[#c5a059] flex-shrink-0" />
+                            <span>{editDob || userProfile?.dob || userProfile?.birthdate}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="border-t border-zinc-800/60 pt-2.5 text-left">
                         <span className="text-[9px] font-sans uppercase tracking-wider text-zinc-500 font-bold block mb-1">
                           Saved Address:
                         </span>
