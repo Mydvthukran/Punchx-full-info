@@ -17,8 +17,6 @@ export default function WebsiteFooter({
   onSelectCategory,
   showNotification
 }: WebsiteFooterProps) {
-  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
-  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
 
   const categories = [
@@ -246,41 +244,6 @@ export default function WebsiteFooter({
           </div>
         </div>
       </div>
-
-      {/* Terms of Service Modal */}
-      {isTermsModalOpen && (
-        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0a152e] border border-[#c5a059]/40 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
-              <h3 className="font-bold text-white text-base">Terms of Service - PunchX Platform</h3>
-              <button onClick={() => setIsTermsModalOpen(false)} className="text-zinc-400 hover:text-white text-xs font-mono">CLOSE</button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-3 text-xs text-zinc-300 leading-relaxed">
-              <p>1. <strong>Platform Access:</strong> PunchX connects verified technicians and customers across all metropolitan sectors of Bengaluru with smart proximity dispatch.</p>
-              <p>2. <strong>Transparent Pricing:</strong> Base visiting fee is fixed at ₹199 with transparent itemized billings.</p>
-              <p>3. <strong>Safety & Verification:</strong> All service providers undergo police records clearance and Aadhaar credential verification.</p>
-              <p>4. <strong>Security OTP Gate:</strong> Customers must provide the secure 4-digit verification code to the technician upon on-site arrival to start the work ledger.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Privacy Policy Modal */}
-      {isPrivacyModalOpen && (
-        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0a152e] border border-[#c5a059]/40 rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-zinc-800 flex justify-between items-center">
-              <h3 className="font-bold text-white text-base">Privacy & Data Governance</h3>
-              <button onClick={() => setIsPrivacyModalOpen(false)} className="text-zinc-400 hover:text-white text-xs font-mono">CLOSE</button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-3 text-xs text-zinc-300 leading-relaxed">
-              <p>1. <strong>Location Privacy:</strong> GPS coordinates are strictly utilized for matching the nearest available technician across city sectors and providing real-time live routing.</p>
-              <p>2. <strong>Zero Data Selling:</strong> Personal records, phone numbers, and addresses are encrypted and never shared with third-party advertising brokers.</p>
-              <p>3. <strong>Payment Tokenization:</strong> All digital transactions are processed through encrypted payment gateways (Razorpay, UPI, Cards).</p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Refund & Warranty Modal */}
       {isRefundModalOpen && (

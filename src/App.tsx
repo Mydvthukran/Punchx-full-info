@@ -38,13 +38,15 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
     async function processCallback() {
       try {
         const result = await completeHostedAuthRedirect(client, window.location.href);
-        const savedRole = localStorage.getItem('punchx_auth_role') as 'citizen' | 'worker' | 'admin' || 'citizen';
-        await loginWithNamoID(result.identity, savedRole);
+        const rawRole = localStorage.getItem('punchx_auth_role') || 'citizen';
+        const role: 'citizen' | 'worker' | 'admin' = 
+          rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
+        await loginWithNamoID(result.identity, role);
         
         window.history.replaceState({}, document.title, '/');
         
-        if (savedRole === 'admin') onTransition('admin-dashboard');
-        else if (savedRole === 'worker') onTransition('worker-dashboard');
+        if (role === 'admin') onTransition('admin-dashboard');
+        else if (role === 'worker') onTransition('worker-dashboard');
         else onTransition('home');
       } catch (e) {
         console.error("Auth callback error:", e);
@@ -67,9 +69,11 @@ function AppMain() {
 
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
     const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
-    if (rawPath === '/auth/callback') return 'auth-callback' as any;
-    if (rawPath === '/privacy-policy' || rawPath === '/privacy') return 'privacy-policy';
-    if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service') return 'terms-and-conditions';
+    const search = window.location.search.toLowerCase();
+    if (rawPath === '/auth/callback' || search.includes('/auth/callback')) return 'auth-callback';
+    if (rawPath === '/privacy-policy' || rawPath === '/privacy' || search.includes('/privacy-policy') || search.includes('/privacy')) return 'privacy-policy';
+    if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service' || search.includes('/terms-and-conditions') || search.includes('/terms')) return 'terms-and-conditions';
+    if (rawPath === '/worker-signup' || search.includes('/worker-signup')) return 'worker-signup';
     return 'splash';
   });
 
@@ -77,15 +81,16 @@ function AppMain() {
   useEffect(() => {
     const handlePopState = () => {
       const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
-      if (rawPath === '/privacy-policy' || rawPath === '/privacy') {
+      const search = window.location.search.toLowerCase();
+      if (rawPath === '/privacy-policy' || rawPath === '/privacy' || search.includes('/privacy-policy') || search.includes('/privacy')) {
         setCurrentScreen('privacy-policy');
-      } else if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service') {
+      } else if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service' || search.includes('/terms-and-conditions') || search.includes('/terms')) {
         setCurrentScreen('terms-and-conditions');
-      } else if (rawPath === '/worker-signup') {
+      } else if (rawPath === '/worker-signup' || search.includes('/worker-signup')) {
         setCurrentScreen('worker-signup');
       } else if (rawPath === '' || rawPath === '/') {
         if (currentScreen === 'privacy-policy' || currentScreen === 'terms-and-conditions') {
-          setCurrentScreen(currentUser ? 'home' : 'splash');
+          setCurrentScreen(currentUser ? 'home' : 'panel-select');
         }
       }
     };
@@ -204,19 +209,27 @@ function AppMain() {
   };
 
   const handleTransition = (target: AppScreen) => {
-    if (target === 'privacy-policy') {
+    let resolvedTarget = target;
+    if (target === 'home' && !currentUser) {
+      resolvedTarget = 'panel-select';
+    }
+
+    if (resolvedTarget === 'privacy-policy') {
       window.history.pushState({}, '', '/privacy-policy');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (target === 'terms-and-conditions') {
+    } else if (resolvedTarget === 'terms-and-conditions') {
       window.history.pushState({}, '', '/terms-and-conditions');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (resolvedTarget === 'worker-signup') {
+      window.history.pushState({}, '', '/worker-signup');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       const currentPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
-      if (currentPath === '/privacy-policy' || currentPath === '/terms-and-conditions' || currentPath === '/terms' || currentPath === '/privacy') {
+      if (currentPath === '/privacy-policy' || currentPath === '/terms-and-conditions' || currentPath === '/terms' || currentPath === '/privacy' || currentPath === '/worker-signup') {
         window.history.pushState({}, '', '/');
       }
     }
-    setCurrentScreen(target);
+    setCurrentScreen(resolvedTarget);
   };
 
   // Clean out any legacy mock demo orders and ensure clean actual order history
@@ -300,7 +313,7 @@ function AppMain() {
             <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
           </div>
         }>
-        {currentScreen === 'auth-callback' as any && (
+        {currentScreen === 'auth-callback' && (
           <AuthCallback onTransition={handleTransition} />
         )}
         {currentScreen === 'splash' && (

@@ -14,7 +14,6 @@ interface AuthProps {
 }
 
 export default function Auth({ onTransition, showNotification, activePanelRole = 'customer' }: AuthProps) {
-  const [showPolicyModal, setShowPolicyModal] = useState<'privacy' | 'terms' | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -134,44 +133,6 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
           SECURE LOG IN • PUNCHX
         </p>
       </div>
-
-      <AnimatePresence>
-        {showPolicyModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-            onClick={() => setShowPolicyModal(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 15 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-[#11192e] border-2 border-[#c5a059] rounded-2xl p-6 w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] overflow-hidden"
-            >
-              <div className="flex justify-between items-center pb-3 border-b border-[#c5a059]/30 mb-4">
-                <div className="flex items-center gap-2 text-[#e9c176]">
-                  <ShieldCheck className="w-5 h-5 animate-pulse" />
-                  <h3 className="font-sans font-extrabold text-base uppercase tracking-wider">
-                    {showPolicyModal === 'privacy' ? 'Privacy Policy' : 'Terms & Conditions'}
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setShowPolicyModal(null)}
-                  className="p-1 px-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[#e9c176] hover:bg-[#c5a059] hover:text-black font-extrabold text-xs uppercase transition-all cursor-pointer"
-                >
-                  ✕ Close
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto pr-1 text-zinc-305 font-sans text-xs leading-relaxed space-y-4">
-                <p>Detailed legal policy text here.</p>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </main>
   );
 }
