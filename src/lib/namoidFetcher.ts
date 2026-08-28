@@ -39,7 +39,7 @@ export const NAMOID_JWKS = {
       use: "sig",
       alg: "RS256",
       kid: "key-2026-05",
-      n: "3ESxw5mFBtlHprbE7ehcoOs6F_kxN_QsmHl4TSkiz6zBgzPQ8qwv-DXjXLxmPzYX4_puiaE2yIBHctrYxcwLwD6_sZ6irYa-ogzYSQWNhbee8ycD4hJpWO6O3ClpR_-IDPb4AQTbvGPo5tSbpNYzh5FkIWTRIZTCBfz7XUzsNaEVKO9KdtR4HLqNpPneBxCIPB022znp1dVRqgIVI6yIIAyTUkbD28HbD-LwtxRadxN_O9SaHt-Hjjo6_iPPNhJZnNx_vHWjpCIVQRtpCYO-eCVv_WpzopbF25yc9zV70KRP1BwZgbbA5ZyAARcuI87aJuxvSKK9BSkQaUZt7dNeoQ",
+      n: "3ESxw5mFBtlHprbE7ehcoOs6F_kxN_QsmHl4TSkiz6zBgzPQ8qwv-DXjXLxmPzYX4_puiaE2yIBHctrYxcwLwD6_sZ6irYa-ogzYSQWNhbee8ycD4hJpWO6O3ClpR_-IDPb4AQTbvGPo5tSbpNYzh5FkIWTRIZTCBfz7XUzsNaEVKO9KdtR4HLqNpP[...]",
       e: "AQAB"
     }
   ]
@@ -75,6 +75,26 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
   // Direct browser-to-NamoID fetch is blocked by CORS, so route through the backend proxy.
   if (url.includes("/v1/oauth/token") || url.includes("/oauth/token")) {
     const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";
+
+    // If there is no backend configured (static host like GitHub Pages), avoid calling the local proxy path
+    // which will return 404 and produce a confusing error message for users. Instead return a clear, actionable
+    // response informing the operator to deploy or configure the backend. This prevents the app from showing a
+    // raw 404 token request failure to end-users.
+    if (!backendBase) {
+      return new Response(
+        JSON.stringify({
+          error: "proxy_unavailable",
+          error_description:
+            "Backend proxy not configured. Token exchange cannot be performed from the browser on static hosts.\n" +
+            "Deploy the server-side proxy (api/namoid-proxy) or set VITE_BACKEND_URL / VITE_API_URL to a backend that implements /api/namoid-proxy.",
+        }),
+        {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const proxyUrl = `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
 
     const headers = new Headers(init?.headers);
@@ -90,7 +110,7 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
       init.body.forEach((val, key) => {
         if (typeof val === "string") params.append(key, val);
       });
-    } else if (init?.body && typeof init.body === "object") {
+    } else if (init?.body && typeof init?.body === "object") {
       try {
         params = new URLSearchParams(init.body as unknown as Record<string, string>);
       } catch {
