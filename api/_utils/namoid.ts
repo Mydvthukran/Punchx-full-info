@@ -80,7 +80,9 @@ export async function handleNamoidProxy(req: VercelRequest, res: VercelResponse)
         bodyObj.client_id = "namoid_client_live_6SHiIOdLuGIBZmiJjC5Iu5KCbqB2QQjd";
       }
       if (!bodyObj.redirect_uri) {
-        bodyObj.redirect_uri = "https://www.punchxapp.co.in/auth/callback";
+        const host = req.headers['x-forwarded-host'] || req.headers.host;
+        const proto = req.headers['x-forwarded-proto'] || (host?.includes('localhost') ? 'http' : 'https');
+        bodyObj.redirect_uri = host ? `${proto}://${host}/auth/callback` : "https://www.punchxapp.co.in/auth/callback";
       }
 
       body = new URLSearchParams(bodyObj).toString();

@@ -121,7 +121,10 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     // Ensure mandatory OAuth parameters
     if (!params.get("grant_type")) params.set("grant_type", "authorization_code");
     if (!params.get("client_id")) params.set("client_id", "namoid_client_live_6SHiIOdLuGIBZmiJjC5Iu5KCbqB2QQjd");
-    if (!params.get("redirect_uri")) params.set("redirect_uri", "https://www.punchxapp.co.in/auth/callback");
+    if (!params.get("redirect_uri")) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.punchxapp.co.in';
+      params.set("redirect_uri", `${origin}/auth/callback`);
+    }
 
     const bodyStr = params.toString();
 

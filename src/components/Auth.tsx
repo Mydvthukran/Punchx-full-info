@@ -119,11 +119,9 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
             <SignIn 
               redirectUri={
                 import.meta.env.VITE_NAMOID_REDIRECT_URI || 
-                (typeof window !== 'undefined' && window.location.hostname.includes('punchxapp.co.in')
-                  ? 'https://www.punchxapp.co.in/auth/callback'
-                  : typeof window !== 'undefined'
-                    ? `${window.location.origin}/auth/callback`
-                    : 'https://www.punchxapp.co.in/auth/callback')
+                (typeof window !== 'undefined'
+                  ? `${window.location.origin}/auth/callback`
+                  : 'https://www.punchxapp.co.in/auth/callback')
               } 
             />
           </div>
