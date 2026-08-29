@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
+import { signInWithCredential, OAuthProvider, signOut } from 'firebase/auth';
 import { UserProfile } from '../types';
 import { NamoIDUserInfo } from '@namoidhq/js';
 
@@ -130,9 +131,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
     }
   };
 
-  const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin') => {
+  const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
     setCurrentUser(identity);
     localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
+    
+    // Connect NamoID to Firebase Auth using native OIDC integration
+    if (idToken) {
+      try {
+        const provider = new OAuthProvider('oidc.namoid');
+        const credential = provider.credential({
+          idToken: idToken,
+        });
+        await signInWithCredential(auth, credential);
+        console.log("Firebase Auth signed in successfully via NamoID.");
+      } catch (fbAuthErr) {
+        console.error("Failed to sign into Firebase with NamoID token:", fbAuthErr);
+      }
+    }
+
     return await fetchOrCreateProfile(identity, role);
   };
 
@@ -162,6 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
   const logout = async () => {
     try {
+      await signOut(auth);
       setCurrentUser(null);
       setUserProfile(null);
       localStorage.removeItem('punchx_namoid_identity');

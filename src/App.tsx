@@ -61,7 +61,7 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
         const rawRole = localStorage.getItem('punchx_auth_role') || 'citizen';
         const role: 'citizen' | 'worker' | 'admin' = 
           rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
-        await loginWithNamoID(result.identity, role);
+        await loginWithNamoID(result.identity, role, result.tokens.id_token);
         
         window.history.replaceState({}, document.title, '/');
         

@@ -81,6 +81,9 @@ if (typeof window !== 'undefined') {
 }
 
 export const db = firestoreInstance;
+import { getAuth } from 'firebase/auth';
+export const auth = getAuth(app);
+export { app };
 
 export enum OperationType {
   CREATE = 'create',
