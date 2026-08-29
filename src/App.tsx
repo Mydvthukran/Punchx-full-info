@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 import { NamoIDProvider, useNamoID, completeHostedAuthRedirect } from "@namoidhq/react";
 import { namoidFetcher } from './lib/namoidFetcher';
+import { Analytics } from '@vercel/analytics/react';
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
 const ProvidersList = lazy(() => import('./components/ProvidersList'));
@@ -577,6 +578,7 @@ export default function App() {
     <NamoIDProvider clientId={NAMOID_CLIENT_ID} fetcher={namoidFetcher}>
       <AuthProvider>
         <AppMain />
+        <Analytics />
       </AuthProvider>
     </NamoIDProvider>
   );
