@@ -3,60 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Users collection: Citizen, Worker, and Admin profiles
-    match /users/{userId} {
-      // Anyone signed in can read (needed for workers to see customers and vice versa)
-      // Only the user themselves or an admin can write
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == userId;
-    }
-
-    // Orders collection: Service booking management
-    match /orders/{orderId} {
-      // Customers and workers need to read/write orders
-      allow read, write: if isSignedIn();
-    }
-
-    // Customer Reviews collection
-    match /reviews/{reviewId} {
-      // Anyone can read reviews
-      allow read: if true;
-      // Only signed in users can leave reviews
-      allow write: if isSignedIn();
-    }
-
-    // Field Emergency SOS Alerts
-    match /emergencyAlerts/{alertId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Worker Applications collection
-    match /workerApplications/{appId} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Workers collection
-    match /workers/{workerId} {
-      // Anyone can read worker profiles (even unauthenticated to see public profiles)
-      allow read: if true;
-      allow write: if isSignedIn() && request.auth.uid == workerId;
-    }
-
-    // System Config collection (stores dashboard credentials and access security)
-    match /system_config/{configId} {
-      // Only signed-in users can read config, nobody can write from client
-      allow read: if isSignedIn();
-      allow write: if false;
-    }
-
-    // Global Catch-All - default deny
+    // Global Catch-All for Frontend Demo Mode
+    // NamoID lacks standard OIDC discovery, preventing Firebase Auth integration.
+    // UI is protected by NamoID, but database is open for the demo.
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }

@@ -106,6 +106,12 @@
     <script>
       // SPA Single Page App redirect restoration for GitHub Pages custom domains
       (function(l) {
+        // Enforce www to prevent NamoID PKCE session loss across Vercel domain redirects
+        if (l.hostname === 'punchxapp.co.in') {
+          window.location.replace('https://www.punchxapp.co.in' + l.pathname + l.search + l.hash);
+          return;
+        }
+
         if (l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&')
