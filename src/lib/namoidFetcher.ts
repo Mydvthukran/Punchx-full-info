@@ -108,6 +108,15 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     }
 
     const bodyStr = params.toString();
+    console.log("📤 [namoidFetcher -> /api/namoid-proxy] Outgoing Payload:", {
+      proxyUrl,
+      payload: Object.fromEntries(params.entries()),
+      code_verifier: params.get("code_verifier") || "(missing)",
+      code: params.get("code") ? `${params.get("code")?.slice(0, 10)}...` : "(missing)",
+      redirect_uri: params.get("redirect_uri") || "(missing)",
+      grant_type: params.get("grant_type") || "(missing)",
+      client_id: params.get("client_id") || "(missing)",
+    });
 
     // Strategy:
     // 1. First attempt to route through the backend proxy (/api/namoid-proxy)

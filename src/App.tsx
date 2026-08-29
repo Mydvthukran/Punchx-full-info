@@ -44,20 +44,50 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
 
     async function processCallback() {
       try {
+        const callbackUrl = window.location.href;
+        const parsedUrl = new URL(callbackUrl);
+        const urlParams = Object.fromEntries(parsedUrl.searchParams.entries());
+
         // Restore PKCE transaction from localStorage backup if missing in sessionStorage
+        const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
+        let sessionPkceData: any = null;
+        let localPkceData: any = null;
+
         try {
-          const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
-          if (!sessionStorage.getItem(storageKey)) {
-            const backup = localStorage.getItem(storageKey);
-            if (backup) {
-              sessionStorage.setItem(storageKey, backup);
-            }
+          const sessionRaw = sessionStorage.getItem(storageKey);
+          if (sessionRaw) sessionPkceData = JSON.parse(sessionRaw);
+          const localRaw = localStorage.getItem(storageKey);
+          if (localRaw) localPkceData = JSON.parse(localRaw);
+
+          if (!sessionRaw && localRaw) {
+            sessionStorage.setItem(storageKey, localRaw);
+            sessionPkceData = localPkceData;
           }
-        } catch {
-          // storage access guard
+        } catch (storageErr) {
+          console.warn("[AuthCallback] Storage access guard:", storageErr);
         }
 
+        console.group("🔐 [PunchX AuthCallback Diagnostics]");
+        console.log("1. Callback URL:", callbackUrl);
+        console.log("2. URL Search Parameters:", urlParams);
+        console.log("3. Stored PKCE Data (Key: " + storageKey + "):", {
+          sessionStorage: sessionPkceData,
+          localStorage: localPkceData,
+          code_verifier: sessionPkceData?.code_verifier || localPkceData?.code_verifier || "(missing)",
+          state: sessionPkceData?.state || localPkceData?.state || "(missing)",
+          redirect_uri: sessionPkceData?.redirect_uri || localPkceData?.redirect_uri || "(missing)",
+        });
+        console.log("4. Code match verification:", {
+          received_code: urlParams.code ? `${urlParams.code.slice(0, 8)}...` : "(none)",
+          received_state: urlParams.state || "(none)",
+          stored_state: sessionPkceData?.state || localPkceData?.state || "(none)",
+          state_matched: Boolean(urlParams.state && (urlParams.state === (sessionPkceData?.state || localPkceData?.state)))
+        });
+        console.groupEnd();
+
         const result = await completeHostedAuthRedirect(client, window.location.href);
+        console.log("✅ [AuthCallback] Authentication completed successfully:", result);
+
         const rawRole = localStorage.getItem('punchx_auth_role') || 'citizen';
         const role: 'citizen' | 'worker' | 'admin' = 
           rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
@@ -69,7 +99,7 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
         else if (role === 'worker') onTransition('worker-dashboard');
         else onTransition('home');
       } catch (e: any) {
-        console.error("Auth callback error:", e);
+        console.error("❌ [AuthCallback] Auth callback error:", e);
         setErrorMessage(e?.message || "Authentication callback could not be completed.");
       }
     }
