@@ -118,10 +118,9 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
           <div className="flex justify-center mt-6">
             <SignIn 
               redirectUri={
-                import.meta.env.VITE_NAMOID_REDIRECT_URI || 
-                (typeof window !== 'undefined'
+                typeof window !== 'undefined'
                   ? `${window.location.origin}/auth/callback`
-                  : 'https://www.punchxapp.co.in/auth/callback')
+                  : import.meta.env.VITE_NAMOID_REDIRECT_URI || 'https://www.punchxapp.co.in/auth/callback'
               } 
             />
           </div>
