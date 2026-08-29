@@ -6,7 +6,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { requestAndAutoUpdateLocation } from '../lib/location';
 import { 
-  Wrench, UserCheck, MapPin, Briefcase, Award, Phone, Mail, 
+  Wrench, UserCheck, Calendar, MapPin, Briefcase, Award, Phone, Mail, 
   ShieldCheck, FileText, CheckSquare, Square, ChevronRight, X, Lock, AlertCircle, Compass, DollarSign
 } from 'lucide-react';
 
@@ -18,6 +18,7 @@ interface WorkerSignupProps {
 
 export default function WorkerSignup({ onTransition, showNotification, setWorkerApplicationData }: WorkerSignupProps) {
   const [legalName, setLegalName] = useState('');
+  const [dob, setDob] = useState('');
   const [address, setAddress] = useState('');
   const [isLocating, setIsLocating] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState('AC Repair & Thermal');
@@ -67,6 +68,10 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
 
     if (!legalName.trim()) {
       setErrorMsg('Please enter your full legal name as per official ID.');
+      return;
+    }
+    if (!dob.trim()) {
+      setErrorMsg('Please enter your date of birth as registered with NamoID.');
       return;
     }
     if (!address.trim()) {
@@ -181,18 +186,35 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
 
         <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* Legal Full Name */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
-              <UserCheck className="w-3.5 h-3.5" /> Full Legal Name
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Rajesh Kumar Sharma"
-              value={legalName}
-              onChange={(e) => setLegalName(e.target.value)}
-              className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-600 outline-none transition-colors"
-            />
+          {/* Full Name & Date of Birth (2 cols on tablet/desktop, 1 col on mobile) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            <div className="space-y-1.5 w-full">
+              <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" /> Full Legal Name
+              </label>
+              <input
+                id="signup-worker-name"
+                type="text"
+                placeholder="e.g. Rajesh Kumar Sharma"
+                value={legalName}
+                onChange={(e) => setLegalName(e.target.value)}
+                className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-600 outline-none transition-colors"
+              />
+            </div>
+
+            <div className="space-y-1.5 w-full">
+              <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" /> Date of Birth (NamoID)
+              </label>
+              <input
+                id="signup-worker-dob"
+                type="date"
+                max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-600 outline-none transition-colors [color-scheme:dark]"
+              />
+            </div>
           </div>
 
           {/* Full Residential & Work Address */}

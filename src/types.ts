@@ -2,6 +2,7 @@ export type AppScreen =
   | 'splash' 
   | 'panel-select'
   | 'auth' 
+  | 'auth-callback'
   | 'otp' 
   | 'customer-setup'
   | 'worker-setup'
@@ -15,7 +16,9 @@ export type AppScreen =
   | 'payment' 
   | 'tracking' 
   | 'worker-dashboard' 
-  | 'admin-dashboard';
+  | 'admin-dashboard'
+  | 'privacy-policy'
+  | 'terms-and-conditions';
 
 export interface WorkerApplication {
   id: string;
@@ -34,14 +37,18 @@ export interface WorkerApplication {
   appliedAt: string;
 }
 
-export type UserRole = 'citizen' | 'worker' | 'authority';
+/* Use 'admin' consistently (matches current code usage) */
+export type UserRole = 'citizen' | 'worker' | 'admin';
 
 export interface UserProfile {
   uid: string;
   name: string;
   email: string;
   photoURL?: string;
-  role: 'citizen' | 'worker' | 'admin';
+  role: UserRole;
+  dob?: string;
+  birthdate?: string;
+  isProfileCompleted?: boolean;
   address?: string;
   landmark?: string;
   area?: string;
@@ -149,4 +156,3 @@ export interface AiMessage {
   text: string;
   timestamp: string;
 }
-

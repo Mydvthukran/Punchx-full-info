@@ -33,7 +33,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          rm -f package-lock.json
+          rm -rf package-lock.json node_modules
           npm install
 
       - name: Build
@@ -41,6 +41,7 @@ jobs:
         env:
           # Add any environment variables needed for the build
           GOOGLE_MAPS_PLATFORM_KEY: ${{ secrets.GOOGLE_MAPS_PLATFORM_KEY }}
+          VITE_NAMOID_CLIENT_ID: ${{ secrets.VITE_NAMOID_CLIENT_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
