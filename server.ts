@@ -57,15 +57,20 @@ async function startServer() {
         // Collect all potential parameters from body and query
         const bodyObj: Record<string, string> = {};
 
-        if (typeof req.body === "object" && req.body !== null) {
-          for (const [k, v] of Object.entries(req.body)) {
+        let rawBody = req.body;
+        if (typeof Buffer !== "undefined" && Buffer.isBuffer(rawBody)) {
+          rawBody = rawBody.toString("utf-8");
+        }
+
+        if (typeof rawBody === "object" && rawBody !== null) {
+          for (const [k, v] of Object.entries(rawBody)) {
             if (k !== "targetUrl" && v !== undefined && v !== null) {
               bodyObj[k] = String(v);
             }
           }
-        } else if (typeof req.body === "string" && req.body.length > 0) {
+        } else if (typeof rawBody === "string" && rawBody.length > 0) {
           try {
-            const parsed = new URLSearchParams(req.body);
+            const parsed = new URLSearchParams(rawBody);
             for (const [k, v] of parsed.entries()) {
               if (k !== "targetUrl" && v !== undefined && v !== null) {
                 bodyObj[k] = v;
@@ -92,7 +97,17 @@ async function startServer() {
           bodyObj.client_id = "namoid_client_live_6SHiIOdLuGIBZmiJjC5Iu5KCbqB2QQjd";
         }
         if (!bodyObj.redirect_uri) {
-          bodyObj.redirect_uri = "https://www.punchxapp.co.in/auth/callback";
+          const originHeader = (req.headers["origin"] as string) || (req.headers["referer"] as string);
+          if (originHeader && !originHeader.includes("punchxapp.co.in")) {
+            try {
+              const urlObj = new URL(originHeader);
+              bodyObj.redirect_uri = `${urlObj.origin}/auth/callback`;
+            } catch {
+              bodyObj.redirect_uri = "https://www.punchxapp.co.in/auth/callback";
+            }
+          } else {
+            bodyObj.redirect_uri = "https://www.punchxapp.co.in/auth/callback";
+          }
         }
 
         body = new URLSearchParams(bodyObj).toString();
