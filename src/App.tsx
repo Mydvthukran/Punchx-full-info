@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import DragoAssistant from './components/DragoAssistant';
@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
+
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
 const ProvidersList = lazy(() => import('./components/ProvidersList'));
@@ -30,8 +31,6 @@ const CustomerLocationSetup = lazy(() => import('./components/CustomerLocationSe
 const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'));
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'));
-
-
 
 function AppMain() {
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
@@ -65,6 +64,7 @@ function AppMain() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentUser, currentScreen]);
+
   const [activePanelRole, setActivePanelRole] = useState<'customer' | 'worker' | 'admin'>(() => {
     return (localStorage.getItem('punchx_auth_role') as 'customer' | 'worker' | 'admin') || 'customer';
   });
@@ -72,6 +72,7 @@ function AppMain() {
   useEffect(() => {
     localStorage.setItem('punchx_auth_role', activePanelRole);
   }, [activePanelRole]);
+
   const [workerApplication, setWorkerApplication] = useState<WorkerApplication | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('AC Repair');
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
@@ -245,7 +246,7 @@ function AppMain() {
 
       {/* Global Prestige Notification Toast */}
       {toastMessage && (
-        <div id="global-prestige-toast" className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-sm bg-[#0c0f10]/95 border border-[#c5a059] px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(197,160,89,0.35)] flex items-center gap-3 backdrop-blur-md animate-fade-in">
+        <div id="global-prestige-toast" className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-sm bg-[#0c0f10]/95 border border-[#c5a059] px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 backdrop-blur-lg">
           <div className="w-2.5 h-2.5 rounded-full bg-[#c5a059] animate-ping flex-shrink-0" />
           <p className="text-[11px] text-zinc-150 font-sans tracking-wide leading-relaxed">
             {toastMessage}
@@ -510,8 +511,6 @@ function AppMain() {
     </div>
   );
 }
-
-const NAMOID_CLIENT_ID = import.meta.env.VITE_NAMOID_CLIENT_ID || 'namoid_client_live_6SHiIOdLuGIBZmiJjC5Iu5KCbqB2QQjd';
 
 export default function App() {
   return (
