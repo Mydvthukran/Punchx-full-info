@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ShieldCheck, MapPin, Phone, Mail, Clock, Award, Shield, CheckCircle2,
-  ExternalLink, ChevronRight, Heart, Sparkles, Navigation
+  ExternalLink, ChevronRight, Heart, Sparkles
 } from 'lucide-react';
 import { AppScreen } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
@@ -179,20 +179,6 @@ export default function WebsiteFooter({
                 className="w-full py-2.5 px-3 bg-[#111f3d] hover:bg-[#182a52] border border-[#c5a059]/40 text-[#e9c176] rounded-xl font-bold flex items-center justify-between transition-all cursor-pointer text-xs"
               >
                 <span>Technician & Authority Portal</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={() => {
-                  onTransition('tracking');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="w-full py-2.5 px-3 bg-[#0a152e] hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-xl font-semibold flex items-center justify-between transition-all cursor-pointer text-xs"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5 text-[#c5a059]" />
-                  <span>Live GPS Radar Tracker</span>
-                </span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
