@@ -2,7 +2,6 @@ export type AppScreen =
   | 'splash' 
   | 'panel-select'
   | 'auth' 
-  | 'auth-callback'
   | 'otp' 
   | 'customer-setup'
   | 'worker-setup'
