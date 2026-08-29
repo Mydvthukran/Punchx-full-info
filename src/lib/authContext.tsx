@@ -11,7 +11,7 @@ interface AuthContextType {
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  loginWithNamoID: (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin') => Promise<void>;
+  loginWithNamoID: (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin') => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,7 +36,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
     setIsLoadingProfile(false);
   }, []);
 
-  const fetchOrCreateProfile = async (identity: NamoIDUserInfo, role: 'citizen' | 'worker' | 'admin' = activeRole) => {
+  const fetchOrCreateProfile = async (identity: NamoIDUserInfo, role: 'citizen' | 'worker' | 'admin' = activeRole): Promise<UserProfile> => {
+    const extractedName = identity.name || 
+      ((identity as any).given_name ? `${(identity as any).given_name} ${(identity as any).family_name || ''}`.trim() : '') || 
+      (identity.email ? identity.email.split('@')[0] : 'PunchX Member');
+
+    const extractedDob = ((identity as any).birthdate as string) || 
+      ((identity as any).dob as string) || 
+      ((identity as any).date_of_birth as string) || 
+      ((identity as any).birth_date as string) || 
+      '';
+
     try {
       setIsLoadingProfile(true);
       const userDocRef = doc(db, 'users', identity.sub);
@@ -55,7 +65,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
           uid: identity.sub,
           email: existingData.email || identity.email || '',
           photoURL: existingData.photoURL || (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-          name: existingData.name || identity.name || (identity.email ? identity.email.split('@')[0] : 'PunchX Member'),
+          name: existingData.name || extractedName,
+          dob: existingData.dob || existingData.birthdate || extractedDob,
+          birthdate: existingData.birthdate || existingData.dob || extractedDob,
+          isProfileCompleted: existingData.isProfileCompleted ?? (!!existingData.name && !!(existingData.dob || existingData.birthdate) && !!existingData.address),
           role: existingData.role || role,
           address: existingData.address !== undefined ? existingData.address : '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
           phone: existingData.phone || identity.phone_number || ''
@@ -63,13 +76,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
         
         setUserProfile(updatedProfile);
         localStorage.setItem('punchx_namoid_profile', JSON.stringify(updatedProfile));
+        return updatedProfile;
       } else {
+        const isCompleted = !!extractedName && !!extractedDob;
         const newProfile: UserProfile = {
           uid: identity.sub,
-          name: identity.name || (identity.email ? identity.email.split('@')[0] : 'PunchX Member'),
+          name: extractedName,
           email: identity.email || '',
           photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
           role: role,
+          dob: extractedDob,
+          birthdate: extractedDob,
+          isProfileCompleted: isCompleted,
           address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
           phone: identity.phone_number || '',
           createdAt: new Date().toISOString(),
@@ -88,20 +106,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
         }
         setUserProfile(newProfile);
         localStorage.setItem('punchx_namoid_profile', JSON.stringify(newProfile));
+        return newProfile;
       }
     } catch (error) {
       console.warn('Notice fetching or creating user profile:', error);
       const fallbackProfile: UserProfile = {
         uid: identity.sub,
-        name: identity.name || identity.email?.split('@')[0] || 'PunchX Member',
+        name: extractedName,
         email: identity.email || '',
         photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
         role: role,
+        dob: extractedDob,
+        birthdate: extractedDob,
+        isProfileCompleted: false,
         address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
         phone: identity.phone_number || ''
       };
       setUserProfile(fallbackProfile);
       localStorage.setItem('punchx_namoid_profile', JSON.stringify(fallbackProfile));
+      return fallbackProfile;
     } finally {
       setIsLoadingProfile(false);
     }
@@ -110,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
   const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin') => {
     setCurrentUser(identity);
     localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
-    await fetchOrCreateProfile(identity, role);
+    return await fetchOrCreateProfile(identity, role);
   };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {

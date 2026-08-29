@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, WorkerApplication } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
 import { 
-  User, MapPin, Compass, Navigation, CheckCircle, ArrowRight, 
+  User, Calendar, MapPin, Compass, Navigation, CheckCircle, ArrowRight, 
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Hammer, Phone, Star,
   Briefcase, Users, Clock, Shield, Lock, Radio
@@ -38,6 +38,12 @@ export default function WorkerLocationSetup({
     workerApplication?.legalName ||
     (authMethod === 'gmail' && authTarget ? authTarget.split('@')[0] : '') ||
     localStorage.getItem('punchx_worker_name') ||
+    ''
+  );
+
+  const [dob, setDob] = useState(
+    localStorage.getItem('punchx_worker_dob') ||
+    localStorage.getItem('punchx_user_dob') ||
     ''
   );
 
@@ -177,6 +183,7 @@ export default function WorkerLocationSetup({
     // Save to LocalStorage
     try {
       localStorage.setItem('punchx_worker_name', legalName.trim());
+      localStorage.setItem('punchx_worker_dob', dob.trim());
       localStorage.setItem('punchx_worker_address', finalFormattedAddress);
       localStorage.setItem('punchx_worker_landmark', landmark.trim());
       localStorage.setItem('punchx_worker_sector', resolvedSector);
@@ -219,6 +226,8 @@ export default function WorkerLocationSetup({
       await setDoc(doc(db, 'users', activeUid), {
         uid: activeUid,
         name: legalName.trim(),
+        dob: dob.trim(),
+        birthdate: dob.trim(),
         address: finalFormattedAddress,
         streetAddress: address.trim(),
         landmark: landmark.trim(),
@@ -312,22 +321,42 @@ export default function WorkerLocationSetup({
             </motion.div>
           )}
 
-          {/* 1. Legal / Partner Name */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
-              Legal Name / Specialist Name <span className="text-[#c5a059]">*</span>
-            </label>
-            <div className="relative flex items-center">
-              <User className="absolute left-3.5 w-4 h-4 text-zinc-400" />
-              <input
-                id="worker-name-input"
-                type="text"
-                value={legalName}
-                onChange={(e) => setLegalName(e.target.value)}
-                placeholder="e.g. Ramesh Kumar (Thermal Specialist)"
-                required
-                className="w-full bg-[#09152e] border border-zinc-700/80 focus:border-[#c5a059] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:ring-1 focus:ring-[#c5a059]"
-              />
+          {/* 1. Legal / Partner Name & Date of Birth (2 cols on tablet/desktop, 1 col on mobile) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+            <div className="space-y-1.5 w-full">
+              <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
+                Legal Name / Specialist Name <span className="text-[#c5a059]">*</span>
+              </label>
+              <div className="relative flex items-center w-full">
+                <User className="absolute left-3.5 w-4 h-4 text-zinc-400" />
+                <input
+                  id="worker-name-input"
+                  type="text"
+                  value={legalName}
+                  onChange={(e) => setLegalName(e.target.value)}
+                  placeholder="e.g. Ramesh Kumar (Thermal Specialist)"
+                  required
+                  className="w-full bg-[#09152e] border border-zinc-700/80 focus:border-[#c5a059] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:ring-1 focus:ring-[#c5a059]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 w-full">
+              <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
+                Date of Birth (NamoID) <span className="text-[#c5a059]">*</span>
+              </label>
+              <div className="relative flex items-center w-full">
+                <Calendar className="absolute left-3.5 w-4 h-4 text-[#c5a059]" />
+                <input
+                  id="worker-dob-input"
+                  type="date"
+                  max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  required
+                  className="w-full bg-[#09152e] border border-zinc-700/80 focus:border-[#c5a059] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:ring-1 focus:ring-[#c5a059] [color-scheme:dark]"
+                />
+              </div>
             </div>
           </div>
 

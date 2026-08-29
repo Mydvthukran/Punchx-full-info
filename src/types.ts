@@ -46,6 +46,9 @@ export interface UserProfile {
   email: string;
   photoURL?: string;
   role: UserRole;
+  dob?: string;
+  birthdate?: string;
+  isProfileCompleted?: boolean;
   address?: string;
   landmark?: string;
   area?: string;
