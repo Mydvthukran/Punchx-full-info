@@ -1,5 +1,5 @@
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 
 export interface LocationData {
   lat: number;
@@ -391,7 +391,7 @@ export async function requestAndAutoUpdateLocation(
     }
 
     // 2. Save in Firestore if authenticated
-    const activeUid = targetUid || JSON.parse(localStorage.getItem('punchx_namoid_profile') || '{}')?.uid;
+    const activeUid = targetUid || auth.currentUser?.uid;
     if (activeUid) {
       try {
         await setDoc(
@@ -734,7 +734,7 @@ export async function calibrate100PercentAccuracyLocation(
   }
 
   // Step 4: Synchronize to Firestore
-  const activeUid = targetUid || JSON.parse(localStorage.getItem('punchx_namoid_profile') || '{}')?.uid;
+  const activeUid = targetUid || auth.currentUser?.uid;
   if (activeUid) {
     try {
       await setDoc(

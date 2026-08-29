@@ -12,8 +12,7 @@ import WebsiteFooter from './components/WebsiteFooter';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
-import { NamoIDProvider, useNamoID, completeHostedAuthRedirect } from "@namoidhq/react";
-import { namoidFetcher } from './lib/namoidFetcher';
+import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
@@ -32,112 +31,14 @@ const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'));
 
-function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => void }) {
-  const client = useNamoID();
-  const { loginWithNamoID } = useAuth();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const hasProcessedRef = useRef(false);
-  
-  useEffect(() => {
-    if (hasProcessedRef.current) return;
-    hasProcessedRef.current = true;
 
-    async function processCallback() {
-      try {
-        const callbackUrl = window.location.href;
-        const parsedUrl = new URL(callbackUrl);
-        const urlParams = Object.fromEntries(parsedUrl.searchParams.entries());
-
-        // Restore PKCE transaction from localStorage backup if missing in sessionStorage
-        const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
-        let sessionPkceData: any = null;
-        let localPkceData: any = null;
-
-        try {
-          const sessionRaw = sessionStorage.getItem(storageKey);
-          if (sessionRaw) sessionPkceData = JSON.parse(sessionRaw);
-          const localRaw = localStorage.getItem(storageKey);
-          if (localRaw) localPkceData = JSON.parse(localRaw);
-
-          if (!sessionRaw && localRaw) {
-            sessionStorage.setItem(storageKey, localRaw);
-            sessionPkceData = localPkceData;
-          }
-        } catch (storageErr) {
-          console.warn("[AuthCallback] Storage access guard:", storageErr);
-        }
-
-        console.group("🔐 [PunchX AuthCallback Diagnostics]");
-        console.log("1. Callback URL:", callbackUrl);
-        console.log("2. URL Search Parameters:", urlParams);
-        console.log("3. Stored PKCE Data (Key: " + storageKey + "):", {
-          sessionStorage: sessionPkceData,
-          localStorage: localPkceData,
-          code_verifier: sessionPkceData?.code_verifier || localPkceData?.code_verifier || "(missing)",
-          state: sessionPkceData?.state || localPkceData?.state || "(missing)",
-          redirect_uri: sessionPkceData?.redirect_uri || localPkceData?.redirect_uri || "(missing)",
-        });
-        console.log("4. Code match verification:", {
-          received_code: urlParams.code ? `${urlParams.code.slice(0, 8)}...` : "(none)",
-          received_state: urlParams.state || "(none)",
-          stored_state: sessionPkceData?.state || localPkceData?.state || "(none)",
-          state_matched: Boolean(urlParams.state && (urlParams.state === (sessionPkceData?.state || localPkceData?.state)))
-        });
-        console.groupEnd();
-
-        const result = await completeHostedAuthRedirect(client, window.location.href);
-        console.log("✅ [AuthCallback] Authentication completed successfully:", result);
-
-        const rawRole = localStorage.getItem('punchx_auth_role') || 'citizen';
-        const role: 'citizen' | 'worker' | 'admin' = 
-          rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
-        await loginWithNamoID(result.identity, role, result.tokens.id_token);
-        
-        window.history.replaceState({}, document.title, '/');
-        
-        if (role === 'admin') onTransition('admin-dashboard');
-        else if (role === 'worker') onTransition('worker-dashboard');
-        else onTransition('home');
-      } catch (e: any) {
-        console.error("❌ [AuthCallback] Auth callback error:", e);
-        setErrorMessage(e?.message || "Authentication callback could not be completed.");
-      }
-    }
-    processCallback();
-  }, [client, loginWithNamoID, onTransition]);
-
-  if (errorMessage) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
-        <div className="max-w-md bg-[#11192e] border border-red-500/30 p-6 rounded-2xl shadow-xl">
-          <p className="text-red-400 font-bold text-base mb-2">Sign In Notice</p>
-          <p className="text-zinc-400 text-xs mb-4 leading-relaxed">{errorMessage}</p>
-          <button
-            onClick={() => onTransition('auth')}
-            className="px-4 py-2 bg-[#c5a059] text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-[#d8b46e] transition-all cursor-pointer"
-          >
-            Return to Sign In
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
-      <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
-      <p className="mt-4 text-zinc-400 font-mono text-sm animate-pulse">Authenticating with NamoID...</p>
-    </div>
-  );
-}
 
 function AppMain() {
-  const { currentUser, userProfile, isLoadingProfile, loginWithNamoID } = useAuth() as any;
+  const { currentUser, userProfile, isLoadingProfile } = useAuth();
 
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
     const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
     const search = window.location.search.toLowerCase();
-    if (rawPath === '/auth/callback' || search.includes('/auth/callback')) return 'auth-callback';
     if (rawPath === '/privacy-policy' || rawPath === '/privacy' || search.includes('/privacy-policy') || search.includes('/privacy')) return 'privacy-policy';
     if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service' || search.includes('/terms-and-conditions') || search.includes('/terms')) return 'terms-and-conditions';
     if (rawPath === '/worker-signup' || search.includes('/worker-signup')) return 'worker-signup';
@@ -180,6 +81,7 @@ function AppMain() {
 
   const [authMethod, setAuthMethod] = useState<'phone' | 'gmail'>('phone');
   const [authTarget, setAuthTarget] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [hasClaimedBonus, setHasClaimedBonus] = useState<boolean>(() => {
     return localStorage.getItem('punchx_first_order_coupon_claimed') === 'true';
   });
@@ -380,9 +282,7 @@ function AppMain() {
             <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
           </div>
         }>
-        {currentScreen === 'auth-callback' && (
-          <AuthCallback onTransition={handleTransition} />
-        )}
+
         {currentScreen === 'splash' && (
           <Splash onTransition={handleTransition} />
         )}
@@ -430,6 +330,16 @@ function AppMain() {
               setAuthMethod(method);
               setAuthTarget(target);
             }}
+            activePanelRole={activePanelRole}
+          />
+        )}
+        {currentScreen === 'otp' && (
+          <OtpVerify
+            onTransition={handleTransition}
+            otpCode={otpCode}
+            setOtpCode={setOtpCode}
+            authMethod={authMethod}
+            authTarget={authTarget}
             activePanelRole={activePanelRole}
           />
         )}
@@ -579,7 +489,7 @@ function AppMain() {
       {/* Global Bot Companion DRAGO AI Assist */}
       <DragoAssistant
         currentScreen={currentScreen}
-        onAutoFillOtp={() => {}}
+        onAutoFillOtp={(code) => setOtpCode(code)}
         onApplyPromo={(code) => setPromoApplied(true)}
         onAutoFillBooking={() =>
           setIssueDescription("AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.")
@@ -605,11 +515,9 @@ const NAMOID_CLIENT_ID = import.meta.env.VITE_NAMOID_CLIENT_ID || 'namoid_client
 
 export default function App() {
   return (
-    <NamoIDProvider clientId={NAMOID_CLIENT_ID} fetcher={namoidFetcher}>
-      <AuthProvider>
-        <AppMain />
-        <Analytics />
-      </AuthProvider>
-    </NamoIDProvider>
+    <AuthProvider>
+      <AppMain />
+      <Analytics />
+    </AuthProvider>
   );
 }
