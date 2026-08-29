@@ -13,6 +13,7 @@ import CustomerTestimonials from './CustomerTestimonials';
 import WebsiteFAQ from './WebsiteFAQ';
 import EnterpriseInquiryModal from './EnterpriseInquiryModal';
 import InvoiceReceiptModal from './InvoiceReceiptModal';
+import WarrantyClaimModal from './WarrantyClaimModal';
 import { requestAndAutoUpdateLocation } from '../lib/location';
 import { getStoredPushNotifications } from '../lib/pushNotifications';
 
@@ -81,6 +82,7 @@ export default function HomeDashboard({
   const [unreadPushCount, setUnreadPushCount] = useState(0);
   const [isEnterpriseModalOpen, setIsEnterpriseModalOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
+  const [warrantyClaimOrder, setWarrantyClaimOrder] = useState<OrderRecord | null>(null);
 
   useEffect(() => {
     const updateUnread = () => {
@@ -1277,6 +1279,34 @@ export default function HomeDashboard({
                               </div>
                             )}
 
+                            {/* 30-Day Guarantee Rebooking Action for Repair / Opted services */}
+                            {(order.hasWarrantyGuarantee || order.category?.toLowerCase().includes('repair') || order.category?.toLowerCase().includes('ac')) && (
+                              <div className="bg-[#0f1a30] border border-[#c5a059]/30 rounded-xl p-2.5 mt-1 flex justify-between items-center gap-2">
+                                <div className="text-left">
+                                  <div className="flex items-center gap-1">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-[#e9c176]" />
+                                    <span className="text-[10px] font-bold text-[#e9c176]">30-Day Free Revisit Guarantee</span>
+                                  </div>
+                                  <span className="text-[9px] text-zinc-400 block mt-0.5">
+                                    {order.warrantyClaimId ? `Claim ${order.warrantyClaimId}: ${order.warrantyClaimStatus || 'Under Review'}` : 'Eligible for 100% Free Rebooking if same issue recurs.'}
+                                  </span>
+                                </div>
+                                {order.warrantyClaimId ? (
+                                  <span className="text-[9px] font-mono px-2 py-1 bg-[#c5a059]/20 text-[#e9c176] rounded-lg font-bold">
+                                    {order.warrantyClaimStatus || 'CLAIM IN REVIEW'}
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setWarrantyClaimOrder(order)}
+                                    className="text-[9.5px] font-sans font-bold bg-[#c5a059] hover:bg-[#e9c176] text-black px-2.5 py-1.5 rounded-lg uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shadow"
+                                  >
+                                    Claim Free Rebook (₹0)
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
                             {/* Conditional Rendering of Submitted Review vs Active Rating Fields */}
                             {order.isRated ? (
                               <div className="bg-[#0b1325] border border-[#c5a059]/15 rounded-xl p-2.5 mt-1 space-y-1">
@@ -1462,6 +1492,31 @@ export default function HomeDashboard({
         onClose={() => setSelectedInvoiceOrder(null)}
         order={selectedInvoiceOrder}
       />
+
+      {/* 30-Day Free Revisit Guarantee Claim Modal */}
+      {warrantyClaimOrder && (
+        <WarrantyClaimModal
+          order={warrantyClaimOrder}
+          isOpen={!!warrantyClaimOrder}
+          onClose={() => setWarrantyClaimOrder(null)}
+          onSubmitSuccess={(claim) => {
+            const updated = historyOrders.map((o) => {
+              if (o.id === claim.orderId) {
+                return {
+                  ...o,
+                  warrantyClaimId: claim.id,
+                  warrantyClaimStatus: claim.status
+                };
+              }
+              return o;
+            });
+            setHistoryOrders(updated);
+            localStorage.setItem('punchx_order_history', JSON.stringify(updated));
+            showNotification(`✓ 30-Day Guarantee Claim ${claim.id} logged for free rebooking!`);
+          }}
+          showNotification={showNotification}
+        />
+      )}
     </div>
   );
 }

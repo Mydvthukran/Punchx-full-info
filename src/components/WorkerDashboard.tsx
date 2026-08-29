@@ -761,11 +761,17 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                       }`}
                     >
                       <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-mono font-bold text-white bg-[#07122a] px-2.5 py-1 rounded-lg border border-zinc-800">
                             {order.id}
                           </span>
                           <span className="text-xs font-bold text-[#e9c176]">{order.category}</span>
+                          {order.isRebooking && (
+                            <span className="text-[9px] font-mono font-extrabold px-2 py-0.5 rounded-full bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40 flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-[#e9c176]" />
+                              30-Day Free Revisit (Fee: ₹59 Platform Covered)
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">

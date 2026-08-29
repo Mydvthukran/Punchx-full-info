@@ -82,12 +82,25 @@ export interface Worker {
   distanceKm?: number;
   completedJobs?: number;
   earningsToday?: number;
+  // 6-Tier Verification Data
+  identityVerified?: boolean;
+  skillVerified?: boolean;
+  backgroundChecked?: boolean;
+  trainingCertified?: boolean;
+  insuranceCovered?: boolean;
+  insuranceAmount?: string;
+  jobsCompletedCount?: number;
+  onTimeRate?: string;
+  continuousRating?: number;
 }
 
 export type ServiceCategory = {
   id: string;
   name: string;
   icon: string;
+  basePrice?: number;
+  emergencyETA?: string;
+  emergencySurcharge?: number;
 };
 
 export interface OrderRecord {
@@ -97,16 +110,20 @@ export interface OrderRecord {
   workerAvatar?: string;
   workerRating?: number;
   price: number;
+  originalPrice?: number;
+  discountApplied?: number;
+  couponUsed?: string | null;
   visitingFee?: number;
   platformCommission?: number;
   gstAmount?: number;
   totalAmountToPay?: number;
   date: string;
   time?: string;
-  status: 'Pending' | 'In-Progress' | 'Done' | 'Cancelled';
+  status: 'Pending' | 'In Progress' | 'In-Progress' | 'Done' | 'Cancelled';
   customerName?: string;
   customerAddress?: string;
   customerPhone?: string;
+  customerLocation?: { lat: number; lng: number };
   area?: string;
   sector?: string;
   otpCode?: string;
@@ -117,6 +134,96 @@ export interface OrderRecord {
   userBehaviour?: string;
   paymentMethod?: string;
   createdAt?: string;
+  completedAt?: string;
+  // 30-Day Guarantee
+  hasWarrantyGuarantee?: boolean;
+  warrantyFee?: number;
+  warrantyExpiryDate?: string;
+  warrantyClaimId?: string;
+  warrantyClaimStatus?: string;
+  // Dispatch & Emergency
+  dispatchMode?: 'PERSONAL_SELECT' | 'BROADCAST_15KM' | 'RANDOM_15KM';
+  personalSelectFee?: number;
+  isEmergency?: boolean;
+  emergencyETA?: string;
+  emergencySurcharge?: number;
+  baseFee?: number;
+  workerPhone?: string;
+  isRebooking?: boolean;
+  createdTimestamp?: number;
+  // Arrival Quality & Complaints
+  arrivalFeedbackSubmitted?: boolean;
+  arrivalQuality?: {
+    correctEquipment: boolean;
+    equipmentWorking: boolean;
+    behaviour: 'good' | 'poor' | 'unprofessional' | 'EXCELLENT' | 'NEEDS_IMPROVEMENT' | 'UNACCEPTABLE';
+    comment?: string;
+    submittedAt?: string;
+  };
+  qualityDiscountApplied?: number;
+  prepaidRefundAmount?: number;
+  prepaidRefundStatus?: 'NONE' | 'PENDING' | 'REFUNDED';
+  // Warranty rebooking metadata
+  isWarrantyRebooking?: boolean;
+  originalWarrantyOrderId?: string;
+  originalWarrantyClaimId?: string;
+  workerPayoutFee?: number;
+  warrantyRebookingFeeCovered?: number;
+}
+
+export interface WarrantyClaim {
+  id: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  workerName?: string;
+  workerId?: string;
+  originalWorkerName?: string;
+  category: string;
+  recurringIssue?: string;
+  problemDescription?: string;
+  daysRecurring?: string | number;
+  problemDurationDays?: string | number;
+  photoProof?: string;
+  preferredDate?: string;
+  preferredTimeSlot?: string;
+  status: 'PENDING_ADMIN_REVIEW' | 'ACCEPTED_SELECT_SLOT' | 'REBOOKING_CONFIRMED' | 'REJECTED' | 'APPROVED';
+  adminNotes?: string;
+  rebookingDate?: string;
+  rebookingTime?: string;
+  rebookingOrderId?: string;
+  workerPayoutFee?: number; // ₹59
+  servicePersonVisitingCharge?: number; // ₹59
+  customerCharge?: number; // ₹0
+  createdAt: string;
+  reviewedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+}
+
+export interface ComplaintRecord {
+  id: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  workerName: string;
+  workerPhone?: string;
+  workerCategory?: string;
+  correctEquipment: boolean;
+  equipmentWorking: boolean;
+  behaviourRating: 'good' | 'poor' | 'unprofessional' | 'EXCELLENT' | 'NEEDS_IMPROVEMENT' | 'UNACCEPTABLE';
+  comment?: string;
+  status: 'CRITICAL_PENDING_ADMIN' | 'UNDER_REVIEW' | 'RESOLVED';
+  discountAmount: number; // 10% of main service
+  paymentMethod?: string;
+  refundType: 'COD_DISCOUNT' | 'PREPAID_REFUND' | 'CASH_DISCOUNT' | 'PREPAID_GATEWAY_REFUND';
+  refundStatus?: 'DISCOUNT_APPLIED' | 'REFUND_QUEUED' | 'REFUND_COMPLETED';
+  adminActionNotes?: string;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface CustomerReview {

@@ -76,14 +76,22 @@ export default function ChoosePayment({
   };
 
   // Dynamic cost structures matching worker visiting fee + company commission (₹20) + GST (18%)
+  const [hasWarranty] = useState<boolean>(() => localStorage.getItem('punchx_opt_warranty') === 'true');
+  const [dispatchMode] = useState<'PERSONAL_SELECT' | 'BROADCAST_15KM'>(() => (localStorage.getItem('punchx_dispatch_mode') as any) || 'BROADCAST_15KM');
+  const [isEmergency] = useState<boolean>(() => localStorage.getItem('punchx_is_emergency') === 'true');
+
   const baseFee = selectedWorker ? (selectedWorker.visitingFee || selectedWorker.price || 199) : 199;
   const companyCommission = 20; // Company Commission Fee
-  const taxableSubtotal = baseFee + companyCommission;
+  const personalSelectFee = dispatchMode === 'PERSONAL_SELECT' ? 9 : 0;
+  const emergencySurcharge = isEmergency ? 49 : 0;
+  const warrantyFee = hasWarranty ? 99 : 0;
+
+  const taxableSubtotal = baseFee + companyCommission + personalSelectFee + emergencySurcharge;
   const gstAmount = Math.round(taxableSubtotal * 0.18); // 18% GST
-  const grossSubtotal = taxableSubtotal + gstAmount;
-  // 20% discount calculation
-  const discount = promoApplied ? Math.round(grossSubtotal * 0.20) : 0;
-  const grandTotal = Math.max(0, grossSubtotal - discount + tipAmount);
+  const grossServiceSubtotal = taxableSubtotal + gstAmount;
+  // 20% discount calculation applies to core service
+  const discount = promoApplied ? Math.round(grossServiceSubtotal * 0.20) : 0;
+  const grandTotal = Math.max(0, grossServiceSubtotal - discount + warrantyFee + tipAmount);
 
   const handleApplyPromoCode = () => {
     if (!couponInput.trim()) return;
@@ -123,15 +131,21 @@ export default function ChoosePayment({
       console.warn("Could not read location coordinates for order", e);
     }
 
+    // Expiry date for 30-day guarantee (30 days from creation)
+    const expiryDateObj = new Date();
+    expiryDateObj.setDate(expiryDateObj.getDate() + 30);
+    const warrantyExpiryDate = expiryDateObj.toISOString();
+
     const newOrderId = `PX-${Math.floor(1000 + Math.random() * 9000)}`;
     const newOrder = {
       id: newOrderId,
       category: selectedWorker ? selectedWorker.category : 'AC Repair',
-      workerName: selectedWorker ? selectedWorker.name : 'Rajesh Kumar',
+      workerName: selectedWorker ? selectedWorker.name : (dispatchMode === 'BROADCAST_15KM' ? 'Pending Broadcast (15km)' : 'Rajesh Kumar'),
       workerAvatar: selectedWorker ? selectedWorker.avatar : 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
       workerRating: selectedWorker ? (selectedWorker.rating || 4.9) : 4.9,
       price: grandTotal,
-      originalPrice: grossSubtotal + tipAmount,
+      originalPrice: grossServiceSubtotal + warrantyFee + tipAmount,
+      baseFee: baseFee,
       discountApplied: discount,
       couponUsed: promoApplied ? '20% BONUS COUPON' : null,
       paymentMethod: selectedMethod === 'gpay' ? 'Google Pay UPI' : selectedMethod === 'phonepe' ? 'PhonePe UPI' : selectedMethod === 'card' ? 'HDFC Debit Card' : 'Cash on Delivery',
@@ -141,6 +155,17 @@ export default function ChoosePayment({
       customerAddress: currentCitizenAddress,
       customerPhone: currentCitizenPhone,
       customerLocation: customerCoords,
+      // 30-Day Guarantee Details
+      hasWarrantyGuarantee: hasWarranty,
+      warrantyFee: warrantyFee,
+      warrantyExpiryDate: hasWarranty ? warrantyExpiryDate : null,
+      // Dispatch & Emergency Details
+      dispatchMode: dispatchMode,
+      personalSelectFee: personalSelectFee,
+      isEmergency: isEmergency,
+      emergencySurcharge: emergencySurcharge,
+      emergencyETA: isEmergency ? '15-30 Mins' : undefined,
+      prepaidRefundStatus: selectedMethod === 'cod' ? 'NONE' : 'NONE',
       createdAt: new Date().toISOString()
     };
 
@@ -388,10 +413,28 @@ export default function ChoosePayment({
                   <span>Company Commission Fee</span>
                   <span className="font-mono text-[#e9c176] font-bold">₹{companyCommission}</span>
                 </div>
+                {dispatchMode === 'PERSONAL_SELECT' && (
+                  <div className="flex justify-between items-center text-[#e9c176]">
+                    <span>Personal Specialist Choice</span>
+                    <span className="font-mono font-bold">+₹{personalSelectFee}</span>
+                  </div>
+                )}
+                {isEmergency && (
+                  <div className="flex justify-between items-center text-red-400">
+                    <span>Emergency Instant Dispatch (15-30m)</span>
+                    <span className="font-mono font-bold">+₹{emergencySurcharge}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-zinc-400">
                   <span>Government GST Tax (18%)</span>
                   <span className="font-mono text-zinc-200 font-bold">₹{gstAmount}</span>
                 </div>
+                {hasWarranty && (
+                  <div className="flex justify-between items-center text-[#e9c176] bg-[#c5a059]/10 p-1.5 rounded-lg border border-[#c5a059]/20">
+                    <span className="flex items-center gap-1 font-bold">🛡️ 30-Day Guarantee</span>
+                    <span className="font-mono font-bold">+₹99</span>
+                  </div>
+                )}
                 {tipAmount > 0 && (
                   <div id="summary-tip-item" className="flex justify-between items-center text-[#e9c176] font-medium font-sans">
                     <span>Specialist Tip (Optional)</span>

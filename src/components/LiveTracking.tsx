@@ -6,7 +6,8 @@ import { AppScreen } from '../types';
 import {
   ArrowLeft, Star, Phone, MessageSquare, MapPin, Send, X, Compass,
   CheckCircle, ShieldCheck, RefreshCw, Navigation2, Clock, Check,
-  AlertTriangle, ExternalLink, ChevronRight, Copy, Share2, Bell, Zap, Play
+  AlertTriangle, ExternalLink, ChevronRight, Copy, Share2, Bell, Zap, Play,
+  ShieldAlert, Wrench, Award, CheckCircle2, ThumbsUp
 } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
 import { getAccurateCurrentPosition, reverseGeocodeCoords, calculateDistanceKm } from '../lib/location';
@@ -16,6 +17,8 @@ import {
   simulateWorkerArrivedAlert,
   startAutomatedOrderLifecycle
 } from '../lib/pushNotifications';
+import ArrivalQualityModal from './ArrivalQualityModal';
+import WarrantyClaimModal from './WarrantyClaimModal';
 
 interface LiveTrackingProps {
   onTransition: (target: AppScreen) => void;
@@ -63,6 +66,12 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
   // OTP and Verification
   const [otp, setOtp] = useState<string>('4829');
   const [copiedOtp, setCopiedOtp] = useState(false);
+
+  // Quality & Guarantee Modals
+  const [showArrivalQualityModal, setShowArrivalQualityModal] = useState(false);
+  const [showWarrantyModal, setShowWarrantyModal] = useState(false);
+  const [qualityDiscount, setQualityDiscount] = useState<number>(0);
+  const [isQualityAlerted, setIsQualityAlerted] = useState<boolean>(false);
 
   // Cancellation
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -646,6 +655,78 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
                 </div>
               </div>
 
+              {/* 6-Tier High Trust Verification Badges */}
+              <div className="grid grid-cols-3 gap-1.5 pt-1 text-[9px] font-sans">
+                <div className="p-1.5 rounded-lg bg-[#101b33] border border-[#c5a059]/20 flex items-center gap-1.5 text-zinc-300">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span className="truncate">Identity Verified</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-[#101b33] border border-[#c5a059]/20 flex items-center gap-1.5 text-zinc-300">
+                  <Award className="w-3 h-3 text-[#e9c176] shrink-0" />
+                  <span className="truncate">Skill Tested</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-[#101b33] border border-[#c5a059]/20 flex items-center gap-1.5 text-zinc-300">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span className="truncate">Police Cleared</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-[#101b33] border border-[#c5a059]/20 flex items-center gap-1.5 text-zinc-300">
+                  <ShieldAlert className="w-3 h-3 text-[#e9c176] shrink-0" />
+                  <span className="truncate">₹10K Insured</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-[#101b33] border border-[#c5a059]/20 flex items-center gap-1.5 text-zinc-300">
+                  <Wrench className="w-3 h-3 text-[#e9c176] shrink-0" />
+                  <span className="truncate">1,245+ Jobs</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-[#101b33] border border-[#c5a059]/20 flex items-center gap-1.5 text-zinc-300">
+                  <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <span className="truncate">97% On-Time</span>
+                </div>
+              </div>
+
+              {/* 30-Day Guarantee & Emergency Indicators */}
+              {(activeOrder.hasWarrantyGuarantee || activeOrder.isEmergency) && (
+                <div className="flex gap-2 flex-wrap text-left">
+                  {activeOrder.hasWarrantyGuarantee && (
+                    <div className="flex items-center gap-1.5 bg-[#c5a059]/15 border border-[#c5a059]/40 px-2.5 py-1 rounded-xl text-[10px] font-bold text-[#e9c176]">
+                      <span>🛡️ 30-Day Free Revisit Guarantee Active</span>
+                    </div>
+                  )}
+                  {activeOrder.isEmergency && (
+                    <div className="flex items-center gap-1.5 bg-red-950/40 border border-red-800/60 px-2.5 py-1 rounded-xl text-[10px] font-bold text-red-400 animate-pulse">
+                      <Zap className="w-3 h-3 text-red-400" />
+                      <span>SOS Emergency Fast-Track Dispatch</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Arrival Quality Check Alert Banner */}
+              <div className="bg-[#151f37]/80 border border-[#c5a059]/40 rounded-2xl p-3.5 text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-[#e9c176]" />
+                    <span className="text-xs font-bold text-white font-sans">
+                      Arrival Quality & Tool Verification
+                    </span>
+                  </div>
+                  {isQualityAlerted && (
+                    <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded font-bold">
+                      10% DISCOUNT APPLIED
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-300 leading-relaxed font-sans">
+                  Did the technician bring proper equipment? Verify tools and behaviour for our 10% quality discount guarantee.
+                </p>
+                <button
+                  onClick={() => setShowArrivalQualityModal(true)}
+                  className="w-full py-2 bg-[#c5a059]/20 hover:bg-[#c5a059] text-[#e9c176] hover:text-black border border-[#c5a059]/50 rounded-xl text-xs font-bold font-sans uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" />
+                  <span>Verify Technician Arrival (Quality Check)</span>
+                </button>
+              </div>
+
               {/* Service Destination Location Card */}
               <div className="bg-[#101b33]/60 border border-[#c5a059]/20 rounded-2xl p-3.5 flex items-start gap-3 text-left">
                 <div className="w-8 h-8 rounded-xl bg-[#c5a059]/10 flex items-center justify-center text-[#e9c176] shrink-0 mt-0.5">
@@ -1094,6 +1175,42 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
           <span className="text-[10px] font-bold font-sans uppercase">Tracking</span>
         </button>
       </nav>
+
+      {/* Arrival Quality Check Modal */}
+      {showArrivalQualityModal && activeOrder && (
+        <ArrivalQualityModal
+          order={activeOrder}
+          isOpen={showArrivalQualityModal}
+          onClose={() => setShowArrivalQualityModal(false)}
+          onFeedbackProcessed={(discountAmount, isNegative) => {
+            if (isNegative) {
+              setQualityDiscount(discountAmount);
+              setIsQualityAlerted(true);
+            }
+          }}
+          showNotification={(msg) => {
+            setTrackingNotification(msg);
+            setTimeout(() => setTrackingNotification(null), 5000);
+          }}
+        />
+      )}
+
+      {/* 30-Day Free Revisit Guarantee Claim Modal */}
+      {showWarrantyModal && activeOrder && (
+        <WarrantyClaimModal
+          order={activeOrder}
+          isOpen={showWarrantyModal}
+          onClose={() => setShowWarrantyModal(false)}
+          onSubmitSuccess={(claim) => {
+            setTrackingNotification(`✓ 30-Day Guarantee Claim ${claim.id} logged.`);
+            setTimeout(() => setTrackingNotification(null), 5000);
+          }}
+          showNotification={(msg) => {
+            setTrackingNotification(msg);
+            setTimeout(() => setTrackingNotification(null), 5000);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AppScreen, OrderRecord, WorkerApplication } from '../types';
+import { AppScreen, OrderRecord, WorkerApplication, WarrantyClaim, ComplaintRecord } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
 import { 
   Building2, TrendingUp, Users, ShieldAlert, CheckCircle2, 
@@ -15,6 +15,9 @@ import { ALL_EXPERTS } from '../data/experts';
 import { db } from '../lib/firebase';
 import { collection, getDocs, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { ensureFirebaseDashboardCredentials, verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
+import WarrantyClaimsManager from './admin/WarrantyClaimsManager';
+import ComplaintsManager from './admin/ComplaintsManager';
+import PlatformSettingsManager from './admin/PlatformSettingsManager';
 
 interface AdminDashboardProps {
   onTransition: (target: AppScreen) => void;
@@ -60,9 +63,11 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
 
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [workerApps, setWorkerApps] = useState<WorkerApplication[]>([]);
+  const [warrantyClaims, setWarrantyClaims] = useState<WarrantyClaim[]>([]);
+  const [complaints, setComplaints] = useState<ComplaintRecord[]>([]);
   
-  // Tab segments: live_services | registrations | customers | workers | reviews | overview
-  const [activeTab, setActiveTab] = useState<'live_services' | 'registrations' | 'customers' | 'workers' | 'reviews' | 'overview'>('live_services');
+  // Tab segments: live_services | registrations | customers | workers | reviews | overview | warranty_claims | complaints | platform_mgmt
+  const [activeTab, setActiveTab] = useState<'live_services' | 'registrations' | 'customers' | 'workers' | 'reviews' | 'overview' | 'warranty_claims' | 'complaints' | 'platform_mgmt'>('live_services');
   
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -133,6 +138,35 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
         console.warn('Firestore applications subscription offline:', err);
       });
       unsubs.push(unsubApps);
+
+      // 4. Warranty Claims
+      const claimsCol = collection(db, 'warranty_claims');
+      const unsubClaims = onSnapshot(claimsCol, (snapshot) => {
+        const liveClaims: WarrantyClaim[] = [];
+        snapshot.forEach((docSnap) => {
+          liveClaims.push({ id: docSnap.id, ...docSnap.data() } as WarrantyClaim);
+        });
+        setWarrantyClaims(liveClaims);
+        localStorage.setItem('punchx_warranty_claims', JSON.stringify(liveClaims));
+      }, (err) => {
+        console.warn('Firestore claims subscription offline:', err);
+      });
+      unsubs.push(unsubClaims);
+
+      // 5. Complaints
+      const complaintsCol = collection(db, 'complaints');
+      const unsubComplaints = onSnapshot(complaintsCol, (snapshot) => {
+        const liveComplaints: ComplaintRecord[] = [];
+        snapshot.forEach((docSnap) => {
+          liveComplaints.push({ id: docSnap.id, ...docSnap.data() } as ComplaintRecord);
+        });
+        setComplaints(liveComplaints);
+        localStorage.setItem('punchx_complaints', JSON.stringify(liveComplaints));
+      }, (err) => {
+        console.warn('Firestore complaints subscription offline:', err);
+      });
+      unsubs.push(unsubComplaints);
+
     } catch (e) {
       console.warn('Firestore listeners setup error:', e);
     }
@@ -676,7 +710,43 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               <span>Reviews ({customerReviews.length})</span>
             </button>
 
-            {/* 6. Enterprise Command Overview */}
+            {/* 6. 30-Day Guarantee Claims Tab */}
+            <button
+              onClick={() => setActiveTab('warranty_claims')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
+                activeTab === 'warranty_claims'
+                  ? 'bg-[#c5a059] text-black shadow-lg scale-[1.02]'
+                  : 'bg-[#07122a] text-zinc-400 hover:text-white border border-zinc-800'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-[#e9c176]" />
+              <span>30-Day Guarantee</span>
+              {warrantyClaims.filter(c => c.status === 'PENDING_ADMIN_REVIEW').length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-black font-extrabold animate-bounce">
+                  {warrantyClaims.filter(c => c.status === 'PENDING_ADMIN_REVIEW').length} NEW
+                </span>
+              )}
+            </button>
+
+            {/* 7. Arrival Quality & Complaints Tab */}
+            <button
+              onClick={() => setActiveTab('complaints')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
+                activeTab === 'complaints'
+                  ? 'bg-rose-500 text-white shadow-lg scale-[1.02]'
+                  : 'bg-[#07122a] text-zinc-400 hover:text-white border border-zinc-800'
+              }`}
+            >
+              <AlertTriangle className={`w-4 h-4 ${complaints.filter(c => c.status === 'CRITICAL_PENDING_ADMIN').length > 0 ? 'text-rose-400 animate-pulse' : 'text-zinc-400'}`} />
+              <span>Quality Escalations</span>
+              {complaints.filter(c => c.status === 'CRITICAL_PENDING_ADMIN').length > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500 text-white font-extrabold">
+                  {complaints.filter(c => c.status === 'CRITICAL_PENDING_ADMIN').length} CRITICAL
+                </span>
+              )}
+            </button>
+
+            {/* 8. Enterprise Command Overview */}
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-4 py-2.5 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
@@ -687,6 +757,19 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
             >
               <Layers className="w-4 h-4" />
               <span>Command Overview</span>
+            </button>
+
+            {/* 9. Dynamic Platform & Service Management */}
+            <button
+              onClick={() => setActiveTab('platform_mgmt')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-mono font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap ${
+                activeTab === 'platform_mgmt'
+                  ? 'bg-[#c5a059] text-black shadow-lg scale-[1.02]'
+                  : 'bg-[#07122a] text-zinc-400 hover:text-white border border-zinc-800'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Platform Config</span>
             </button>
 
           </div>
@@ -1408,6 +1491,37 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
             </div>
 
           </section>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 7: 30-DAY FREE REVISIT GUARANTEE CLAIMS */}
+        {/* ========================================================================= */}
+        {activeTab === 'warranty_claims' && (
+          <WarrantyClaimsManager
+            claims={warrantyClaims}
+            onClaimUpdated={loadData}
+            showNotification={showNotification}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 8: ARRIVAL QUALITY ESCALATIONS & COMPLAINTS */}
+        {/* ========================================================================= */}
+        {activeTab === 'complaints' && (
+          <ComplaintsManager
+            complaints={complaints}
+            onComplaintUpdated={loadData}
+            showNotification={showNotification}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 9: DYNAMIC PLATFORM, SERVICES & PRICING CONFIGURATION */}
+        {/* ========================================================================= */}
+        {activeTab === 'platform_mgmt' && (
+          <PlatformSettingsManager
+            showNotification={showNotification}
+          />
         )}
 
       </main>
