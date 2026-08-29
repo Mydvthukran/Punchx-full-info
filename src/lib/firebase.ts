@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
 import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel, Firestore } from 'firebase/firestore';
 import rawConfig from '../../firebase-applet-config.json';
 
@@ -80,7 +81,16 @@ if (typeof window !== 'undefined') {
   });
 }
 
+let authInstance: Auth;
+try {
+  authInstance = getAuth(app);
+} catch (authErr) {
+  console.warn("Auth initialization notice:", authErr);
+  authInstance = {} as Auth;
+}
+
 export const db = firestoreInstance;
+export const auth = authInstance;
 
 export enum OperationType {
   CREATE = 'create',
@@ -107,3 +117,11 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   }
   throw new Error(`Database operation failed (${operationType}). Please try again.`);
 }
+
+
+
+
+export const authSession: any = {
+  recaptchaVerifier: null,
+  confirmationResult: null
+};
