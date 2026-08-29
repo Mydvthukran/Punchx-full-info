@@ -3,12 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   PushAlert, 
   getStoredPushNotifications, 
-  clearAllPushNotifications,
+  clearAllPushNotifications, 
   markPushNotificationAsRead,
-  simulateWorkerAcceptedAlert,
-  simulateWorkerTravelAlert,
-  simulateWorkerArrivedAlert,
-  startAutomatedOrderLifecycle,
   getPushPreferences,
   savePushPreferences,
   requestNotificationPermission,
@@ -30,8 +26,6 @@ import {
   Radio, 
   ExternalLink,
   ShieldCheck,
-  Zap,
-  PlayCircle,
   Smartphone,
   Check
 } from 'lucide-react';
@@ -52,7 +46,6 @@ export default function NotificationCenterModal({
 }: NotificationCenterModalProps) {
   const [notifications, setNotifications] = useState<PushAlert[]>([]);
   const [prefs, setPrefs] = useState(getPushPreferences());
-  const [isSimulatingAutomated, setIsSimulatingAutomated] = useState(false);
 
   const loadNotifications = () => {
     setNotifications(getStoredPushNotifications());
@@ -107,55 +100,6 @@ export default function NotificationCenterModal({
     }
   };
 
-  // Simulation Triggers
-  const triggerSimWorkerAccept = () => {
-    simulateWorkerAcceptedAlert({
-      workerName: 'Rajesh Kumar (Gold Specialist)',
-      category: 'AC Repair & Inspection',
-      customerAddress: '42nd Galaxy Towers, Indiranagar, Bengaluru'
-    });
-    loadNotifications();
-    if (showToast) showToast('⚡ Simulated: Worker Accepted Request!');
-  };
-
-  const triggerSimWorkerTravel = () => {
-    simulateWorkerTravelAlert({
-      workerName: 'Rajesh Kumar (Gold Specialist)',
-      category: 'AC Repair & Inspection',
-      etaMinutes: 9,
-      distanceKm: 2.1,
-      customerAddress: '42nd Galaxy Towers, Indiranagar, Bengaluru'
-    });
-    loadNotifications();
-    if (showToast) showToast('🚚 Simulated: Worker Began Travel (Live GPS En Route)!');
-  };
-
-  const triggerSimWorkerArrived = () => {
-    simulateWorkerArrivedAlert({
-      workerName: 'Rajesh Kumar (Gold Specialist)',
-      orderId: 'PX-8824'
-    });
-    loadNotifications();
-    if (showToast) showToast('📍 Simulated: Worker Arrived at Doorstep!');
-  };
-
-  const triggerFullAutomatedDemo = () => {
-    setIsSimulatingAutomated(true);
-    startAutomatedOrderLifecycle({
-      id: `PX-${Math.floor(1000 + Math.random() * 9000)}`,
-      workerName: 'Rajesh Kumar',
-      category: 'AC Repair',
-      customerAddress: 'Indiranagar, Bengaluru'
-    });
-    if (showToast) {
-      showToast('🚀 Automated Live Simulation Started! Alert 1 arriving in 6s...');
-    }
-    setTimeout(() => {
-      loadNotifications();
-      setIsSimulatingAutomated(false);
-    }, 7000);
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -182,7 +126,7 @@ export default function NotificationCenterModal({
                   </span>
                 </h3>
                 <p className="text-[11px] text-zinc-400 font-sans">
-                  Real-time worker dispatches, travel alerts & status simulations
+                  Real-time worker dispatches, travel alerts & service status
                 </p>
               </div>
             </div>
@@ -192,70 +136,6 @@ export default function NotificationCenterModal({
               className="p-2 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Quick Simulation Action Deck */}
-          <div className="p-4 bg-[#081224] border-b border-zinc-800/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-[#e9c176] font-bold flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-[#e9c176]" />
-                Interactive Push Simulator Controls
-              </span>
-              <span className="text-[9px] font-mono text-zinc-400 bg-zinc-800/60 px-2 py-0.5 rounded">
-                Test Mode
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <button
-                onClick={triggerSimWorkerAccept}
-                className="p-2.5 bg-[#0e1d3a] hover:bg-[#13264c] border border-emerald-500/30 hover:border-emerald-500/60 rounded-xl text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-1.5 text-emerald-400 text-[11px] font-bold font-mono">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>1. Accept Request</span>
-                </div>
-                <p className="text-[10px] text-zinc-400 mt-0.5 font-sans">
-                  Specialist confirmed
-                </p>
-              </button>
-
-              <button
-                onClick={triggerSimWorkerTravel}
-                className="p-2.5 bg-[#0e1d3a] hover:bg-[#13264c] border border-[#c5a059]/40 hover:border-[#c5a059] rounded-xl text-left transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-1.5 text-[#e9c176] text-[11px] font-bold font-mono">
-                  <Navigation className="w-3.5 h-3.5 animate-pulse" />
-                  <span>2. Began Travel</span>
-                </div>
-                <p className="text-[10px] text-zinc-400 mt-0.5 font-sans">
-                  En route • ETA 9m
-                </p>
-              </button>
-
-              <button
-                onClick={triggerSimWorkerArrived}
-                className="p-2.5 bg-[#0e1d3a] hover:bg-[#13264c] border border-blue-500/30 hover:border-blue-500/60 rounded-xl text-left transition-all cursor-pointer group col-span-2 sm:col-span-1"
-              >
-                <div className="flex items-center gap-1.5 text-blue-400 text-[11px] font-bold font-mono">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>3. Arrived</span>
-                </div>
-                <p className="text-[10px] text-zinc-400 mt-0.5 font-sans">
-                  At doorstep • OTP
-                </p>
-              </button>
-            </div>
-
-            {/* Automation Demo Button */}
-            <button
-              onClick={triggerFullAutomatedDemo}
-              disabled={isSimulatingAutomated}
-              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#c5a059]/20 via-[#c5a059]/30 to-[#c5a059]/20 hover:from-[#c5a059] hover:to-[#e9c176] text-[#e9c176] hover:text-black border border-[#c5a059]/50 font-mono font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <PlayCircle className={`w-3.5 h-3.5 ${isSimulatingAutomated ? 'animate-spin' : ''}`} />
-              <span>{isSimulatingAutomated ? 'Simulating Progressive Dispatches...' : 'Run Automated Progression Demo (Accept ➔ Travel ➔ Arrived)'}</span>
             </button>
           </div>
 

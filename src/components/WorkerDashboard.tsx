@@ -11,8 +11,8 @@ import WorkerAcademyModal from './WorkerAcademyModal';
 import WorkerSafetyStoreModal from './WorkerSafetyStoreModal';
 import InvoiceReceiptModal from './InvoiceReceiptModal';
 import { 
-  simulateWorkerAcceptedAlert, 
-  simulateWorkerTravelAlert, 
+  dispatchWorkerAcceptedAlert, 
+  dispatchWorkerTravelAlert, 
   dispatchPushNotification 
 } from '../lib/pushNotifications';
 import { 
@@ -324,10 +324,10 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     }
 
     // Trigger Real-Time Push Notification to Customer
-    simulateWorkerAcceptedAlert({
+    dispatchWorkerAcceptedAlert({
       orderId: selectedOrder.id,
-      workerName: workerProfile.name || 'Rajesh Kumar',
-      category: selectedOrder.category || 'AC Repair',
+      workerName: workerProfile.name || 'Service Specialist',
+      category: selectedOrder.category || 'Service',
       workerAvatar: workerProfile.photoURL,
       customerAddress: selectedOrder.customerAddress
     });
@@ -359,10 +359,10 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     setShowLiveNavigationModal(true);
 
     // Trigger Real-Time Push Notification: Worker Began Travel
-    simulateWorkerTravelAlert({
+    dispatchWorkerTravelAlert({
       orderId: selectedOrder.id,
-      workerName: workerProfile.name || 'Rajesh Kumar',
-      category: selectedOrder.category || 'AC Repair',
+      workerName: workerProfile.name || 'Service Specialist',
+      category: selectedOrder.category || 'Service',
       etaMinutes: etaMinutes || 8,
       distanceKm: distanceKm || 2.1,
       workerAvatar: workerProfile.photoURL,

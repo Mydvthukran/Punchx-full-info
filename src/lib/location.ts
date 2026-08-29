@@ -565,7 +565,7 @@ export async function fetchGoogleMapsConfig(): Promise<GoogleMapsConfig> {
     enabled: true,
     hasKey: false,
     apiKey: '',
-    mapId: 'DEMO_MAP_ID',
+    mapId: 'PUNCHX_MAP_ID',
     attributionId: 'gmp_mcp_codeassist_v1_aistudio',
     defaultCenter: { lat: 12.9716, lng: 77.5946 },
     maxRadiusKm: 15.0

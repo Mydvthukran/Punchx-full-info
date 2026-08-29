@@ -144,7 +144,7 @@ export default function WorkerPendingApproval({
       return;
     }
 
-    // Reset old demo orders to provide a fresh, clean dashboard with real live orders
+    // Ensure worker terminal online status is ready
     try {
       localStorage.setItem('punchx_worker_online_status', 'true');
     } catch (e) {

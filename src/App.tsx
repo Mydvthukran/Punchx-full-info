@@ -202,20 +202,19 @@ function AppMain() {
     setCurrentScreen(resolvedTarget);
   };
 
-  // Clean out any legacy mock demo orders and ensure clean actual order history
+  // Ensure valid clean order history
   useEffect(() => {
     try {
       const existing = localStorage.getItem('punchx_order_history');
       if (existing) {
         const parsed = JSON.parse(existing);
-        const demoIds = ['PX-5510', 'PX-9012', 'PX-1120', 'PX-3344'];
-        const actualOrders = Array.isArray(parsed) ? parsed.filter((o: any) => !demoIds.includes(o.id)) : [];
+        const actualOrders = Array.isArray(parsed) ? parsed : [];
         localStorage.setItem('punchx_order_history', JSON.stringify(actualOrders));
       } else {
         localStorage.setItem('punchx_order_history', '[]');
       }
     } catch (e) {
-      console.warn("Error cleaning mock order history:", e);
+      console.warn("Error reading order history:", e);
       localStorage.setItem('punchx_order_history', '[]');
     }
   }, []);

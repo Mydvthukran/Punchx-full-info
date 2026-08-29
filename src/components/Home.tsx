@@ -225,12 +225,11 @@ export default function HomeDashboard({
 
   // Synchronize dynamic booking history values with Firestore & localStorage
   useEffect(() => {
-    // 1. Initial fallback load from localStorage (filtering demo orders)
-    const demoIds = ['PX-5510', 'PX-9012', 'PX-1120', 'PX-3344'];
+    // 1. Initial fallback load from localStorage
     const raw = localStorage.getItem('punchx_order_history') || '[]';
     try {
       const parsed = JSON.parse(raw);
-      const cleaned = Array.isArray(parsed) ? parsed.filter((o: any) => !demoIds.includes(o.id)) : [];
+      const cleaned = Array.isArray(parsed) ? parsed : [];
       setHistoryOrders(cleaned);
       localStorage.setItem('punchx_order_history', JSON.stringify(cleaned));
     } catch {
@@ -254,15 +253,13 @@ export default function HomeDashboard({
         const liveOrders: OrderRecord[] = [];
         snapshot.forEach((docSnap) => {
           const ord = { id: docSnap.id, ...docSnap.data() } as OrderRecord;
-          if (!demoIds.includes(ord.id)) {
-            liveOrders.push(ord);
-          }
+          liveOrders.push(ord);
         });
         setHistoryOrders(liveOrders);
         localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
         
         // Find active order
-        const active = liveOrders.find(o => o.status === 'In-Progress' || o.status === 'Pending');
+        const active = liveOrders.find(o => o.status === 'In-Progress' || o.status === 'In Progress' || o.status === 'Pending');
         if (active) {
           setActiveOrder(active);
           localStorage.setItem('punchx_active_order', JSON.stringify(active));

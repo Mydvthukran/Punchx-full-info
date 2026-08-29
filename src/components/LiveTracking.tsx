@@ -6,17 +6,11 @@ import { AppScreen } from '../types';
 import {
   ArrowLeft, Star, Phone, MessageSquare, MapPin, Send, X, Compass,
   CheckCircle, ShieldCheck, RefreshCw, Navigation2, Clock, Check,
-  AlertTriangle, ExternalLink, ChevronRight, Copy, Share2, Bell, Zap, Play,
-  ShieldAlert, Wrench, Award, CheckCircle2, ThumbsUp
+  AlertTriangle, ExternalLink, ChevronRight, Copy, Share2, Bell,
+  ShieldAlert, Wrench, Award, CheckCircle2, ThumbsUp, Zap
 } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
 import { getAccurateCurrentPosition, reverseGeocodeCoords, calculateDistanceKm } from '../lib/location';
-import {
-  simulateWorkerAcceptedAlert,
-  simulateWorkerTravelAlert,
-  simulateWorkerArrivedAlert,
-  startAutomatedOrderLifecycle
-} from '../lib/pushNotifications';
 import ArrivalQualityModal from './ArrivalQualityModal';
 import WarrantyClaimModal from './WarrantyClaimModal';
 
@@ -25,12 +19,24 @@ interface LiveTrackingProps {
   bookingTime?: string;
 }
 
+// Utility to check if an order is genuinely live/active in progress
+const isLiveActiveBooking = (order: any): boolean => {
+  if (!order || !order.id) return false;
+  const activeStatuses = ['Pending', 'In Progress', 'In-Progress', 'Out for Service', 'Arrived'];
+  return activeStatuses.includes(order.status);
+};
+
 export default function LiveTracking({ onTransition, bookingTime }: LiveTrackingProps) {
   // Order state
   const [activeOrder, setActiveOrder] = useState<any>(() => {
     try {
       const raw = localStorage.getItem('punchx_active_order');
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (isLiveActiveBooking(parsed)) {
+          return parsed;
+        }
+      }
     } catch (e) {
       console.warn("Could not parse active order from storage:", e);
     }
@@ -91,12 +97,15 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
         const parsed = JSON.parse(rawHistory);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setAvailableOrders(parsed);
-          // If no activeOrder yet, pick the first in-progress or newest order
+          // If no activeOrder yet, check if there's an active in-progress booking
           if (!activeOrder) {
-            const inProg = parsed.find((o: any) => o.status === 'In Progress' || o.status === 'Pending') || parsed[0];
+            const inProg = parsed.find((o: any) => isLiveActiveBooking(o));
             if (inProg) {
               setActiveOrder(inProg);
               localStorage.setItem('punchx_active_order', JSON.stringify(inProg));
+            } else {
+              setActiveOrder(null);
+              localStorage.removeItem('punchx_active_order');
             }
           }
         }
@@ -116,17 +125,27 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
         });
         if (list.length > 0) {
           setAvailableOrders(list);
-          // Auto-select latest active order if none is selected
+          // Only auto-select active in-progress order
           setActiveOrder((curr: any) => {
+            if (curr && !isLiveActiveBooking(curr)) {
+              localStorage.removeItem('punchx_active_order');
+              return null;
+            }
             if (!curr) {
-              const active = list.find((o) => o.status === 'In Progress' || o.status === 'Pending') || list[0];
+              const active = list.find((o) => isLiveActiveBooking(o));
               if (active) {
                 localStorage.setItem('punchx_active_order', JSON.stringify(active));
                 return active;
+              } else {
+                localStorage.removeItem('punchx_active_order');
+                return null;
               }
             }
             return curr;
           });
+        } else {
+          setActiveOrder(null);
+          localStorage.removeItem('punchx_active_order');
         }
       }, (err) => {
         console.warn("Firestore orders listener warning:", err);
@@ -291,11 +310,6 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
         if (prev <= 1) {
           setStatusStep(2); // Arrived!
           setTrackingNotification("📍 Technician has arrived at your doorstep!");
-          simulateWorkerArrivedAlert({
-            workerName: activeOrder?.workerName || 'Rajesh Kumar',
-            orderId: activeOrder?.id || 'PX-8824',
-            workerAvatar: activeOrder?.workerAvatar
-          });
           setTimeout(() => setTrackingNotification(null), 6000);
           return 0;
         }
@@ -395,8 +409,8 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     }
   };
 
-  // If no order exists at all, display a helpful order directory card
-  if (!activeOrder) {
+  // If no active booking exists in progress, display clean No Live Booking screen
+  if (!activeOrder || !isLiveActiveBooking(activeOrder)) {
     return (
       <div id="no-order-tracker" className="min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans flex flex-col justify-between py-16 px-4">
         <header className="fixed top-0 left-0 w-full z-50 bg-[#07122a]/95 backdrop-blur-md h-16 flex items-center justify-between px-6 border-b border-[#c5a059]/20">
@@ -407,7 +421,7 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="font-sans font-bold text-base text-[#c5a059] tracking-tight">PunchX Live GPS Tracking</h1>
+            <h1 className="font-sans font-bold text-base text-[#c5a059] tracking-tight">Live Service Tracking</h1>
           </div>
         </header>
 
@@ -416,36 +430,50 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
             <Compass className="w-8 h-8 text-[#e9c176] animate-spin-slow" />
           </div>
           <div className="space-y-2">
-            <h2 className="font-sans font-bold text-xl text-white">No Active Booking Session</h2>
+            <h2 className="font-sans font-bold text-xl text-white">No Live Booking Found</h2>
             <p className="text-zinc-400 text-xs leading-relaxed max-w-sm mx-auto">
-              Book a verified technician from our catalog to activate real-time GPS telemetry, live route tracking, and instant direct communication.
+              You currently do not have any active service appointment in progress. Book an expert specialist to activate real-time GPS telemetry and live route tracking.
             </p>
           </div>
 
           {availableOrders.length > 0 && (
-            <div className="text-left space-y-2 pt-2 border-t border-zinc-850">
+            <div className="text-left space-y-2 pt-2 border-t border-zinc-800">
               <span className="text-[10px] font-mono font-bold text-[#c5a059] uppercase tracking-wider">
                 Recent Orders in History:
               </span>
               <div className="space-y-2 max-h-40 overflow-y-auto">
-                {availableOrders.slice(0, 3).map((ord) => (
-                  <button
-                    key={ord.id}
-                    onClick={() => {
-                      setActiveOrder(ord);
-                      localStorage.setItem('punchx_active_order', JSON.stringify(ord));
-                    }}
-                    className="w-full p-2.5 bg-[#151f37]/60 hover:bg-[#151f37] border border-zinc-800 hover:border-[#c5a059]/40 rounded-xl flex items-center justify-between text-left text-xs transition-all cursor-pointer"
-                  >
-                    <div>
-                      <span className="font-bold text-white block">{ord.category}</span>
-                      <span className="text-[10px] text-zinc-400 font-mono">{ord.id} • {ord.status || 'In Progress'}</span>
+                {availableOrders.slice(0, 3).map((ord) => {
+                  const isOrdActive = isLiveActiveBooking(ord);
+                  return (
+                    <div
+                      key={ord.id}
+                      className="w-full p-2.5 bg-[#151f37]/60 border border-zinc-800 rounded-xl flex items-center justify-between text-left text-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-white block">{ord.category}</span>
+                        <span className="text-[10px] text-zinc-400 font-mono">{ord.id} • {ord.status || 'Completed'}</span>
+                      </div>
+                      {isOrdActive ? (
+                        <button
+                          onClick={() => {
+                            setActiveOrder(ord);
+                            localStorage.setItem('punchx_active_order', JSON.stringify(ord));
+                          }}
+                          className="text-[10px] font-bold text-[#e9c176] hover:underline flex items-center gap-1 font-mono uppercase cursor-pointer"
+                        >
+                          Track <ChevronRight className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onTransition('home')}
+                          className="text-[10px] font-bold text-zinc-400 hover:text-[#c5a059] flex items-center gap-1 font-mono uppercase cursor-pointer"
+                        >
+                          Rebook
+                        </button>
+                      )}
                     </div>
-                    <span className="text-[10px] font-bold text-[#e9c176] flex items-center gap-1 font-mono uppercase">
-                      Track <ChevronRight className="w-3 h-3" />
-                    </span>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -639,7 +667,7 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
                     <CategoryProfileBadge category={activeOrder.category} sizeClassName="w-5 h-5 p-0.5" className="-top-1 -right-1" />
                   </div>
                   <div className="text-left">
-                    <h2 className="font-sans font-bold text-white text-base">{activeOrder.workerName || 'Rajesh Kumar'}</h2>
+                    <h2 className="font-sans font-bold text-white text-base">{activeOrder.workerName || 'Assigned Specialist'}</h2>
                     <p className="text-xs text-zinc-400 flex items-center gap-1 mt-0.5">
                       <Star className="w-3.5 h-3.5 fill-[#e9c176] text-[#e9c176]" />
                       <span>{activeOrder.workerRating || 4.9} ★ {activeOrder.category || 'Specialist'}</span>
@@ -862,75 +890,6 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
                     Cancel Booking
                   </button>
                 )}
-              </div>
-
-              {/* Push Notification Simulator Deck */}
-              <div className="bg-[#081224] border border-[#c5a059]/30 rounded-2xl p-3.5 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#e9c176] font-bold flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-[#e9c176]" />
-                    Simulate Push Alerts
-                  </span>
-                  <span className="text-[8px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold">
-                    ACTIVE
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      simulateWorkerAcceptedAlert({
-                        orderId: activeOrder?.id || 'PX-8824',
-                        workerName: activeOrder?.workerName || 'Rajesh Kumar',
-                        category: activeOrder?.category || 'AC Repair',
-                        workerAvatar: activeOrder?.workerAvatar,
-                        customerAddress: activeOrder?.customerAddress
-                      });
-                      setStatusStep(0);
-                    }}
-                    className="py-2 px-2.5 bg-[#0e1d3a] hover:bg-[#15274d] border border-emerald-500/30 hover:border-emerald-500 text-emerald-400 font-mono text-[10px] font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <CheckCircle className="w-3 h-3" />
-                    <span>1. Accept Alert</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      simulateWorkerTravelAlert({
-                        orderId: activeOrder?.id || 'PX-8824',
-                        workerName: activeOrder?.workerName || 'Rajesh Kumar',
-                        category: activeOrder?.category || 'AC Repair',
-                        etaMinutes: 8,
-                        distanceKm: 2.1,
-                        workerAvatar: activeOrder?.workerAvatar,
-                        customerAddress: activeOrder?.customerAddress
-                      });
-                      setStatusStep(1);
-                    }}
-                    className="py-2 px-2.5 bg-[#0e1d3a] hover:bg-[#15274d] border border-[#c5a059]/40 hover:border-[#c5a059] text-[#e9c176] font-mono text-[10px] font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Navigation2 className="w-3 h-3 rotate-45 animate-pulse" />
-                    <span>2. Travel Alert</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => {
-                    startAutomatedOrderLifecycle({
-                      id: activeOrder?.id || 'PX-8824',
-                      workerName: activeOrder?.workerName || 'Rajesh Kumar',
-                      category: activeOrder?.category || 'AC Repair',
-                      workerAvatar: activeOrder?.workerAvatar,
-                      customerAddress: activeOrder?.customerAddress
-                    });
-                    setTrackingNotification("🚀 Auto-simulation sequence triggered! Alert 1 arriving in 6s...");
-                    setTimeout(() => setTrackingNotification(null), 5000);
-                  }}
-                  className="w-full py-2 bg-gradient-to-r from-[#c5a059]/20 via-[#c5a059]/30 to-[#c5a059]/20 hover:from-[#c5a059] hover:to-[#e9c176] text-[#e9c176] hover:text-black border border-[#c5a059]/50 font-mono text-[10px] font-bold uppercase rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Play className="w-3 h-3" />
-                  <span>Run Full Progression Demo</span>
-                </button>
               </div>
 
             </div>

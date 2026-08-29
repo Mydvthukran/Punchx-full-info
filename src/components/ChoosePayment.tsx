@@ -4,7 +4,6 @@ import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Check, Lock, ShieldCheck, Ticket, Plus, X, ArrowRight, Wallet, CreditCard, Landmark, Coins } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { startAutomatedOrderLifecycle } from '../lib/pushNotifications';
 import { useAuth } from '../lib/authContext';
 
 interface ChoosePaymentProps {
@@ -188,15 +187,6 @@ export default function ChoosePayment({
     } catch (e) {
       console.error("Error writing active order to localStorage:", e);
     }
-
-    // 3. Initiate Real-Time Push Notification Simulation Lifecycle
-    startAutomatedOrderLifecycle({
-      id: newOrderId,
-      workerName: newOrder.workerName,
-      category: newOrder.category,
-      workerAvatar: newOrder.workerAvatar,
-      customerAddress: currentCitizenAddress
-    });
 
     if (onOrderFinalized) {
       onOrderFinalized();

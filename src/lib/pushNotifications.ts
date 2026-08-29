@@ -267,33 +267,33 @@ export const dispatchPushNotification = (
   return alert;
 };
 
-// SIMULATION PRESETS & CONVENIENCE HANDLERS
+// REAL-TIME SERVICE NOTIFICATION DISPATCHERS
 
-export const simulateWorkerAcceptedAlert = (params?: {
+export const dispatchWorkerAcceptedAlert = (params?: {
   workerName?: string;
   category?: string;
   orderId?: string;
   workerAvatar?: string;
   customerAddress?: string;
 }) => {
-  const workerName = params?.workerName || 'Rajesh Kumar';
-  const category = params?.category || 'AC Repair';
+  const workerName = params?.workerName || 'Service Specialist';
+  const category = params?.category || 'Service';
   const orderId = params?.orderId || `PX-${Math.floor(1000 + Math.random() * 9000)}`;
 
   return dispatchPushNotification({
     type: 'worker_accepted',
     title: `⚡ Specialist Accepted Your ${category} Request!`,
-    body: `${workerName} has accepted your service booking (${orderId}). Tools and diagnostic kit are being prepared for dispatch.`,
+    body: `${workerName} has accepted your service booking (${orderId}). Diagnostic equipment and toolkits are prepared for dispatch.`,
     workerName,
-    workerAvatar: params?.workerAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
+    workerAvatar: params?.workerAvatar,
     category,
     orderId,
-    customerAddress: params?.customerAddress || 'Indiranagar, Bengaluru',
+    customerAddress: params?.customerAddress,
     actionScreen: 'tracking'
   });
 };
 
-export const simulateWorkerTravelAlert = (params?: {
+export const dispatchWorkerTravelAlert = (params?: {
   workerName?: string;
   category?: string;
   orderId?: string;
@@ -302,38 +302,38 @@ export const simulateWorkerTravelAlert = (params?: {
   workerAvatar?: string;
   customerAddress?: string;
 }) => {
-  const workerName = params?.workerName || 'Rajesh Kumar';
-  const etaMinutes = params?.etaMinutes || 11;
-  const distanceKm = params?.distanceKm || 2.4;
+  const workerName = params?.workerName || 'Service Specialist';
+  const etaMinutes = params?.etaMinutes || 10;
+  const distanceKm = params?.distanceKm || 2.0;
   const orderId = params?.orderId || `PX-${Math.floor(1000 + Math.random() * 9000)}`;
 
   return dispatchPushNotification({
     type: 'worker_travel_started',
     title: `🚚 Specialist Began Travel to Your Location`,
-    body: `${workerName} has started travelling towards your address. Live GPS telemetry is active. Estimated arrival: ~${etaMinutes} mins (${distanceKm} km).`,
+    body: `${workerName} has started travelling towards your address. Live GPS route tracking is active. Estimated arrival: ~${etaMinutes} mins (${distanceKm} km).`,
     workerName,
-    workerAvatar: params?.workerAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
-    category: params?.category || 'AC Repair',
+    workerAvatar: params?.workerAvatar,
+    category: params?.category,
     orderId,
     etaMinutes,
     distanceKm,
-    customerAddress: params?.customerAddress || 'Indiranagar, Bengaluru',
+    customerAddress: params?.customerAddress,
     actionScreen: 'tracking'
   });
 };
 
-export const simulateWorkerArrivedAlert = (params?: {
+export const dispatchWorkerArrivedAlert = (params?: {
   workerName?: string;
   orderId?: string;
   workerAvatar?: string;
 }) => {
-  const workerName = params?.workerName || 'Rajesh Kumar';
+  const workerName = params?.workerName || 'Service Specialist';
   const orderId = params?.orderId || `PX-${Math.floor(1000 + Math.random() * 9000)}`;
 
   return dispatchPushNotification({
     type: 'worker_arrived',
     title: `📍 Specialist Arrived at Doorstep!`,
-    body: `${workerName} has reached your service location with official PunchX security badge. Share OTP 4829 to begin service.`,
+    body: `${workerName} has reached your service location with verified PunchX security credentials. Share your secure OTP to initiate service.`,
     workerName,
     workerAvatar: params?.workerAvatar,
     orderId,
@@ -341,56 +341,7 @@ export const simulateWorkerArrivedAlert = (params?: {
   });
 };
 
-// Automatic Lifecycle Simulation Timer (Scheduled after order creation)
-let activeSimulationTimers: NodeJS.Timeout[] = [];
-
-export const clearActiveSimulations = () => {
-  activeSimulationTimers.forEach(t => clearTimeout(t));
-  activeSimulationTimers = [];
-};
-
-export const startAutomatedOrderLifecycle = (order: {
-  id: string;
-  workerName?: string;
-  category?: string;
-  workerAvatar?: string;
-  customerAddress?: string;
-}) => {
-  clearActiveSimulations();
-
-  // 1. Alert 1: Worker accepts after 6 seconds
-  const t1 = setTimeout(() => {
-    simulateWorkerAcceptedAlert({
-      orderId: order.id,
-      workerName: order.workerName || 'Rajesh Kumar',
-      category: order.category || 'AC Repair',
-      workerAvatar: order.workerAvatar,
-      customerAddress: order.customerAddress
-    });
-  }, 6000);
-  activeSimulationTimers.push(t1);
-
-  // 2. Alert 2: Worker begins travel after 16 seconds
-  const t2 = setTimeout(() => {
-    simulateWorkerTravelAlert({
-      orderId: order.id,
-      workerName: order.workerName || 'Rajesh Kumar',
-      category: order.category || 'AC Repair',
-      etaMinutes: 10,
-      distanceKm: 2.2,
-      workerAvatar: order.workerAvatar,
-      customerAddress: order.customerAddress
-    });
-  }, 16000);
-  activeSimulationTimers.push(t2);
-
-  // 3. Alert 3: Worker arrives after 35 seconds (for instant end-to-end testing)
-  const t3 = setTimeout(() => {
-    simulateWorkerArrivedAlert({
-      orderId: order.id,
-      workerName: order.workerName || 'Rajesh Kumar',
-      workerAvatar: order.workerAvatar
-    });
-  }, 35000);
-  activeSimulationTimers.push(t3);
-};
+// Aliases for compatibility
+export const simulateWorkerAcceptedAlert = dispatchWorkerAcceptedAlert;
+export const simulateWorkerTravelAlert = dispatchWorkerTravelAlert;
+export const simulateWorkerArrivedAlert = dispatchWorkerArrivedAlert;

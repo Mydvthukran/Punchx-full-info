@@ -6,7 +6,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     enabled: true,
     hasKey: Boolean(mapsKey),
     apiKey: mapsKey,
-    mapId: "DEMO_MAP_ID",
+    mapId: "PUNCHX_MAP_ID",
     attributionId: "gmp_mcp_codeassist_v1_aistudio",
     defaultCenter: { lat: 12.9716, lng: 77.5946 }, // Bengaluru tech corridor center
     maxRadiusKm: 15.0
