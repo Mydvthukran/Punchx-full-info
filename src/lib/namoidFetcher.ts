@@ -76,26 +76,19 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
   if (url.includes("/v1/oauth/token") || url.includes("/oauth/token")) {
     const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";
 
-    // If there is no backend configured (static host like GitHub Pages), avoid calling the local proxy path
-    // which will return 404 and produce a confusing error message for users. Instead return a clear, actionable
-    // response informing the operator to deploy or configure the backend. This prevents the app from showing a
-    // raw 404 token request failure to end-users.
-    if (!backendBase) {
+    if (!backendBase && typeof window === 'undefined') {
       return new Response(
         JSON.stringify({
           error: "proxy_unavailable",
-          error_description:
-            "Backend proxy not configured. Token exchange cannot be performed from the browser on static hosts.\n" +
-            "Deploy the server-side proxy (api/namoid-proxy) or set VITE_BACKEND_URL / VITE_API_URL to a backend that implements /api/namoid-proxy.",
+          error_description: "Backend proxy not configured.",
         }),
-        {
-          status: 502,
-          headers: { "Content-Type": "application/json" },
-        }
+        { status: 502, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const proxyUrl = `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
+    const proxyUrl = typeof window !== 'undefined' 
+      ? `/api/namoid-proxy?url=${encodeURIComponent(url)}`
+      : `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
 
     const headers = new Headers(init?.headers);
     headers.set("accept", "application/json");
