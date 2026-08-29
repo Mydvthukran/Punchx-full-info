@@ -56,19 +56,7 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     });
   }
 
-  // 2. Intercept JWKS request with fallback
-  if (url.includes("/v1/oauth/jwks.json")) {
-    try {
-      const res = await fetch(input, init);
-      if (res.ok) return res;
-    } catch {
-      // CORS or network blocked, return static key
-    }
-    return new Response(JSON.stringify(NAMOID_JWKS), {
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+
 
   // 3. For token exchange requests:
   // NamoID token endpoint strictly requires server-to-server POST with application/x-www-form-urlencoded.
@@ -179,7 +167,7 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     }
   }
 
-  // 4. Default handler for other endpoints (e.g. userinfo)
+  // 4. Default handler for other endpoints (e.g. userinfo, jwks.json)
   try {
     const res = await fetch(input, init);
     if (res.ok || (res.status >= 400 && res.status !== 400)) {
@@ -197,7 +185,9 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     if (typeof window !== "undefined") {
       try {
         const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";
-        const proxyUrl = `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
+        const proxyUrl = typeof window !== 'undefined' 
+          ? `/api/namoid-proxy?url=${encodeURIComponent(url)}`
+          : `${backendBase}/api/namoid-proxy?url=${encodeURIComponent(url)}`;
         const proxyRes = await fetch(proxyUrl, init);
         if (proxyRes.ok || (proxyRes.status < 500 && proxyRes.status !== 404 && proxyRes.status !== 405)) {
           return proxyRes;
