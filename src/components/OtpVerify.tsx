@@ -147,11 +147,11 @@ export default function OtpVerify({
         await confirmationResult.confirm(finalCode);
         setLoading(false);
         if (activePanelRole === 'worker') {
-          onTransition('worker-setup');
+          onTransition('worker-dashboard');
         } else if (activePanelRole === 'admin') {
           onTransition('admin-dashboard');
         } else {
-          onTransition('customer-setup');
+          onTransition('home');
         }
       } catch (err: any) {
         setLoading(false);
@@ -163,11 +163,11 @@ export default function OtpVerify({
       setTimeout(() => {
         setLoading(false);
         if (activePanelRole === 'worker') {
-          onTransition('worker-setup');
+          onTransition('worker-dashboard');
         } else if (activePanelRole === 'admin') {
           onTransition('admin-dashboard');
         } else {
-          onTransition('customer-setup');
+          onTransition('home');
         }
       }, 1000);
     }

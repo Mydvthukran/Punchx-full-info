@@ -20,6 +20,7 @@ interface WebsiteNavbarProps {
   citizenName: string;
   citizenAddress: string;
   onOpenNotificationCenter: () => void;
+  onOpenProfile?: () => void;
   onSelectCategory?: (category: string) => void;
   showNotification: (msg: string) => void;
   hasActiveBooking?: boolean;
@@ -33,6 +34,7 @@ export default function WebsiteNavbar({
   citizenName,
   citizenAddress,
   onOpenNotificationCenter,
+  onOpenProfile,
   onSelectCategory,
   showNotification,
   hasActiveBooking = false,
@@ -327,7 +329,11 @@ export default function WebsiteNavbar({
                       <button
                         onClick={() => {
                           setIsProfileDropdownOpen(false);
-                          handleNavClick('home');
+                          if (onOpenProfile) {
+                            onOpenProfile();
+                          } else {
+                            handleNavClick('home');
+                          }
                         }}
                         className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                       >
@@ -344,6 +350,28 @@ export default function WebsiteNavbar({
                       >
                         <Navigation className="w-3.5 h-3.5 text-[#c5a059]" />
                         <span>Live Service Tracker</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          setIsCategoryModalOpen(true);
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Grid className="w-3.5 h-3.5 text-[#c5a059]" />
+                        <span>Browse 50 Categories</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          onOpenNotificationCenter();
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Bell className="w-3.5 h-3.5 text-[#c5a059]" />
+                        <span>Dispatch & Push Alerts</span>
                       </button>
 
                       <div className="border-t border-zinc-800 my-1"></div>
@@ -389,36 +417,105 @@ export default function WebsiteNavbar({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:hidden bg-[#07122a] border-b border-[#c5a059]/30 px-4 py-4 space-y-3 overflow-hidden"
+            className="md:hidden bg-[#07122a] border-b border-[#c5a059]/30 px-4 py-4 space-y-3.5 overflow-hidden"
           >
-            <div className="grid grid-cols-2 gap-2 pb-3 border-b border-zinc-800">
+            {/* Mobile User Profile Card */}
+            {currentUser ? (
+              <div className="bg-[#0b162e] border border-[#c5a059]/30 rounded-2xl p-3.5 flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 rounded-full bg-[#c5a059]/20 border-2 border-[#c5a059] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <User className="w-5 h-5 text-[#e9c176]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{citizenName || userProfile?.name || 'PunchX Member'}</p>
+                    <p className="text-[10px] text-zinc-400 truncate">{citizenAddress}</p>
+                    <span className="inline-block mt-1 text-[8.5px] font-mono bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/30 font-bold uppercase">
+                      NamoID Verified
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    if (onOpenProfile) onOpenProfile();
+                    else handleNavClick('home');
+                  }}
+                  className="px-3 py-1.5 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-extrabold text-[10px] uppercase rounded-xl flex-shrink-0 ml-2 shadow cursor-pointer"
+                >
+                  My Profile
+                </button>
+              </div>
+            ) : (
+              <div className="bg-[#0b162e] border border-zinc-800 rounded-2xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-white">Join PunchX Premium</p>
+                  <p className="text-[10px] text-zinc-400">Book verified master specialists pan-Bengaluru</p>
+                </div>
+                <button
+                  onClick={() => handleNavClick('auth')}
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-[#c5a059] to-[#e9c176] text-black font-extrabold text-xs rounded-xl shadow cursor-pointer uppercase"
+                >
+                  Sign In
+                </button>
+              </div>
+            )}
+
+            {/* Core Action Grid */}
+            <div className="grid grid-cols-2 gap-2 pb-2 border-b border-zinc-800">
               <button
                 onClick={() => handleNavClick('home')}
-                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-white hover:bg-zinc-800 flex items-center justify-center gap-1.5"
+                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-white hover:bg-zinc-800 flex items-center justify-center gap-1.5 border border-zinc-800"
               >
                 <span>🏠 Home</span>
               </button>
               <button
                 onClick={() => handleNavClick('tracking')}
-                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-[#e9c176] hover:bg-zinc-800 flex items-center justify-center gap-1.5"
+                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-[#e9c176] hover:bg-zinc-800 flex items-center justify-center gap-1.5 border border-[#c5a059]/30"
               >
                 <span>📍 Live Tracking</span>
               </button>
               <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  if (onOpenProfile) onOpenProfile();
+                  else handleNavClick('home');
+                }}
+                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-emerald-400 hover:bg-zinc-800 flex items-center justify-center gap-1.5 border border-emerald-500/30"
+              >
+                <span>📋 My Bookings</span>
+              </button>
+              <button
                 onClick={() => handleNavClick('providers')}
-                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-white hover:bg-zinc-800 flex items-center justify-center gap-1.5"
+                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-white hover:bg-zinc-800 flex items-center justify-center gap-1.5 border border-zinc-800"
               >
                 <span>⚡ Specialists</span>
               </button>
+            </div>
+
+            {/* Additional Useful Actions Suite */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onOpenNotificationCenter();
+                }}
+                className="py-2 px-3 bg-[#0a152e] rounded-xl text-xs font-semibold text-zinc-300 hover:text-white flex items-center justify-center gap-1.5 border border-zinc-800"
+              >
+                <Bell className="w-3.5 h-3.5 text-[#c5a059]" />
+                <span>Alerts ({unreadCount})</span>
+              </button>
               <button
                 onClick={() => handleNavClick('panel-select')}
-                className="py-2.5 px-3 bg-[#0a152e] rounded-xl text-xs font-bold text-[#c5a059] hover:bg-zinc-800 flex items-center justify-center gap-1.5"
+                className="py-2 px-3 bg-[#0a152e] rounded-xl text-xs font-semibold text-[#c5a059] hover:bg-zinc-800 flex items-center justify-center gap-1.5 border border-[#c5a059]/30"
               >
-                <span>⚙️ Switch Portal</span>
+                <Sparkles className="w-3.5 h-3.5 text-[#c5a059]" />
+                <span>Switch Portal</span>
               </button>
             </div>
 
-            <div className="space-y-1">
+            {/* Quick Category Jump */}
+            <div className="space-y-1 pt-1">
               <p className="text-[10px] font-mono text-[#c5a059] uppercase tracking-wider font-bold px-1">
                 Quick Category Jump
               </p>
@@ -427,7 +524,7 @@ export default function WebsiteNavbar({
                   <button
                     key={c.name}
                     onClick={() => handleCategorySelect(c.name)}
-                    className="p-2 text-left bg-[#09142b] rounded-lg text-xs text-zinc-300 hover:text-white flex items-center gap-2"
+                    className="p-2 text-left bg-[#09142b] rounded-lg text-xs text-zinc-300 hover:text-white flex items-center gap-2 border border-zinc-850"
                   >
                     <span>{c.icon}</span>
                     <span className="truncate">{c.name}</span>
@@ -440,11 +537,21 @@ export default function WebsiteNavbar({
                   setIsMobileMenuOpen(false);
                   setIsCategoryModalOpen(true);
                 }}
-                className="w-full mt-2 p-2.5 bg-[#c5a059] text-black font-mono font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow"
+                className="w-full mt-2 p-2.5 bg-gradient-to-r from-[#c5a059] to-[#e9c176] text-black font-mono font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow"
               >
                 <Grid className="w-4 h-4" />
                 <span>Search All 50 Services</span>
               </button>
+
+              {currentUser && (
+                <button
+                  onClick={handleSignOut}
+                  className="w-full mt-2 py-2 text-center text-xs font-bold text-rose-400 hover:bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Sign Out</span>
+                </button>
+              )}
             </div>
           </motion.div>
         )}

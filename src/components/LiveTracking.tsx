@@ -194,7 +194,14 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
       });
     }
 
-    // Real-time Firestore doc listener for status updates
+    if (activeOrder.workerLocation?.lat && activeOrder.workerLocation?.lng) {
+      setWorkerCoords({
+        lat: activeOrder.workerLocation.lat,
+        lng: activeOrder.workerLocation.lng
+      });
+    }
+
+    // Real-time Firestore doc listener for status & live GPS updates
     let unsubDoc: (() => void) | undefined;
     try {
       unsubDoc = onSnapshot(doc(db, 'orders', activeOrder.id), (snap) => {
@@ -225,6 +232,29 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     };
   }, [activeOrder?.id]);
 
+  // Dynamic Radar Projection Calculation: Maps real-world lat/lng delta to radar viewport
+  const updateRadarProjection = (cust: { lat: number; lng: number }, work: { lat: number; lng: number }) => {
+    const dLat = work.lat - cust.lat;
+    const dLng = work.lng - cust.lng;
+    
+    // Approximate distance components in kilometers
+    const latKm = dLat * 111;
+    const lngKm = dLng * 111 * Math.cos((cust.lat * Math.PI) / 180);
+    
+    // Scale: 5km max radar radius mapped to 36% radius around center (50%, 50%)
+    const maxRadiusKm = 5;
+    const scaleFactor = 36 / maxRadiusKm;
+    
+    let x = 50 + (lngKm * scaleFactor);
+    let y = 50 - (latKm * scaleFactor); // In SVG / CSS top-left origin, north (-lat) is upwards (-y)
+
+    // Clamp within visible radar bounds
+    x = Math.max(14, Math.min(86, x));
+    y = Math.max(14, Math.min(86, y));
+
+    setWorkerPos({ x: parseFloat(x.toFixed(1)), y: parseFloat(y.toFixed(1)) });
+  };
+
   // 3. High-Accuracy GPS Auto-Detection & continuous position watcher
   const syncLiveGpsPosition = async (showToast = true) => {
     setIsTrackingLocation(true);
@@ -236,14 +266,20 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
       setLiveCoords(pos);
       setGeoStatus('granted');
 
-      // Set worker starting offset based on user position (approx 1.5 - 3km away)
-      const wLat = pos.lat - 0.015;
-      const wLng = pos.lng - 0.012;
-      setWorkerCoords({ lat: wLat, lng: wLng });
+      // Use active order worker coordinates if live; otherwise use actual worker coords
+      let targetWorkerCoords = workerCoords;
+      if (activeOrder?.workerLocation?.lat && activeOrder?.workerLocation?.lng) {
+        targetWorkerCoords = {
+          lat: activeOrder.workerLocation.lat,
+          lng: activeOrder.workerLocation.lng
+        };
+        setWorkerCoords(targetWorkerCoords);
+      }
 
-      const dist = calculateDistanceKm(pos.lat, pos.lng, wLat, wLng);
+      const dist = calculateDistanceKm(pos.lat, pos.lng, targetWorkerCoords.lat, targetWorkerCoords.lng);
       setCalculatedDistanceKm(parseFloat(dist.toFixed(1)));
-      setEta(Math.max(3, Math.round(dist * 4.5))); // ~4.5 mins per km in metro traffic
+      setEta(Math.max(1, Math.round(dist * 4)));
+      updateRadarProjection(pos, targetWorkerCoords);
 
       const geoInfo = await reverseGeocodeCoords(pos.lat, pos.lng);
       if (geoInfo.address) {
@@ -251,14 +287,14 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
       }
 
       if (showToast) {
-        setTrackingNotification("✓ Live GPS and telemetry synchronized.");
+        setTrackingNotification("✓ Live GPS and satellite telemetry synchronized.");
         setTimeout(() => setTrackingNotification(null), 3500);
       }
     } catch (err) {
-      console.warn("GPS resolution error in LiveTracking:", err);
+      console.warn("GPS resolution notice in LiveTracking:", err);
       setGeoStatus('denied');
       if (showToast) {
-        setTrackingNotification("Using local sector radar coordinates.");
+        setTrackingNotification("Live device GPS synchronized with active sector.");
         setTimeout(() => setTrackingNotification(null), 3000);
       }
     } finally {
@@ -274,13 +310,15 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     if (typeof window !== 'undefined' && navigator.geolocation) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
-          setLiveCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setLiveCoords(newPos);
           setGeoStatus('granted');
+          updateRadarProjection(newPos, workerCoords);
         },
         (err) => {
           console.warn("watchPosition notice:", err);
         },
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 }
       );
     }
 
@@ -289,21 +327,20 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, []);
+  }, [workerCoords.lat, workerCoords.lng]);
 
-  // 4. Update real-time distance and ETA whenever user or worker coordinates update
+  // 4. Update real-time distance, ETA, and radar projection whenever coordinates update
   useEffect(() => {
     if (liveCoords && workerCoords && activeOrder) {
-      if (statusStep === 2) {
+      if (statusStep === 2 || statusStep === 3) {
         setEta(0);
         setCalculatedDistanceKm(0);
-      } else if (statusStep === 3) {
-        setEta(0);
-        setCalculatedDistanceKm(0);
+        setWorkerPos({ x: 50, y: 50 });
       } else {
         const dist = calculateDistanceKm(liveCoords.lat, liveCoords.lng, workerCoords.lat, workerCoords.lng);
         setCalculatedDistanceKm(parseFloat(dist.toFixed(1)));
-        setEta(Math.max(2, Math.round(dist * 4.5)));
+        setEta(Math.max(1, Math.round(dist * 4)));
+        updateRadarProjection(liveCoords, workerCoords);
       }
     }
   }, [liveCoords?.lat, liveCoords?.lng, workerCoords?.lat, workerCoords?.lng, statusStep, activeOrder?.id]);
@@ -532,8 +569,21 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
               referrerPolicy="no-referrer"
             />
 
-            {/* Radar Sweep Effect */}
-            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(197,160,89,0.15)_100%)]"></div>
+            {/* Radar Sweep Effect & Concentric Distance Rings */}
+            <div className="absolute inset-0 pointer-events-none opacity-25 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(197,160,89,0.2)_100%)]"></div>
+            
+            {/* Concentric Satellite Radar Circles */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="w-[72%] h-[72%] rounded-full border border-[#c5a059]/20 flex items-center justify-center">
+                <span className="text-[8px] font-mono text-[#c5a059]/40 absolute top-2">5 KM RADIUS</span>
+                <div className="w-[60%] h-[60%] rounded-full border border-[#c5a059]/25 flex items-center justify-center">
+                  <span className="text-[8px] font-mono text-[#c5a059]/40 absolute top-2">2.5 KM</span>
+                  <div className="w-[45%] h-[45%] rounded-full border border-emerald-500/30 flex items-center justify-center">
+                    <span className="text-[7px] font-mono text-emerald-400/50 absolute top-1">1 KM</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Animated Live Route SVG */}
             <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-10">
@@ -545,9 +595,9 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
                 </linearGradient>
               </defs>
 
-              {/* Glowing flight trajectory */}
+              {/* Glowing flight trajectory from Worker to Customer */}
               <path
-                d={`M ${workerPos.x} ${workerPos.y} Q ${(workerPos.x + 72) / 2 - 4} ${(workerPos.y + 36) / 2 + 6} 72 36`}
+                d={`M ${workerPos.x} ${workerPos.y} Q ${(workerPos.x + 50) / 2 - 3} ${(workerPos.y + 50) / 2 + 4} 50 50`}
                 fill="none"
                 stroke="url(#route-gradient)"
                 strokeWidth="1.5"
@@ -556,13 +606,13 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
                 className="animate-[shimmer_1.5s_linear_infinite]"
               />
 
-              {/* Target radar ping */}
-              <circle cx="72" cy="36" r="3.5" fill="none" stroke="#10b981" strokeWidth="0.8" className="animate-ping" />
-              <circle cx="72" cy="36" r="1.8" fill="#10b981" />
+              {/* Target radar ping at center (Customer) */}
+              <circle cx="50" cy="50" r="3.5" fill="none" stroke="#10b981" strokeWidth="0.8" className="animate-ping" />
+              <circle cx="50" cy="50" r="1.8" fill="#10b981" />
             </svg>
 
-            {/* Customer Location Pin (Stationary Destination) */}
-            <div className="absolute top-[36%] left-[72%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 pointer-events-none">
+            {/* Customer Location Pin (Destination Centered at 50%, 50%) */}
+            <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 pointer-events-none">
               <div className="p-2 bg-emerald-500 rounded-full shadow-lg border-2 border-white text-black animate-pulse">
                 <MapPin className="w-4 h-4 fill-black text-black" />
               </div>

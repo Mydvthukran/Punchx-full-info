@@ -36,6 +36,8 @@ interface HomeProps {
   authTarget: string;
   showNotification: (msg: string) => void;
   onOpenNotificationCenter?: () => void;
+  isProfileDrawerOpen?: boolean;
+  setIsProfileDrawerOpen?: (val: boolean) => void;
 }
 
 const CATEGORIES: ServiceCategory[] = [
@@ -67,7 +69,9 @@ export default function HomeDashboard({
   authMethod,
   authTarget,
   showNotification,
-  onOpenNotificationCenter
+  onOpenNotificationCenter,
+  isProfileDrawerOpen,
+  setIsProfileDrawerOpen,
 }: HomeProps) {
   const { currentUser, userProfile, updateUserProfile } = useAuth() as any;
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +79,22 @@ export default function HomeDashboard({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [historyOrders, setHistoryOrders] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (typeof isProfileDrawerOpen === 'boolean') {
+      setIsProfileOpen(isProfileDrawerOpen);
+    }
+  }, [isProfileDrawerOpen]);
+
+  const handleOpenProfileDrawer = () => {
+    setIsProfileOpen(true);
+    if (setIsProfileDrawerOpen) setIsProfileDrawerOpen(true);
+  };
+
+  const handleCloseProfileDrawer = () => {
+    setIsProfileOpen(false);
+    if (setIsProfileDrawerOpen) setIsProfileDrawerOpen(false);
+  };
   
   const [editName, setEditName] = useState(citizenName || userProfile?.name || '');
   const [editDob, setEditDob] = useState(userProfile?.dob || userProfile?.birthdate || localStorage.getItem('punchx_user_dob') || '');
@@ -421,9 +441,137 @@ export default function HomeDashboard({
   };
 
   return (
-    <div id="home-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-16 overflow-x-hidden">
+    <div id="home-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-24 md:pb-16 overflow-x-hidden">
       {/* Main Content Pane */}
       <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12 space-y-6">
+
+        {/* Citizen Profile & Live Account Bar */}
+        <div id="citizen-account-bar" className="bg-gradient-to-r from-[#0a152e] via-[#0f2147] to-[#0a152e] border border-[#c5a059]/40 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#c5a059] to-[#e9c176] p-[2px] shadow-lg flex-shrink-0">
+              <div className="w-full h-full rounded-full bg-[#081124] flex items-center justify-center">
+                <User className="w-6 h-6 text-[#e9c176]" />
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-extrabold text-white truncate">
+                  {citizenName || userProfile?.name || 'PunchX Member'}
+                </h2>
+                <span className="inline-flex items-center gap-1 text-[9px] font-mono bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold uppercase">
+                  <ShieldCheck className="w-2.5 h-2.5" />
+                  NamoID Verified
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 truncate mt-0.5 max-w-md">
+                📍 {citizenAddress || 'Detecting Bengaluru address...'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              id="open-profile-btn-header"
+              onClick={handleOpenProfileDrawer}
+              className="flex-1 sm:flex-initial px-4 py-2 bg-[#112042] hover:bg-[#182c5b] text-[#e9c176] hover:text-white font-mono font-bold text-xs rounded-xl transition-all border border-[#c5a059]/40 flex items-center justify-center gap-2 cursor-pointer shadow"
+            >
+              <User className="w-3.5 h-3.5 text-[#c5a059]" />
+              <span>My Profile & NamoID</span>
+            </button>
+            <button
+              id="open-orders-btn-header"
+              onClick={handleOpenProfileDrawer}
+              className="flex-1 sm:flex-initial px-4 py-2 bg-gradient-to-r from-[#c5a059] to-[#e9c176] text-black font-mono font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-110 active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>My Bookings ({historyOrders.length})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Action Shortcuts Grid (All useful website buttons) */}
+        <div id="quick-action-shortcuts" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <button
+            onClick={handleOpenProfileDrawer}
+            className="p-3 bg-[#0a152e] hover:bg-[#111f3d] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer shadow-sm group text-left"
+          >
+            <div className="w-8 h-8 rounded-xl bg-[#c5a059]/15 text-[#e9c176] flex items-center justify-center flex-shrink-0 group-hover:bg-[#c5a059] group-hover:text-black transition-colors">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">Profile</p>
+              <p className="text-[9.5px] text-zinc-400 truncate">NamoID & KYC</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handleOpenProfileDrawer}
+            className="p-3 bg-[#0a152e] hover:bg-[#111f3d] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer shadow-sm group text-left"
+          >
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">My Orders</p>
+              <p className="text-[9.5px] text-zinc-400 truncate">Tax Invoices</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="p-3 bg-[#0a152e] hover:bg-[#111f3d] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer shadow-sm group text-left"
+          >
+            <div className="w-8 h-8 rounded-xl bg-[#c5a059]/15 text-[#e9c176] flex items-center justify-center flex-shrink-0 group-hover:bg-[#c5a059] group-hover:text-black transition-colors">
+              <Grid className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">50 Services</p>
+              <p className="text-[9.5px] text-zinc-400 truncate">All Categories</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onTransition('tracking')}
+            className="p-3 bg-[#0a152e] hover:bg-[#111f3d] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer shadow-sm group text-left"
+          >
+            <div className="w-8 h-8 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center flex-shrink-0 group-hover:bg-sky-500 group-hover:text-black transition-colors">
+              <Navigation className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">Live Radar</p>
+              <p className="text-[9.5px] text-zinc-400 truncate">Real-time GPS</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setIsEnterpriseModalOpen(true)}
+            className="p-3 bg-[#0a152e] hover:bg-[#111f3d] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer shadow-sm group text-left"
+          >
+            <div className="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-500 group-hover:text-black transition-colors">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">Society AMC</p>
+              <p className="text-[9.5px] text-zinc-400 truncate">Enterprise Plan</p>
+            </div>
+          </button>
+
+          <button
+            onClick={onOpenNotificationCenter}
+            className="p-3 bg-[#0a152e] hover:bg-[#111f3d] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer shadow-sm group text-left"
+          >
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500 group-hover:text-black transition-colors relative">
+              <Bell className="w-4 h-4" />
+              {unreadPushCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full"></span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">Alerts</p>
+              <p className="text-[9.5px] text-zinc-400 truncate">Push Center</p>
+            </div>
+          </button>
+        </div>
         
         {/* Push Notification Simulator Telemetry Banner */}
         <div className="bg-gradient-to-r from-[#0c1a36] via-[#10234a] to-[#0c1a36] border border-[#c5a059]/40 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
@@ -439,7 +587,7 @@ export default function HomeDashboard({
                 </span>
               </div>
               <p className="text-xs text-zinc-300 font-sans mt-0.5">
-                Simulate or receive instant alerts when a specialist accepts your booking or begins travel.
+                Receive instant real-time alerts when a specialist accepts your booking or begins GPS travel.
               </p>
             </div>
           </div>
@@ -449,7 +597,7 @@ export default function HomeDashboard({
             className="px-3.5 py-2 bg-gradient-to-r from-[#c5a059] to-[#e9c176] text-black font-mono font-extrabold text-xs uppercase tracking-wider rounded-xl hover:brightness-110 active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0"
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Open Push Simulator</span>
+            <span>Dispatch Center</span>
           </button>
         </div>
         
@@ -906,7 +1054,7 @@ export default function HomeDashboard({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsProfileOpen(false)}
+              onClick={handleCloseProfileDrawer}
             />
 
             {/* Slide-out secure terminal workspace panel */}
@@ -925,12 +1073,12 @@ export default function HomeDashboard({
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-[#c5a059]" />
                     <h2 className="text-sm font-sans uppercase tracking-wider font-extrabold text-white">
-                      User Profile
+                      User Profile & Bookings
                     </h2>
                   </div>
                   <button
                     id="close-profile-drawer"
-                    onClick={() => setIsProfileOpen(false)}
+                    onClick={handleCloseProfileDrawer}
                     className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors cursor-pointer"
                   >
                     <X className="w-5 h-5" />
@@ -1573,6 +1721,55 @@ export default function HomeDashboard({
           handleCategoryClick(catName);
         }}
       />
+
+      {/* Mobile Website Sticky Bottom Navigation Bar */}
+      <nav
+        id="mobile-bottom-navbar"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-45 bg-[#061024]/95 backdrop-blur-xl border-t border-[#c5a059]/30 px-3 py-2 flex items-center justify-around shadow-2xl safe-area-bottom"
+      >
+        <button
+          onClick={() => {
+            handleCloseProfileDrawer();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all text-[#e9c176] font-bold text-[10px] cursor-pointer"
+        >
+          <span className="text-base">🏠</span>
+          <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => setIsCategoryModalOpen(true)}
+          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all text-zinc-400 hover:text-white font-semibold text-[10px] cursor-pointer"
+        >
+          <span className="text-base">🔍</span>
+          <span>50 Services</span>
+        </button>
+
+        <button
+          onClick={() => onTransition('tracking')}
+          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all text-[#e9c176] hover:brightness-125 font-bold text-[10px] cursor-pointer"
+        >
+          <span className="text-base">📍</span>
+          <span>Tracking</span>
+        </button>
+
+        <button
+          onClick={handleOpenProfileDrawer}
+          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all text-zinc-400 hover:text-emerald-400 font-semibold text-[10px] cursor-pointer"
+        >
+          <span className="text-base">📋</span>
+          <span>Bookings</span>
+        </button>
+
+        <button
+          onClick={handleOpenProfileDrawer}
+          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all text-zinc-400 hover:text-[#e9c176] font-semibold text-[10px] cursor-pointer"
+        >
+          <span className="text-base">👤</span>
+          <span>Profile</span>
+        </button>
+      </nav>
     </div>
   );
 }

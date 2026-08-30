@@ -1494,7 +1494,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                 </button>
               </div>
 
-              {/* Simulated Live GPS Map Viewfinder */}
+              {/* Live GPS Map Viewfinder */}
               <div className="bg-[#07122a] border border-zinc-700 rounded-2xl h-52 relative overflow-hidden flex flex-col justify-between p-4 shadow-inner">
                 {/* SVG Route Line Visualizer */}
                 <svg className="absolute inset-0 w-full h-full opacity-40" xmlns="http://www.w3.org/2000/svg">
@@ -1504,21 +1504,21 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                 {/* Live Worker GPS Pin */}
                 <div className="relative z-10 flex items-center gap-2 bg-[#07122a]/90 backdrop-blur-md border border-[#c5a059] p-2 rounded-xl w-fit text-[11px] font-mono text-white font-bold">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span>Worker GPS: In Transit (1.8 km)</span>
+                  <span>Worker GPS: En Route ({distanceKm || 1.8} km)</span>
                 </div>
 
                 {/* Customer Location Marker */}
                 <div className="relative z-10 self-end flex items-center gap-2 bg-emerald-500/20 backdrop-blur-md border border-emerald-500 p-2 rounded-xl text-[11px] font-mono text-emerald-300 font-bold">
                   <MapPin className="w-4 h-4 text-emerald-400" />
-                  <span>Destination: {selectedOrder.customerAddress.split(',')[0]}</span>
+                  <span>Destination: {selectedOrder.customerAddress ? selectedOrder.customerAddress.split(',')[0] : 'Customer Doorstep'}</span>
                 </div>
               </div>
 
               {/* Order Info & Distance Banner */}
               <div className="bg-[#07122a] p-3.5 rounded-xl border border-zinc-800 flex justify-between items-center text-xs font-mono">
                 <div>
-                  <span className="text-zinc-400 block text-[10px]">ETA / DISTANCE</span>
-                  <span className="text-white font-bold text-sm">4 mins away • 1.8 km</span>
+                  <span className="text-zinc-400 block text-[10px]">LIVE ETA / DISTANCE</span>
+                  <span className="text-white font-bold text-sm">{etaMinutes || 4} mins away • {distanceKm || 1.8} km</span>
                 </div>
 
                 <a

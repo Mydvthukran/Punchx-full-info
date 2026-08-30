@@ -159,7 +159,13 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
       });
       setAuthMethodDetail('gmail', registerEmail.trim());
       showNotification(`📨 Account created successfully for ${registerEmail.trim()}!`);
-      onTransition('otp');
+      if (activePanelRole === 'worker') {
+        onTransition('worker-dashboard');
+      } else if (activePanelRole === 'admin') {
+        onTransition('admin-dashboard');
+      } else {
+        onTransition('home');
+      }
     } catch (err: any) {
       console.warn("Firebase registration info:", err?.code || err);
       if (err?.code === 'auth/email-already-in-use') {
@@ -176,7 +182,13 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
         });
         setAuthMethodDetail('gmail', registerEmail.trim());
         showNotification(`📨 Account initialized for ${registerEmail.trim()}!`);
-        onTransition('otp');
+        if (activePanelRole === 'worker') {
+          onTransition('worker-dashboard');
+        } else if (activePanelRole === 'admin') {
+          onTransition('admin-dashboard');
+        } else {
+          onTransition('home');
+        }
       }
     } finally {
       setIsSubmitting(false);

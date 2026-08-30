@@ -100,6 +100,8 @@ function AppMain() {
   const [isMobileQrOpen, setIsMobileQrOpen] = useState(false);
   // State for Push Notification Center Modal
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  // State for Global Profile & Orders Drawer
+  const [isGlobalProfileOpen, setIsGlobalProfileOpen] = useState(false);
 
   // Initialize Firebase credentials for Dashboard security
   useEffect(() => {
@@ -124,14 +126,31 @@ function AppMain() {
     }
   }, [userProfile, isLoadingProfile, currentUser]);
 
-  // Step 4: Secure Routing Guard - Redirect to auth screen if unauthenticated user attempts to access protected screens
+  // Step 4: Secure Routing Guard & Direct Dashboard Routing Post-Login
   useEffect(() => {
     const protectedScreens: AppScreen[] = ['home', 'customer-setup', 'worker-setup', 'worker-dashboard', 'admin-dashboard', 'tracking', 'booking', 'payment', 'providers', 'provider-details'];
     if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen)) {
       showToast("🔒 Active session required. Redirecting to login...");
       setCurrentScreen('auth');
     }
-  }, [currentUser, isLoadingProfile, currentScreen]);
+
+    // After login, direct user to their respective dashboard instead of panel selection or auth screens
+    if (!isLoadingProfile && currentUser) {
+      if (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select') {
+        const resolvedRole = userProfile?.role || activePanelRole || 'customer';
+        if (resolvedRole === 'worker') {
+          setActivePanelRole('worker');
+          setCurrentScreen('worker-dashboard');
+        } else if (resolvedRole === 'admin') {
+          setActivePanelRole('admin');
+          setCurrentScreen('admin-dashboard');
+        } else {
+          setActivePanelRole('customer');
+          setCurrentScreen('home');
+        }
+      }
+    }
+  }, [currentUser, userProfile, isLoadingProfile, currentScreen, activePanelRole]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -180,7 +199,16 @@ function AppMain() {
 
   const handleTransition = (target: AppScreen) => {
     let resolvedTarget = target;
-    if (target === 'home' && !currentUser) {
+    if (target === 'panel-select' && currentUser) {
+      const resolvedRole = userProfile?.role || activePanelRole || 'customer';
+      if (resolvedRole === 'worker') {
+        resolvedTarget = 'worker-dashboard';
+      } else if (resolvedRole === 'admin') {
+        resolvedTarget = 'admin-dashboard';
+      } else {
+        resolvedTarget = 'home';
+      }
+    } else if (target === 'home' && !currentUser) {
       resolvedTarget = 'panel-select';
     }
 
@@ -269,6 +297,12 @@ function AppMain() {
           citizenName={citizenName}
           citizenAddress={citizenAddress}
           onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
+          onOpenProfile={() => {
+            if (currentScreen !== 'home') {
+              setCurrentScreen('home');
+            }
+            setIsGlobalProfileOpen(true);
+          }}
           onSelectCategory={setSelectedCategory}
           showNotification={showToast}
           hasActiveBooking={true}
