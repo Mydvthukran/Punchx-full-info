@@ -5,11 +5,12 @@ import PUNCHX_LOGO from '../assets/logo';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../lib/authContext';
-import { requestAndAutoUpdateLocation, LocationData, getSectorFromAddress, calculateDistanceKm, getCoordinatesForAddressOrSector, checkIsWithin15KmRadius } from '../lib/location';
+import { requestAndAutoUpdateLocation, LocationData, getSectorFromAddress, calculateDistanceKm, getCoordinatesForAddressOrSector, checkIsWithin15KmRadius, getAccurateCurrentPosition } from '../lib/location';
 import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';
 import WorkerAcademyModal from './WorkerAcademyModal';
 import WorkerSafetyStoreModal from './WorkerSafetyStoreModal';
 import InvoiceReceiptModal from './InvoiceReceiptModal';
+import ServiceCategoryModal from './ServiceCategoryModal';
 import { 
   dispatchWorkerAcceptedAlert, 
   dispatchWorkerTravelAlert, 
@@ -21,7 +22,7 @@ import {
   MessageSquare, ChevronRight, Power, Camera, RefreshCw, Check,
   XCircle, TrendingUp, BarChart2, FileText, Send, Sparkles, User,
   Calendar, CreditCard, ArrowLeft, PenTool, Lock, HelpCircle,
-  Compass, Eye, Play, LogOut, Edit3, X, ShoppingBag, BookOpen, Award
+  Compass, Eye, Play, LogOut, Edit3, X, ShoppingBag, BookOpen, Award, Grid, Plus, Briefcase
 } from 'lucide-react';
 
 interface WorkerDashboardProps {
@@ -51,6 +52,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     phone: string;
     photoURL: string;
     skill: string;
+    categories?: string[];
     experience: string;
     visitingFee: number;
     rating: number;
@@ -64,7 +66,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     email: '',
     phone: '',
     photoURL: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
-    skill: 'Service Specialist',
+    skill: 'Electrician',
+    categories: ['Electrician'],
     experience: 'Verified Professional',
     visitingFee: 199,
     rating: 5.0,
@@ -76,6 +79,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   const [isLoadingWorkerProfile, setIsLoadingWorkerProfile] = useState(true);
   const [editFeeModal, setEditFeeModal] = useState(false);
   const [tempVisitingFee, setTempVisitingFee] = useState<number>(199);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // GPS Location Auto Update State
   const [workerLocation, setWorkerLocation] = useState<LocationData | null>(null);
@@ -106,13 +110,18 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     if (userProfile && currentUser) {
       setIsLoadingWorkerProfile(true);
       const fee = userProfile.visitingFee || userProfile.price || 199;
+      const cats = userProfile.categories && userProfile.categories.length > 0 
+        ? userProfile.categories 
+        : [userProfile.workerSkill || 'Electrician'];
+
       setWorkerProfile({
         uid: userProfile.uid,
         name: userProfile.name || 'Verified Worker',
         email: userProfile.email || 'Not provided',
         phone: userProfile.phone || 'Not provided',
         photoURL: userProfile.photoURL || 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
-        skill: userProfile.workerSkill || 'Master Service Specialist',
+        skill: cats.join(', ') || userProfile.workerSkill || 'Electrician',
+        categories: cats,
         experience: userProfile.workerExperience || '1 Year',
         visitingFee: fee,
         rating: userProfile.workerRating || 5.0,
@@ -124,6 +133,41 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       setIsLoadingWorkerProfile(false);
     }
   }, [userProfile, currentUser]);
+
+  const handleSaveWorkerCategories = async (newCategories: string[], customSkill?: string) => {
+    const combinedCats = [...newCategories];
+    if (customSkill && !combinedCats.includes(customSkill)) {
+      combinedCats.push(customSkill);
+    }
+
+    setWorkerProfile(prev => ({
+      ...prev,
+      categories: combinedCats,
+      skill: combinedCats.join(', ')
+    }));
+
+    if (currentUser?.uid || workerProfile.uid) {
+      const targetUid = currentUser?.uid || workerProfile.uid;
+      try {
+        await updateDoc(doc(db, 'users', targetUid), {
+          categories: combinedCats,
+          workerSkill: combinedCats.join(', '),
+          skill: combinedCats[0] || 'Electrician',
+          updatedAt: new Date().toISOString()
+        });
+        await updateDoc(doc(db, 'workers', targetUid), {
+          categories: combinedCats,
+          skill: combinedCats.join(', '),
+          category: combinedCats[0] || 'Electrician',
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.warn('Firestore worker category update error:', e);
+      }
+    }
+
+    showNotification(`✓ Services updated! You are now active in ${combinedCats.length} categories.`);
+  };
 
   // Loading state for Firestore/data sync simulation
   const [isLoading, setIsLoading] = useState(true);
@@ -353,10 +397,28 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   };
 
   // Handle Out for Delivery / In Transit
-  const handleOutForDelivery = () => {
+  const handleOutForDelivery = async () => {
     if (!selectedOrder) return;
     setShowOrderModal(false);
     setShowLiveNavigationModal(true);
+
+    try {
+      const currentPos = await getAccurateCurrentPosition();
+      await updateDoc(doc(db, 'orders', selectedOrder.id), {
+        status: 'Out for Service',
+        workerLocation: { lat: currentPos.lat, lng: currentPos.lng },
+        updatedAt: new Date().toISOString()
+      });
+    } catch {
+      try {
+        await updateDoc(doc(db, 'orders', selectedOrder.id), {
+          status: 'Out for Service',
+          updatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error("Firestore out for delivery status update failed:", e);
+      }
+    }
 
     // Trigger Real-Time Push Notification: Worker Began Travel
     dispatchWorkerTravelAlert({
@@ -369,7 +431,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       customerAddress: selectedOrder.customerAddress
     });
 
-    showNotification(`🚚 OUT FOR DELIVERY! Opening live order navigation map...`);
+    showNotification(`🚚 OUT FOR DELIVERY! Live GPS navigation active.`);
   };
 
   // Live Camera Functions
@@ -977,6 +1039,39 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                       <Edit3 className="w-3 h-3" /> Edit
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* What service do you provide? (50 Categories Manager) */}
+              <div className="bg-[#07122a] p-4 rounded-2xl border border-[#c5a059]/30 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-[#e9c176] font-bold block flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5" /> What service do you provide? (50 Categories)
+                    </span>
+                    <p className="text-[11px] text-zinc-400">
+                      Citizens searching for these categories will discover your profile and send bookings.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    className="px-3 py-1.5 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow transition-all self-start sm:self-auto"
+                  >
+                    <Grid className="w-3.5 h-3.5" />
+                    <span>Manage Services ({(workerProfile.categories || []).length})</span>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {(workerProfile.categories && workerProfile.categories.length > 0 ? workerProfile.categories : [workerProfile.skill]).map((catName) => (
+                    <span
+                      key={catName}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#c5a059]/15 border border-[#c5a059]/40 text-[#e9c176] rounded-full text-xs font-semibold"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#e9c176]" />
+                      <span>{catName}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
 
@@ -1846,6 +1941,15 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
         isOpen={!!selectedInvoiceOrder}
         onClose={() => setSelectedInvoiceOrder(null)}
         order={selectedInvoiceOrder}
+      />
+
+      {/* 50 Worker Categories Selection Modal */}
+      <ServiceCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        mode="worker"
+        selectedCategories={workerProfile.categories || [workerProfile.skill]}
+        onSaveWorkerCategories={handleSaveWorkerCategories}
       />
 
     </div>

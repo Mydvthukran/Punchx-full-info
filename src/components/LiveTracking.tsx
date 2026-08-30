@@ -291,69 +291,34 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     };
   }, []);
 
-  // 4. Smooth Live Vehicle Movement towards destination & Dynamic ETA Countdown
+  // 4. Update real-time distance and ETA whenever user or worker coordinates update
   useEffect(() => {
-    if (statusStep !== 1) return; // Only advance when Out for Service
+    if (liveCoords && workerCoords && activeOrder) {
+      if (statusStep === 2) {
+        setEta(0);
+        setCalculatedDistanceKm(0);
+      } else if (statusStep === 3) {
+        setEta(0);
+        setCalculatedDistanceKm(0);
+      } else {
+        const dist = calculateDistanceKm(liveCoords.lat, liveCoords.lng, workerCoords.lat, workerCoords.lng);
+        setCalculatedDistanceKm(parseFloat(dist.toFixed(1)));
+        setEta(Math.max(2, Math.round(dist * 4.5)));
+      }
+    }
+  }, [liveCoords?.lat, liveCoords?.lng, workerCoords?.lat, workerCoords?.lng, statusStep, activeOrder?.id]);
 
-    const interval = setInterval(() => {
-      // Step worker position closer on radar canvas (Target destination is x: 72, y: 36)
-      setWorkerPos((prev) => {
-        const targetX = 72;
-        const targetY = 36;
-        const nextX = prev.x + (targetX - prev.x) * 0.08;
-        const nextY = prev.y - (prev.y - targetY) * 0.08;
-        return { x: nextX, y: nextY };
-      });
-
-      // Step ETA & Distance countdown
-      setEta((prev) => {
-        if (prev <= 1) {
-          setStatusStep(2); // Arrived!
-          setTrackingNotification("📍 Technician has arrived at your doorstep!");
-          setTimeout(() => setTrackingNotification(null), 6000);
-          return 0;
-        }
-        return prev - 1;
-      });
-
-      setCalculatedDistanceKm((prev) => {
-        if (prev <= 0.2) return 0.1;
-        return parseFloat((prev - 0.2).toFixed(1));
-      });
-    }, 12000); // Pulse every 12 seconds
-
-    return () => clearInterval(interval);
-  }, [statusStep]);
-
-  // 5. User action: Manual Track button
+  // 5. User action: Refresh and Sync Live GPS
   const handleManualTrack = () => {
     syncLiveGpsPosition(true);
-    // Animate technician closer
-    setWorkerPos((prev) => ({
-      x: prev.x + (72 - prev.x) * 0.2,
-      y: prev.y - (prev.y - 36) * 0.2
-    }));
-    setEta((prev) => Math.max(1, prev - 2));
-    setCalculatedDistanceKm((prev) => Math.max(0.3, parseFloat((prev - 0.4).toFixed(1))));
   };
 
-  // 6. Messaging
+  // 6. Real messaging handler
   const handleSendMessage = () => {
     if (!chatInput.trim()) return;
     const text = chatInput.trim();
     setChatMessages((prev) => [...prev, { sender: 'user', text, time: 'Just now' }]);
     setChatInput('');
-
-    setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          sender: 'worker',
-          text: "Understood! I am navigating via live GPS and will be at your gate in a few minutes.",
-          time: 'Just now'
-        }
-      ]);
-    }, 2000);
   };
 
   // 7. Cancel booking handler

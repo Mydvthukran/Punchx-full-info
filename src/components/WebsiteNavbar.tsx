@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Wrench, ShieldCheck, MapPin, Bell, User, Phone, LogOut, ChevronDown, 
   Menu, X, Sparkles, Navigation, Clock, Shield, Search, Zap, CheckCircle2,
-  Calendar, CreditCard, Award, ExternalLink
+  Calendar, CreditCard, Award, ExternalLink, Grid
 } from 'lucide-react';
 import { AppScreen } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
 import { useAuth } from '../lib/authContext';
 import { getStoredPushNotifications } from '../lib/pushNotifications';
+import ServiceCategoryModal from './ServiceCategoryModal';
+import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface WebsiteNavbarProps {
   currentScreen: AppScreen;
@@ -39,17 +41,18 @@ export default function WebsiteNavbar({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isServicesDropdownOpen, setIsServicesDropdownOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const categories = [
-    { name: 'Electrical', desc: 'Wiring, MCB & Short Circuits', icon: '⚡' },
-    { name: 'Plumbing', desc: 'High-Pressure Pipes & Leakages', icon: '🔧' },
-    { name: 'Cleaning', desc: 'Deep Sanitization & Housekeeping', icon: '✨' },
-    { name: 'AC Repair', desc: 'Compressor, Gas & Board Service', icon: '❄️' },
-    { name: 'Painting', desc: 'Interior, Exterior & Waterproofing', icon: '🎨' },
-    { name: 'Carpentry', desc: 'Furniture, Locks & Modular Fit', icon: '🪚' },
-    { name: 'Pest Control', desc: 'Termite, Bedbug & Shield Protection', icon: '🛡️' },
-    { name: 'Moving', desc: 'Safe Shifting & Packing Support', icon: '📦' },
+    { name: 'Electrician', desc: 'Wiring, MCB & Switches', icon: '⚡' },
+    { name: 'Plumber', desc: 'Pipes, Taps & Drain Leakages', icon: '🔧' },
+    { name: 'AC Technician', desc: 'Jet Clean, Gas & Board Service', icon: '❄️' },
+    { name: 'Carpenter', desc: 'Furniture, Locks & Modular Fit', icon: '🪚' },
+    { name: 'Painter', desc: 'Wall Painting & Waterproofing', icon: '🎨' },
+    { name: 'Cleaner/Housekeeper', desc: 'Deep Sanitization & Housekeeping', icon: '✨' },
+    { name: 'CCTV Technician', desc: 'Security Camera & DVR Setup', icon: '📹' },
+    { name: 'Car Mechanic', desc: 'Breakdown & Maintenance', icon: '🚗' },
   ];
 
   useEffect(() => {
@@ -199,8 +202,9 @@ export default function WebsiteNavbar({
                   onMouseLeave={() => setIsServicesDropdownOpen(false)}
                   className="absolute top-full left-0 mt-2 w-72 bg-[#0a152e] border border-[#c5a059]/30 rounded-2xl shadow-2xl p-3 z-50 grid grid-cols-1 gap-1 backdrop-blur-xl"
                 >
-                  <div className="px-3 py-1.5 text-[10px] font-mono text-[#e9c176] uppercase tracking-wider font-bold border-b border-zinc-800">
-                    Instant Bangalore Services
+                  <div className="px-3 py-1.5 text-[10px] font-mono text-[#e9c176] uppercase tracking-wider font-bold border-b border-zinc-800 flex justify-between items-center">
+                    <span>Instant Bangalore Services</span>
+                    <span className="text-zinc-500">50 Total</span>
                   </div>
                   {categories.map((cat) => (
                     <button
@@ -215,6 +219,17 @@ export default function WebsiteNavbar({
                       </div>
                     </button>
                   ))}
+                  
+                  <button
+                    onClick={() => {
+                      setIsServicesDropdownOpen(false);
+                      setIsCategoryModalOpen(true);
+                    }}
+                    className="mt-1 w-full p-2.5 bg-[#c5a059]/20 hover:bg-[#c5a059] text-[#e9c176] hover:text-black border border-[#c5a059]/40 rounded-xl text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Grid className="w-3.5 h-3.5" />
+                    <span>Browse All 50 Categories →</span>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -419,10 +434,31 @@ export default function WebsiteNavbar({
                   </button>
                 ))}
               </div>
+              
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsCategoryModalOpen(true);
+                }}
+                className="w-full mt-2 p-2.5 bg-[#c5a059] text-black font-mono font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow"
+              >
+                <Grid className="w-4 h-4" />
+                <span>Search All 50 Services</span>
+              </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 50 Worker Categories Selection Modal */}
+      <ServiceCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        mode="citizen"
+        onSelectCategory={(catName) => {
+          handleCategorySelect(catName);
+        }}
+      />
     </header>
   );
 }

@@ -6,7 +6,7 @@ import {
   User, Calendar, MapPin, Compass, Navigation, CheckCircle, ArrowRight, 
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Hammer, Phone, Star,
-  Briefcase, Users, Clock, Shield, Lock, Radio
+  Briefcase, Users, Clock, Shield, Lock, Radio, Grid, CheckCircle2
 } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -15,6 +15,8 @@ import {
   requestAndAutoUpdateLocation, 
   fetchRegisteredCustomersForWorkerLocation
 } from '../lib/location';
+import ServiceCategoryModal from './ServiceCategoryModal';
+import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface WorkerLocationSetupProps {
   onTransition: (target: AppScreen) => void;
@@ -57,10 +59,17 @@ export default function WorkerLocationSetup({
     localStorage.getItem('punchx_worker_landmark') || ''
   );
 
-  const [selectedSkill, setSelectedSkill] = useState(
-    workerApplication?.skill || 'AC Repair & Thermal'
-  );
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
+    if (workerApplication?.categories && workerApplication.categories.length > 0) {
+      return workerApplication.categories;
+    }
+    if (workerApplication?.skill) {
+      return [workerApplication.skill];
+    }
+    return ['AC Technician'];
+  });
 
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [isResolvingBackend, setIsResolvingBackend] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,13 +82,13 @@ export default function WorkerLocationSetup({
   const [coverageMessage, setCoverageMessage] = useState('Connecting to location dispatch server...');
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
 
-  const skillsList = [
-    'AC Repair & Thermal',
-    'Electrical Systems',
-    'Plumbing & Drainage',
-    'Appliance Maintenance',
-    'Deep Cleaning & Sanitization',
-    'Carpentry & Security Locks'
+  const quickCategories = [
+    'Electrician',
+    'Plumber',
+    'AC Technician',
+    'Carpenter',
+    'Mechanic',
+    'Cleaner/Housekeeper'
   ];
 
   // Query backend for location sector and telemetry (Customer details remain strictly hidden for privacy)
@@ -187,7 +196,8 @@ export default function WorkerLocationSetup({
       localStorage.setItem('punchx_worker_address', finalFormattedAddress);
       localStorage.setItem('punchx_worker_landmark', landmark.trim());
       localStorage.setItem('punchx_worker_sector', resolvedSector);
-      localStorage.setItem('punchx_worker_skill', selectedSkill);
+      localStorage.setItem('punchx_worker_skill', selectedCategories.join(', ') || 'AC Technician');
+      localStorage.setItem('punchx_worker_categories', JSON.stringify(selectedCategories));
       localStorage.setItem('punchx_worker_location', JSON.stringify({
         lat: coords.lat,
         lng: coords.lng,
@@ -212,7 +222,8 @@ export default function WorkerLocationSetup({
       address: finalFormattedAddress,
       area: resolvedArea,
       sector: resolvedSector,
-      skill: selectedSkill,
+      skill: selectedCategories.join(', ') || 'AC Technician',
+      categories: selectedCategories,
       experienceYears: workerApplication?.experienceYears || '3-5 Years',
       phone: authMethod === 'phone' ? authTarget : (workerApplication?.phone || currentUser?.phone_number || '+91 98765 43210'),
       email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || currentUser?.email || 'partner@punchx.com'),
@@ -234,7 +245,9 @@ export default function WorkerLocationSetup({
         area: resolvedArea,
         city: resolvedCity,
         sector: resolvedSector,
-        workerSkill: selectedSkill,
+        workerSkill: selectedCategories.join(', ') || 'AC Technician',
+        categories: selectedCategories,
+        skill: selectedCategories[0] || 'AC Technician',
         location: { lat: coords.lat, lng: coords.lng },
         role: 'worker',
         phone: appData.phone,
@@ -360,27 +373,74 @@ export default function WorkerLocationSetup({
             </div>
           </div>
 
-          {/* 2. Trade / Skill Selection */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
-              Primary Trade Expertise <span className="text-[#c5a059]">*</span>
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {skillsList.map((skill) => (
-                <button
-                  type="button"
-                  key={skill}
-                  onClick={() => setSelectedSkill(skill)}
-                  className={`text-left p-2.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
-                    selectedSkill === skill
-                      ? 'bg-[#c5a059]/20 border-[#c5a059] text-white shadow-sm shadow-[#c5a059]/30'
-                      : 'bg-[#09152e] border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                  }`}
+          {/* 2. What service do you provide? (50 Categories) */}
+          <div className="space-y-2.5 bg-[#09152e] p-4 rounded-xl border border-zinc-800">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
+                  What service do you provide? <span className="text-[#c5a059]">*</span>
+                </label>
+                <p className="text-[11px] text-zinc-400">
+                  Select your primary and secondary trade services ({selectedCategories.length} selected).
+                </p>
+              </div>
+              <button
+                type="button"
+                id="worker-setup-open-categories-btn"
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="px-3 py-1.5 bg-[#c5a059] hover:bg-[#d8b56f] text-black font-mono font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow transition-all self-start sm:self-auto"
+              >
+                <Grid className="w-3.5 h-3.5" />
+                <span>Search 50 Categories</span>
+              </button>
+            </div>
+
+            {/* Selected Categories Display */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {selectedCategories.map((catName) => (
+                <span
+                  key={catName}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#c5a059]/20 border border-[#c5a059]/50 text-white rounded-full text-xs font-medium"
                 >
-                  <Briefcase className="w-3.5 h-3.5 text-[#c5a059] flex-shrink-0" />
-                  <span className="truncate">{skill}</span>
-                </button>
+                  <CheckCircle2 className="w-3 h-3 text-[#c5a059]" />
+                  <span>{catName}</span>
+                </span>
               ))}
+            </div>
+
+            {/* Quick-Pick Popular Category Pills */}
+            <div className="pt-2 border-t border-zinc-800">
+              <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold block mb-1.5">
+                Quick Category Toggles:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {quickCategories.map((cat) => {
+                  const isSelected = selectedCategories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          if (selectedCategories.length > 1) {
+                            setSelectedCategories(prev => prev.filter(c => c !== cat));
+                          }
+                        } else {
+                          setSelectedCategories(prev => [...prev, cat]);
+                        }
+                      }}
+                      className={`p-2 rounded-xl border text-left text-xs font-mono transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-[#c5a059] text-black font-bold border-[#c5a059]'
+                          : 'bg-[#07122a] text-zinc-300 border-zinc-800 hover:border-zinc-700'
+                      }`}
+                    >
+                      <span className="truncate">{cat}</span>
+                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-black flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -526,6 +586,18 @@ export default function WorkerLocationSetup({
           <span>All location updates are encrypted and synchronized with PunchX backend dispatch servers.</span>
         </div>
       </div>
+
+      {/* 50 Worker Categories Selection Modal */}
+      <ServiceCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        mode="worker"
+        selectedCategories={selectedCategories}
+        onSaveWorkerCategories={(cats) => {
+          setSelectedCategories(cats);
+          showNotification(`✓ ${cats.length} trade categories saved!`);
+        }}
+      />
     </main>
   );
 }

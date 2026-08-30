@@ -187,7 +187,7 @@ export default function NotificationCenterModal({
                 </div>
                 <h4 className="text-sm font-bold text-zinc-300">No push notifications yet</h4>
                 <p className="text-xs text-zinc-500 max-w-xs mx-auto">
-                  Alerts will trigger automatically when a specialist accepts an order or begins travel. You can also tap the simulation buttons above!
+                  Alerts will trigger automatically in real-time when a specialist accepts your booking, starts navigation, or arrives at your doorstep.
                 </p>
               </div>
             ) : (

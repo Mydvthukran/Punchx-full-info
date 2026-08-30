@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
-import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass, Bell, Zap } from 'lucide-react';
+import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass, Bell, Zap, Grid } from 'lucide-react';
 import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
 import PUNCHX_LOGO from '../assets/logo';
@@ -14,6 +14,8 @@ import WebsiteFAQ from './WebsiteFAQ';
 import EnterpriseInquiryModal from './EnterpriseInquiryModal';
 import InvoiceReceiptModal from './InvoiceReceiptModal';
 import WarrantyClaimModal from './WarrantyClaimModal';
+import ServiceCategoryModal from './ServiceCategoryModal';
+import { PUNCHX_50_CATEGORIES, filterCategories } from '../data/categories';
 import { requestAndAutoUpdateLocation } from '../lib/location';
 import { getStoredPushNotifications } from '../lib/pushNotifications';
 
@@ -81,6 +83,7 @@ export default function HomeDashboard({
   const [isLocatingCustomer, setIsLocatingCustomer] = useState(false);
   const [unreadPushCount, setUnreadPushCount] = useState(0);
   const [isEnterpriseModalOpen, setIsEnterpriseModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
   const [warrantyClaimOrder, setWarrantyClaimOrder] = useState<OrderRecord | null>(null);
 
@@ -480,25 +483,44 @@ export default function HomeDashboard({
         {/* Dynamic Search Input with Holographic Glow */}
         <div id="search-section" className="relative group">
           <div className="absolute inset-0 bg-gradient-to-r from-[#c5a059]/10 to-transparent blur-md rounded-2xl opacity-70"></div>
-          <div className="relative bg-[#111415] border border-[#c5a059]/20 rounded-2xl p-1 flex items-center shadow-lg">
+          <div 
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="relative bg-[#111415] border border-[#c5a059]/30 hover:border-[#c5a059] rounded-2xl p-1.5 flex items-center shadow-lg cursor-pointer transition-all"
+          >
             <Search className="w-5 h-5 text-[#c5a059] ml-4 flex-shrink-0" />
             <input
               id="dashboard-search-bar"
               type="text"
-              placeholder="Search master electrical repair, carpenters, cleaning..."
+              readOnly
+              placeholder="🔍 Search for a service or worker (50 categories available)..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent border-0 text-sm py-3 px-3 focus:ring-0 outline-none text-white placeholder-zinc-500"
+              className="w-full bg-transparent border-0 text-sm py-2.5 px-3 focus:ring-0 outline-none text-white placeholder-zinc-400 cursor-pointer"
             />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCategoryModalOpen(true);
+              }}
+              className="px-4 py-2 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-bold text-xs rounded-xl transition-all cursor-pointer flex-shrink-0 mr-1.5 flex items-center gap-1.5 shadow"
+            >
+              <Grid className="w-3.5 h-3.5" />
+              <span>All 50 Services</span>
+            </button>
           </div>
         </div>
 
         {/* Hero Banner Section */}
         <section id="hero-banner" className="relative overflow-hidden rounded-3xl border border-[#c5a059]/20 bg-gradient-to-br from-[#111415] to-[#151f37] shadow-xl p-6 md:p-8">
           <div className="relative z-10 max-w-[65%] space-y-4">
-            <span className="inline-block px-3 py-1 rounded-full bg-[#c5a059]/10 border border-[#c5a059]/30 text-[#e9c176] font-mono text-[10px] uppercase tracking-widest font-semibold">
-              EXCLUSIVE OFFERS
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-block px-3 py-1 rounded-full bg-[#c5a059]/10 border border-[#c5a059]/30 text-[#e9c176] font-mono text-[10px] uppercase tracking-widest font-semibold">
+                EXCLUSIVE OFFERS
+              </span>
+              <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-[10px] uppercase tracking-widest font-semibold">
+                50 Verified Categories
+              </span>
+            </div>
             <h1 className="font-sans font-bold text-2xl md:text-3xl text-white tracking-tight leading-tight">
               Experience <span className="text-[#c5a059]">Excellence</span> at Your Doorstep.
             </h1>
@@ -506,11 +528,19 @@ export default function HomeDashboard({
               Unlock prestigious home repair and consultation services curated strictly for premium lifestyles.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                id="find-worker-hero-btn"
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="py-3 px-6 rounded-xl text-xs font-bold tracking-widest uppercase cursor-pointer transition-all active:scale-[0.98] bg-[#c5a059] text-black shadow-lg shadow-[#c5a059]/20 hover:brightness-110 flex items-center justify-center gap-2"
+              >
+                <Search className="w-4 h-4" />
+                <span>Find a Worker</span>
+              </button>
               {!hasClaimedBonus && !hasUsedBonus && !promoApplied ? (
                 <button
                   id="claim-discount-btn"
                   onClick={onClaimPromo}
-                  className="py-3 px-6 rounded-xl text-xs font-bold tracking-widest uppercase cursor-pointer transition-all active:scale-[0.98] bg-[#c5a059] text-black shadow-lg shadow-[#c5a059]/20 hover:brightness-110"
+                  className="py-3 px-6 rounded-xl text-xs font-bold tracking-widest uppercase cursor-pointer transition-all active:scale-[0.98] bg-[#1a2b4c] text-[#e9c176] border border-[#c5a059]/40 hover:bg-[#c5a059]/20"
                 >
                   Claim 20% OFF
                 </button>
@@ -520,16 +550,6 @@ export default function HomeDashboard({
                   <span>20% First Order Bonus Active</span>
                 </div>
               ) : null}
-              <button
-                id="explore-scroller-btn"
-                onClick={() => {
-                  const el = document.getElementById('categories-grid-label');
-                  el?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="py-3 px-6 rounded-xl text-xs font-bold tracking-widest uppercase border border-[#c5a059] text-[#e9c176] hover:bg-[#c5a059]/10 transition-all cursor-pointer"
-              >
-                Explore Services
-              </button>
             </div>
           </div>
 
@@ -578,16 +598,17 @@ export default function HomeDashboard({
           <div className="flex justify-between items-end">
             <div>
               <h2 id="categories-grid-label" className="font-sans font-bold text-xl text-white">
-                Premium Categories
+                What service do you need?
               </h2>
-              <p className="text-xs text-zinc-400">Select an expert service segment</p>
+              <p className="text-xs text-zinc-400">Choose from 50 verified trades or search any specialist</p>
             </div>
             <button
               id="categories-view-all"
-              onClick={() => handleCategoryClick('AC Repair')}
-              className="text-xs font-bold text-[#c5a059] hover:underline cursor-pointer"
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="text-xs font-bold text-[#c5a059] hover:text-[#e9c176] hover:underline cursor-pointer flex items-center gap-1"
             >
-              View Specialities
+              <span>Browse All 50 Services</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -602,23 +623,51 @@ export default function HomeDashboard({
             </div>
           ) : (
             <div id="categories-grid-list" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {filteredCategories.map((cat) => (
+              {PUNCHX_50_CATEGORIES.slice(0, 8).map((cat) => (
                 <button
                   id={`cat-card-${cat.id}`}
                   key={cat.id}
                   onClick={() => handleCategoryClick(cat.name)}
-                  className="group p-5 bg-[#111415] border border-zinc-800 hover:border-[#c5a059]/60 rounded-2xl flex flex-col items-center justify-center text-center gap-3 transition-colors cursor-pointer"
+                  className="group p-5 bg-[#111415] border border-zinc-800 hover:border-[#c5a059]/60 rounded-2xl flex flex-col items-center justify-center text-center gap-3 transition-colors cursor-pointer relative overflow-hidden"
                 >
                   <div className="w-12 h-12 rounded-full bg-[#151f37] group-hover:bg-[#c5a059]/10 border border-zinc-800 group-hover:border-[#c5a059]/30 flex items-center justify-center text-[#e9c176] transition-all">
                     <CategoryIcon category={cat.name} className="w-5 h-5 text-[#e9c176] group-hover:scale-110 transition-transform" />
                   </div>
-                  <span className="text-xs font-bold text-zinc-400 group-hover:text-white transition-colors">
-                    {cat.name}
-                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-zinc-300 group-hover:text-white transition-colors block">
+                      {cat.name}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-400 mt-0.5 block">
+                      ₹{cat.basePrice} base
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
           )}
+
+          {/* Quick 50 Categories Banner */}
+          <div 
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="p-4 rounded-2xl bg-[#0e1933] border border-[#c5a059]/30 hover:border-[#c5a059] flex items-center justify-between gap-4 cursor-pointer transition-all hover:bg-[#122144]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40">
+                <Grid className="w-5 h-5 text-[#e9c176]" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white">50 Worker Trade Categories Available</h4>
+                <p className="text-xs text-zinc-400">Electrician, Plumber, AC, Mobile, Bike/Car Mechanic, Beauty, CCTV, Solar, Tailor & more.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="px-4 py-2 bg-[#c5a059] text-black font-mono font-bold text-xs rounded-xl flex items-center gap-1 hover:brightness-110 flex-shrink-0"
+            >
+              <span>View All 50</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </section>
 
         {/* Top Rated Experts Grid */}
@@ -1514,6 +1563,16 @@ export default function HomeDashboard({
           showNotification={showNotification}
         />
       )}
+
+      {/* Centralized 50 Worker Categories Modal */}
+      <ServiceCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        mode="citizen"
+        onSelectCategory={(catName) => {
+          handleCategoryClick(catName);
+        }}
+      />
     </div>
   );
 }

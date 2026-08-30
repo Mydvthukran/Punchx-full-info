@@ -267,8 +267,7 @@ export const dispatchPushNotification = (
   return alert;
 };
 
-// REAL-TIME SERVICE NOTIFICATION DISPATCHERS
-
+// Real-time Push Notification Dispatchers
 export const dispatchWorkerAcceptedAlert = (params?: {
   workerName?: string;
   category?: string;
@@ -340,8 +339,3 @@ export const dispatchWorkerArrivedAlert = (params?: {
     actionScreen: 'tracking'
   });
 };
-
-// Aliases for compatibility
-export const simulateWorkerAcceptedAlert = dispatchWorkerAcceptedAlert;
-export const simulateWorkerTravelAlert = dispatchWorkerTravelAlert;
-export const simulateWorkerArrivedAlert = dispatchWorkerArrivedAlert;

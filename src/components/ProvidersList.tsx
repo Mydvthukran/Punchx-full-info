@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ALL_EXPERTS } from '../data/experts';
-import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar, Compass, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar, Compass, RefreshCw, Grid, Search } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress, getCoordinatesForAddressOrSector } from '../lib/location';
 import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';
+import ServiceCategoryModal from './ServiceCategoryModal';
+import { isCategoryMatching } from '../data/categories';
 
 interface ProvidersListProps {
   onTransition: (target: AppScreen) => void;
   selectedCategory: string;
+  onSelectCategory?: (category: string) => void;
   onSelectWorker: (worker: Worker) => void;
   authMethod: 'phone' | 'gmail';
   authTarget: string;
@@ -26,6 +29,7 @@ interface ProvidersListProps {
 export default function ProvidersList({
   onTransition,
   selectedCategory,
+  onSelectCategory,
   onSelectWorker,
   authMethod,
   authTarget,
@@ -40,6 +44,7 @@ export default function ProvidersList({
   const [sortBy, setSortBy] = useState<'distance' | 'rating' | 'price-low' | 'price-high'>('distance');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [showRadiusRadarModal, setShowRadiusRadarModal] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   
   // Profile edit fields
   const [tempName, setTempName] = useState(citizenName);
@@ -208,11 +213,12 @@ export default function ProvidersList({
 
   // Filter providers strictly by category & availability
   let filtered = annotatedList.filter(expert => {
-    const expertCat = expert.category.toLowerCase();
+    const expertCat = (expert.category || '').toLowerCase();
     const targetCat = displayCategory.toLowerCase();
     
-    // Support partial match for categories or match all
+    // Support centralized 50 category synonym & array matching
     const isCategoryMatch = isAllSpecialties ||
+                     isCategoryMatching(expert.categories || expert.category, displayCategory) ||
                      expertCat === targetCat || 
                      expertCat.includes(targetCat) || 
                      targetCat.includes(expertCat);
@@ -291,6 +297,14 @@ export default function ProvidersList({
                 <span className="text-[9px] font-mono tracking-widest text-[#e9c176] uppercase font-extrabold bg-[#c5a059]/10 px-2.5 py-0.5 rounded-full border border-[#c5a059]/20">
                   Elite Force Directory
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="text-[10px] font-mono text-[#c5a059] hover:text-[#e9c176] bg-[#c5a059]/15 hover:bg-[#c5a059]/30 px-2.5 py-0.5 rounded-full border border-[#c5a059]/40 flex items-center gap-1 cursor-pointer transition-all"
+                >
+                  <Search className="w-3 h-3" />
+                  <span>Change Service (50 Available)</span>
+                </button>
               </div>
               <h1 id="providers-category-title" className="font-sans font-bold text-xl text-white tracking-tight mt-0.5">
                 {displayCategory} Specialists
@@ -672,6 +686,20 @@ export default function ProvidersList({
           handleSelect(w);
         }}
         onRecalibrateGps={handleRefreshLocation}
+      />
+
+      {/* Centralized 50 Categories Modal */}
+      <ServiceCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        mode="citizen"
+        selectedCategory={selectedCategory}
+        onSelectCategory={(catName) => {
+          if (onSelectCategory) {
+            onSelectCategory(catName);
+          }
+          showNotification(`⚡ Showing verified ${catName} specialists`);
+        }}
       />
     </div>
   );

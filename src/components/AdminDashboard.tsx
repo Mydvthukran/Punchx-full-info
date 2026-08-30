@@ -299,41 +299,6 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     setRejectModal(null);
   };
 
-  // Simulate adding a test incoming registration application
-  const handleSimulateNewRegistration = async () => {
-    const newId = `WRK-${Math.floor(800 + Math.random() * 100)}`;
-    const names = ['Rajesh Sharma', 'Aakash Verma', 'Kavita Pillai', 'Mohd Farooq', 'Nikhil Joshi'];
-    const skills = ['AC Repair Specialist', 'Electrical Inspection Pro', 'Deep Home Cleaning', 'Plumbing & Pipe Expert'];
-    const randomName = names[Math.floor(Math.random() * names.length)];
-    const randomSkill = skills[Math.floor(Math.random() * skills.length)];
-
-    const newApp: WorkerApplication = {
-      id: newId,
-      legalName: randomName,
-      address: 'HSR Layout Sector 3, Bengaluru',
-      skill: randomSkill,
-      experienceYears: '5 Years Experience',
-      phone: `+91 98${Math.floor(1000000 + Math.random() * 9000000)}`,
-      email: `${randomName.toLowerCase().replace(' ', '.')}@gmail.com`,
-      termsAccepted: true,
-      status: 'PENDING',
-      appliedAt: new Date().toISOString().split('T')[0]
-    };
-
-    const updated = [newApp, ...workerApps];
-    setWorkerApps(updated);
-    localStorage.setItem('punchx_worker_applications', JSON.stringify(updated));
-
-    try {
-      await setDoc(doc(db, 'workerApplications', newId), newApp);
-    } catch (e) {
-      console.error("Error writing simulated worker app to Firestore:", e);
-    }
-
-    showNotification(`📩 New Worker Registration Received: ${randomName} (${newId})!`);
-    addActivityLog(`New Registration Application ${newId} submitted by ${randomName}`, 'NEW_REG');
-  };
-
   // Update order status
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderRecord['status']) => {
     const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
@@ -783,16 +748,6 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               <PlusCircle className="w-4 h-4" />
               <span>+ CREATE DISPATCH</span>
             </button>
-
-            {/* Quick Action Button for Test Registration */}
-            <button
-              onClick={handleSimulateNewRegistration}
-              className="px-3 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-black border border-emerald-500/40 text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shadow-md active:scale-95"
-              title="Simulate incoming technician registration application"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>+ Test Registration</span>
-            </button>
           </div>
         </div>
 
@@ -1066,7 +1021,7 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               <div className="space-y-4">
                 {workerApps.length === 0 ? (
                   <div className="p-8 text-center text-zinc-500 font-mono text-xs bg-[#07122a] rounded-2xl border border-zinc-800">
-                    No worker applications registered. Click "+ Test Registration" to simulate one.
+                    No incoming worker applications registered yet. Registered technician applications from the Worker Panel will appear here for review.
                   </div>
                 ) : (
                   workerApps.map(app => (
@@ -1099,6 +1054,15 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
                             <p className="text-xs text-[#e9c176] font-mono font-bold mt-0.5">
                               Skill: {app.skill} • {app.experienceYears}
                             </p>
+                            {app.categories && app.categories.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {app.categories.map((c, i) => (
+                                  <span key={i} className="text-[10px] bg-[#c5a059]/15 text-[#e9c176] px-2 py-0.5 rounded border border-[#c5a059]/30 font-mono font-semibold">
+                                    {c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1242,63 +1206,63 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                 <div className="bg-[#07122a] border border-zinc-800 p-4 rounded-2xl space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold text-white">
-                    <span>Month-over-Month Growth</span>
+                    <span>Active Revenue & Orders</span>
                     <TrendingUp className="w-4 h-4 text-emerald-400" />
                   </div>
                   <div className="space-y-1 font-mono text-xs">
                     <div className="flex justify-between text-zinc-400">
-                      <span>June Orders:</span>
-                      <span className="text-white font-bold">148 Orders</span>
+                      <span>Total Bookings:</span>
+                      <span className="text-white font-bold">{totalOrdersCount} Orders</span>
                     </div>
                     <div className="flex justify-between text-zinc-400">
-                      <span>July Orders:</span>
-                      <span className="text-[#e9c176] font-bold">{totalOrdersCount} Orders</span>
+                      <span>Completed Volume:</span>
+                      <span className="text-[#e9c176] font-bold">{completedCount} Orders</span>
                     </div>
                     <div className="pt-1.5 border-t border-zinc-800 flex justify-between text-emerald-400 font-bold">
-                      <span>Net Growth:</span>
-                      <span>+24.8% Increase</span>
+                      <span>Gross Realized:</span>
+                      <span>₹{totalRevenue.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-[#07122a] border border-zinc-800 p-4 rounded-2xl space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold text-white">
-                    <span>Conversion Ratio</span>
+                    <span>Fulfillment Metrics</span>
                     <Activity className="w-4 h-4 text-[#c5a059]" />
                   </div>
                   <div className="space-y-1 font-mono text-xs">
                     <div className="flex justify-between text-zinc-400">
-                      <span>Panel Traffic:</span>
-                      <span className="text-white font-bold">3,820 Visits</span>
+                      <span>In-Progress / Dispatched:</span>
+                      <span className="text-white font-bold">{liveInProgressCount} Active</span>
                     </div>
                     <div className="flex justify-between text-zinc-400">
-                      <span>Bookings Completed:</span>
-                      <span className="text-[#e9c176] font-bold">{completedCount}</span>
+                      <span>Pending Dispatch:</span>
+                      <span className="text-[#e9c176] font-bold">{pendingOrdersCount}</span>
                     </div>
                     <div className="pt-1.5 border-t border-zinc-800 flex justify-between text-emerald-400 font-bold">
-                      <span>Success Rate:</span>
-                      <span>84.2% Conversion</span>
+                      <span>Completion Rate:</span>
+                      <span>{totalOrdersCount > 0 ? ((completedCount / totalOrdersCount) * 100).toFixed(1) : '100'}% Success</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-[#07122a] border border-zinc-800 p-4 rounded-2xl space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold text-white">
-                    <span>Top Demand Service</span>
+                    <span>Fleet & Category Distribution</span>
                     <Wrench className="w-4 h-4 text-[#e9c176]" />
                   </div>
                   <div className="space-y-1 font-mono text-xs">
                     <div className="flex justify-between text-zinc-400">
-                      <span>#1 AC Jet & Gas:</span>
-                      <span className="text-[#e9c176] font-bold">38% Share</span>
+                      <span>Verified Field Specialists:</span>
+                      <span className="text-[#e9c176] font-bold">{workerApps.filter(a => a.status === 'APPROVED').length} Active</span>
                     </div>
                     <div className="flex justify-between text-zinc-400">
-                      <span>#2 Electrical Wiring:</span>
-                      <span className="text-white font-bold">28% Share</span>
+                      <span>Pending Applications:</span>
+                      <span className="text-white font-bold">{pendingRegistrationsCount}</span>
                     </div>
                     <div className="pt-1.5 border-t border-zinc-800 flex justify-between text-zinc-300">
-                      <span>#3 Deep Cleaning:</span>
-                      <span>20% Share</span>
+                      <span>Open Warranty Claims:</span>
+                      <span className="text-amber-400 font-bold">{warrantyClaims.filter(c => c.status === 'PENDING_ADMIN_REVIEW').length}</span>
                     </div>
                   </div>
                 </div>
@@ -1395,49 +1359,64 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
         {/* ========================================================================= */}
         {/* TAB 5: CUSTOMER REVIEWS & SATISFACTION FEEDBACK */}
         {/* ========================================================================= */}
-        {activeTab === 'reviews' && (
-          <section className="space-y-6">
-            <div className="bg-[#11192e] border border-zinc-800 rounded-3xl p-6 shadow-xl space-y-5">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                  <h2 className="text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
-                    <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-                    Customer Reviews & Feedback Ratings
-                  </h2>
-                  <p className="text-xs text-zinc-400">Verified service ratings and user satisfaction audit</p>
-                </div>
-                <div className="flex items-center gap-2 bg-[#07122a] px-3 py-1.5 rounded-xl border border-[#c5a059]/30">
-                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  <span className="text-sm font-extrabold text-white font-mono">4.92 / 5.0</span>
-                  <span className="text-xs text-zinc-400 font-mono">(1,248 total ratings)</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {customerReviews.map(rev => (
-                  <div key={rev.id} className="bg-[#07122a] border border-zinc-800 p-4 rounded-2xl space-y-3 shadow-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-sm text-white">{rev.customer}</h4>
-                        <span className="text-[10px] font-mono text-[#e9c176]">{rev.category}</span>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        {Array.from({ length: rev.rating }).map((_, i) => (
-                          <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-xs text-zinc-300 italic">"{rev.comment}"</p>
-                    <div className="flex justify-between items-center text-[10px] font-mono text-zinc-500 pt-2 border-t border-zinc-800">
-                      <span>Verified Customer</span>
-                      <span>{rev.date}</span>
-                    </div>
+        {activeTab === 'reviews' && (() => {
+          const avgRating = customerReviews.length > 0
+            ? (customerReviews.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / customerReviews.length).toFixed(2)
+            : '5.0';
+          return (
+            <section className="space-y-6">
+              <div className="bg-[#11192e] border border-zinc-800 rounded-3xl p-6 shadow-xl space-y-5">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div>
+                    <h2 className="text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+                      <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                      Customer Reviews & Feedback Ratings
+                    </h2>
+                    <p className="text-xs text-zinc-400">Verified service ratings and user satisfaction audit</p>
                   </div>
-                ))}
+                  <div className="flex items-center gap-2 bg-[#07122a] px-3 py-1.5 rounded-xl border border-[#c5a059]/30">
+                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    <span className="text-sm font-extrabold text-white font-mono">{avgRating} / 5.0</span>
+                    <span className="text-xs text-zinc-400 font-mono">({customerReviews.length} verified ratings)</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {customerReviews.length === 0 ? (
+                    <div className="col-span-full py-12 px-6 border border-dashed border-[#c5a059]/30 bg-[#07122a] rounded-3xl text-center space-y-3">
+                      <Star className="w-10 h-10 text-amber-400 mx-auto opacity-75" />
+                      <h3 className="font-bold text-base text-white">No Customer Reviews Yet</h3>
+                      <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                        Customer ratings submitted after completed orders will appear here automatically.
+                      </p>
+                    </div>
+                  ) : (
+                    customerReviews.map(rev => (
+                      <div key={rev.id} className="bg-[#07122a] border border-zinc-800 p-4 rounded-2xl space-y-3 shadow-md">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-sm text-white">{rev.customer || 'Customer'}</h4>
+                            <span className="text-[10px] font-mono text-[#e9c176]">{rev.category || 'Service'}</span>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: rev.rating || 5 }).map((_, i) => (
+                              <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-xs text-zinc-300 italic">"{rev.comment || 'Service completed with high quality and verified workmanship.'}"</p>
+                        <div className="flex justify-between items-center text-[10px] font-mono text-zinc-500 pt-2 border-t border-zinc-800">
+                          <span>Verified Customer</span>
+                          <span>{rev.date || 'Recent'}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          </section>
-        )}
+            </section>
+          );
+        })()}
 
         {/* ========================================================================= */}
         {/* TAB 6: ENTERPRISE COMMAND OVERVIEW */}

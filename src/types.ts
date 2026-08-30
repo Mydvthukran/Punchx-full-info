@@ -26,6 +26,7 @@ export interface WorkerApplication {
   area?: string;
   sector?: string;
   skill: string;
+  categories?: string[];
   customSkill?: string;
   experienceYears: string;
   phone: string;
@@ -55,6 +56,7 @@ export interface UserProfile {
   phone?: string;
   visitingFee?: number;
   workerSkill?: string;
+  workerCategories?: string[];
   workerExperience?: string;
   workerRating?: number;
   workerCompletedJobs?: number;
@@ -66,6 +68,7 @@ export interface Worker {
   id: string;
   name: string;
   category: string;
+  categories?: string[];
   rating: number;
   reviewsCount: number;
   avatar: string;

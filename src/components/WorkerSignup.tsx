@@ -7,8 +7,11 @@ import { db } from '../lib/firebase';
 import { requestAndAutoUpdateLocation } from '../lib/location';
 import { 
   Wrench, UserCheck, Calendar, MapPin, Briefcase, Award, Phone, Mail, 
-  ShieldCheck, FileText, CheckSquare, Square, ChevronRight, X, Lock, AlertCircle, Compass, DollarSign
+  ShieldCheck, FileText, CheckSquare, Square, ChevronRight, X, Lock, AlertCircle, Compass, DollarSign,
+  Grid, CheckCircle2, Plus, Search
 } from 'lucide-react';
+import ServiceCategoryModal from './ServiceCategoryModal';
+import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface WorkerSignupProps {
   onTransition: (target: AppScreen) => void;
@@ -21,7 +24,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
   const [dob, setDob] = useState('');
   const [address, setAddress] = useState('');
   const [isLocating, setIsLocating] = useState(false);
-  const [selectedSkill, setSelectedSkill] = useState('AC Repair & Thermal');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Electrician']);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Auto request location permission on load if empty
   useEffect(() => {
@@ -52,15 +56,28 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
   // Form Validation errors
   const [errorMsg, setErrorMsg] = useState('');
 
-  const standardSkills = [
-    'AC Repair & Thermal',
-    'Electrical Systems',
-    'Plumbing & Drainage',
-    'Appliance Maintenance',
-    'Carpentry & Security Locks',
-    'Deep Cleaning & Sanitization',
-    'Other / Custom Skill'
+  const quickCategories = [
+    'Electrician',
+    'Plumber',
+    'AC Technician',
+    'Carpenter',
+    'Painter',
+    'CCTV Technician',
+    'Solar Technician',
+    'Mechanic'
   ];
+
+  const toggleCategory = (catName: string) => {
+    if (selectedCategories.includes(catName)) {
+      if (selectedCategories.length === 1 && !customSkill) {
+        showNotification('⚠️ You must maintain at least one active service category.');
+        return;
+      }
+      setSelectedCategories(selectedCategories.filter(c => c !== catName));
+    } else {
+      setSelectedCategories([...selectedCategories, catName]);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,8 +95,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       setErrorMsg('Please enter your complete work or residential address.');
       return;
     }
-    if (selectedSkill === 'Other / Custom Skill' && !customSkill.trim()) {
-      setErrorMsg('Please specify your custom skill.');
+    if (selectedCategories.length === 0 && !customSkill.trim()) {
+      setErrorMsg('Please select at least one service category or enter a custom skill.');
       return;
     }
     if (visitingFee <= 0 || isNaN(visitingFee)) {
@@ -103,8 +120,9 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       id: `APP-${Math.floor(100000 + Math.random() * 900000)}`,
       legalName: legalName.trim(),
       address: address.trim(),
-      skill: selectedSkill === 'Other / Custom Skill' ? customSkill.trim() : selectedSkill,
-      customSkill: selectedSkill === 'Other / Custom Skill' ? customSkill.trim() : undefined,
+      categories: selectedCategories.length > 0 ? selectedCategories : (customSkill.trim() ? [customSkill.trim()] : ['Electrician']),
+      skill: selectedCategories.length > 0 ? selectedCategories.join(', ') : customSkill.trim(),
+      customSkill: customSkill.trim() || undefined,
       experienceYears,
       visitingFee: Number(visitingFee),
       phone: phone.trim(),
@@ -241,45 +259,104 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
             />
           </div>
 
-          {/* Specific Skill Selection */}
-          <div className="space-y-2">
-            <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
-              <Briefcase className="w-3.5 h-3.5" /> Primary Specialist Skill
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {standardSkills.map((sk) => (
-                <button
-                  key={sk}
-                  type="button"
-                  onClick={() => setSelectedSkill(sk)}
-                  className={`p-3 rounded-xl border text-left text-xs font-mono transition-all cursor-pointer flex items-center justify-between ${
-                    selectedSkill === sk
-                      ? 'bg-[#c5a059] text-black font-extrabold border-[#ffdea5]'
-                      : 'bg-[#07122a] text-zinc-300 border-zinc-800 hover:border-[#c5a059]/40'
-                  }`}
-                >
-                  <span>{sk}</span>
-                  {selectedSkill === sk && <ShieldCheck className="w-4 h-4 text-black" />}
-                </button>
-              ))}
+          {/* What service do you provide? (50 Categories Selection) */}
+          <div className="space-y-3 bg-[#0a152e] border border-[#c5a059]/30 p-4 rounded-2xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5" /> What service do you provide?
+                </label>
+                <p className="text-[11px] text-zinc-400">
+                  Select one or multiple categories from our 50 verified trades.
+                </p>
+              </div>
+              <button
+                type="button"
+                id="worker-open-categories-btn"
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="px-3.5 py-2 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow transition-all self-start sm:self-auto"
+              >
+                <Grid className="w-3.5 h-3.5" />
+                <span>Search 50 Categories ({selectedCategories.length} selected)</span>
+              </button>
             </div>
 
-            {/* Custom Skill Option */}
-            {selectedSkill === 'Other / Custom Skill' && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="pt-2"
-              >
-                <input
-                  type="text"
-                  placeholder="Specify custom technical skill (e.g. Solar Inverter Repair)..."
-                  value={customSkill}
-                  onChange={(e) => setCustomSkill(e.target.value)}
-                  className="w-full bg-[#07122a] border border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-600 outline-none"
-                />
-              </motion.div>
-            )}
+            {/* Currently Selected Badges */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {selectedCategories.map((catName) => (
+                <span
+                  key={catName}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#c5a059]/20 border border-[#c5a059]/50 text-white rounded-full text-xs font-medium"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#e9c176]" />
+                  <span>{catName}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(catName)}
+                    className="hover:text-red-400 p-0.5 rounded-full hover:bg-black/40 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              {customSkill && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-500/20 border border-purple-500/50 text-purple-200 rounded-full text-xs font-medium">
+                  <span>Custom: {customSkill}</span>
+                  <button
+                    type="button"
+                    onClick={() => setCustomSkill('')}
+                    className="hover:text-red-400 p-0.5 rounded-full hover:bg-black/40 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {/* Quick-Pick Popular Category Pills */}
+            <div className="pt-2 border-t border-zinc-800">
+              <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold block mb-2">
+                Quick Category Toggles:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {quickCategories.map((cat) => {
+                  const isSelected = selectedCategories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      className={`p-2.5 rounded-xl border text-left text-xs font-mono transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-[#c5a059] text-black font-bold border-[#ffdea5] shadow'
+                          : 'bg-[#07122a] text-zinc-300 border-zinc-800 hover:border-[#c5a059]/40'
+                      }`}
+                    >
+                      <span className="truncate">{cat}</span>
+                      {isSelected ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-black flex-shrink-0" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Optional Custom Technical Skill Input */}
+            <div className="pt-2">
+              <label className="text-[11px] font-mono text-zinc-400 block mb-1">
+                Have a specialized trade not listed? (Optional):
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Solar Inverter Repair, Aquarium Maintenance, Chimney Tech..."
+                value={customSkill}
+                onChange={(e) => setCustomSkill(e.target.value)}
+                className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-600 outline-none"
+              />
+            </div>
           </div>
 
           {/* Experience Years & Visiting Fee */}
@@ -495,6 +572,20 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
         )}
       </AnimatePresence>
 
+      {/* 50 Worker Categories Modal */}
+      <ServiceCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        mode="worker"
+        selectedCategories={selectedCategories}
+        onSaveWorkerCategories={(cats, custom) => {
+          setSelectedCategories(cats);
+          if (custom) {
+            setCustomSkill(custom);
+          }
+          showNotification(`✓ Updated ${cats.length} services selected`);
+        }}
+      />
     </div>
   );
 }
