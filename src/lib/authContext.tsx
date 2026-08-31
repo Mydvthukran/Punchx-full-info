@@ -1,32 +1,57 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { signOut as firebaseSignOut, OAuthProvider, signInWithCredential } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile } from '../types';
+import { NamoIDUserInfo } from '@namoidhq/js';
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: NamoIDUserInfo | null;
   userProfile: UserProfile | null;
   isLoadingProfile: boolean;
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  loginWithNamoID: (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'citizen' | 'worker' | 'admin' }> = ({ children, activeRole = 'citizen' }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<NamoIDUserInfo | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
 
-  // Fetch or initialize user profile document in Firestore using auth UID
-  const fetchOrCreateProfile = async (user: User, role: 'citizen' | 'worker' | 'admin' = activeRole) => {
+  // Initialize from localStorage on mount
+  useEffect(() => {
+    const storedIdentity = localStorage.getItem('punchx_namoid_identity');
+    const storedProfile = localStorage.getItem('punchx_namoid_profile');
+    if (storedIdentity && storedProfile) {
+      try {
+        setCurrentUser(JSON.parse(storedIdentity));
+        setUserProfile(JSON.parse(storedProfile));
+      } catch (e) {
+        console.error("Error reading stored auth profile:", e);
+      }
+    }
+    setIsLoadingProfile(false);
+  }, []);
+
+  const fetchOrCreateProfile = async (identity: NamoIDUserInfo, role: 'citizen' | 'worker' | 'admin' = activeRole): Promise<UserProfile> => {
+    const extractedName = identity.name || 
+      ((identity as any).given_name ? `${(identity as any).given_name} ${(identity as any).family_name || ''}`.trim() : '') || 
+      (identity.email ? identity.email.split('@')[0] : 'PunchX Member');
+
+    const extractedDob = ((identity as any).birthdate as string) || 
+      ((identity as any).dob as string) || 
+      ((identity as any).date_of_birth as string) || 
+      ((identity as any).birth_date as string) || 
+      '';
+
     try {
       setIsLoadingProfile(true);
-      const userDocRef = doc(db, 'users', user.uid);
+      const userDocRef = doc(db, 'users', identity.sub);
 
-      // Wrap getDoc with a 2.5s timeout to prevent hanging when offline
       const userSnap = await Promise.race([
         getDoc(userDocRef),
         new Promise<never>((_, reject) =>
@@ -36,29 +61,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
       if (userSnap.exists()) {
         const existingData = userSnap.data() as UserProfile;
-        // Keep existing user-entered fields, backfill missing auth details if necessary
         const updatedProfile: UserProfile = {
           ...existingData,
-          uid: user.uid,
-          email: existingData.email || user.email || '',
-          photoURL: existingData.photoURL || user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-          name: existingData.name || user.displayName || (user.email ? user.email.split('@')[0] : 'PunchX Member'),
+          uid: identity.sub,
+          email: existingData.email || identity.email || '',
+          photoURL: existingData.photoURL || (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          name: existingData.name || extractedName,
+          dob: existingData.dob || existingData.birthdate || extractedDob,
+          birthdate: existingData.birthdate || existingData.dob || extractedDob,
+          isProfileCompleted: existingData.isProfileCompleted ?? (!!existingData.name && !!(existingData.dob || existingData.birthdate) && !!existingData.address),
           role: existingData.role || role,
           address: existingData.address !== undefined ? existingData.address : '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
-          phone: existingData.phone || user.phoneNumber || ''
+          phone: existingData.phone || identity.phone_number || ''
         };
         
         setUserProfile(updatedProfile);
+        localStorage.setItem('punchx_namoid_profile', JSON.stringify(updatedProfile));
+        return updatedProfile;
       } else {
-        // Create new profile for first-time login
+        const isCompleted = !!extractedName && !!extractedDob;
         const newProfile: UserProfile = {
-          uid: user.uid,
-          name: user.displayName || (user.email ? user.email.split('@')[0] : 'PunchX Member'),
-          email: user.email || '',
-          photoURL: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          uid: identity.sub,
+          name: extractedName,
+          email: identity.email || '',
+          photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
           role: role,
+          dob: extractedDob,
+          birthdate: extractedDob,
+          isProfileCompleted: isCompleted,
           address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
-          phone: user.phoneNumber || '',
+          phone: identity.phone_number || '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
@@ -74,83 +106,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
           console.warn("SetDoc offline fallback notice:", e);
         }
         setUserProfile(newProfile);
+        localStorage.setItem('punchx_namoid_profile', JSON.stringify(newProfile));
+        return newProfile;
       }
     } catch (error) {
-      console.warn('Notice fetching or creating user profile (offline mode active):', error);
-      // Fallback in-memory profile if Firestore is temporarily offline
-      setUserProfile({
-        uid: user.uid,
-        name: user.displayName || user.email?.split('@')[0] || 'PunchX Member',
-        email: user.email || '',
-        photoURL: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+      console.warn('Notice fetching or creating user profile:', error);
+      const fallbackProfile: UserProfile = {
+        uid: identity.sub,
+        name: extractedName,
+        email: identity.email || '',
+        photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
         role: role,
+        dob: extractedDob,
+        birthdate: extractedDob,
+        isProfileCompleted: false,
         address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
-        phone: user.phoneNumber || ''
-      });
+        phone: identity.phone_number || ''
+      };
+      setUserProfile(fallbackProfile);
+      localStorage.setItem('punchx_namoid_profile', JSON.stringify(fallbackProfile));
+      return fallbackProfile;
     } finally {
       setIsLoadingProfile(false);
     }
   };
 
-  useEffect(() => {
-    let unsubscribe = () => {};
-    try {
-      if (auth && typeof auth === 'object' && ('currentUser' in auth || 'app' in auth)) {
-        unsubscribe = onAuthStateChanged(
-          auth,
-          async (user) => {
-            setCurrentUser(user);
-            if (user) {
-              await fetchOrCreateProfile(user);
-            } else {
-              setUserProfile(null);
-              setIsLoadingProfile(false);
-            }
-          },
-          (authError) => {
-            console.warn("Auth state observer notice:", authError);
-            setIsLoadingProfile(false);
-          }
-        );
-      } else {
-        setIsLoadingProfile(false);
+  const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
+    setCurrentUser(identity);
+    localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
+    
+    // Connect NamoID token to Firebase Auth if token exists
+    if (idToken && auth) {
+      try {
+        const provider = new OAuthProvider('oidc.namoid');
+        const credential = provider.credential({ idToken });
+        await signInWithCredential(auth, credential);
+      } catch (fbAuthErr) {
+        console.warn("Notice: Firebase Auth OIDC link skipped/failed:", fbAuthErr);
       }
-    } catch (err) {
-      console.warn("Could not attach auth state listener:", err);
-      setIsLoadingProfile(false);
     }
 
-    return () => {
-      try {
-        unsubscribe();
-      } catch (e) {
-        // Safe unmount
-      }
-    };
-  }, []);
+    return await fetchOrCreateProfile(identity, role || activeRole);
+  };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     if (!currentUser) return;
     try {
-      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocRef = doc(db, 'users', currentUser.sub);
       const payload = {
         ...updates,
         updatedAt: new Date().toISOString()
       };
       await updateDoc(userDocRef, payload);
-      setUserProfile((prev) => (prev ? { ...prev, ...payload } : null));
+      setUserProfile((prev) => {
+        const next = prev ? { ...prev, ...payload } : null;
+        if (next) localStorage.setItem('punchx_namoid_profile', JSON.stringify(next));
+        return next;
+      });
     } catch (error) {
       console.error('Error updating user profile:', error);
-      // Apply locally even if offline
-      setUserProfile((prev) => (prev ? { ...prev, ...updates } : null));
+      setUserProfile((prev) => {
+        const next = prev ? { ...prev, ...updates } : null;
+        if (next) localStorage.setItem('punchx_namoid_profile', JSON.stringify(next));
+        return next;
+      });
     }
   };
 
   const logout = async () => {
     try {
-      await firebaseSignOut(auth);
+      if (auth) {
+        await firebaseSignOut(auth);
+      }
       setCurrentUser(null);
       setUserProfile(null);
+      localStorage.removeItem('punchx_namoid_identity');
+      localStorage.removeItem('punchx_namoid_profile');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -170,7 +201,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
         isLoadingProfile,
         updateUserProfile,
         logout,
-        refreshProfile
+        refreshProfile,
+        loginWithNamoID
       }}
     >
       {children}
@@ -185,3 +217,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@namoidhq/js": "^3.2.0",
+    "@namoidhq/react": "^4.0.0",
     "@vercel/analytics": "^1.2.2",
     "@vis.gl/react-google-maps": "^1.9.0",
     "dotenv": "^17.2.3",

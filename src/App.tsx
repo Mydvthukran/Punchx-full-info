@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import DragoAssistant from './components/DragoAssistant';
@@ -14,6 +14,8 @@ import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
+import { NamoIDProvider, useNamoID, completeHostedAuthRedirect } from "@namoidhq/react";
+import { namoidFetcher } from './lib/namoidFetcher';
 
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
@@ -32,12 +34,83 @@ const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'));
 
+function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => void }) {
+  const client = useNamoID();
+  const { loginWithNamoID } = useAuth();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasProcessedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasProcessedRef.current) return;
+    hasProcessedRef.current = true;
+
+    async function processCallback() {
+      try {
+        const callbackUrl = window.location.href;
+        const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
+
+        try {
+          const sessionRaw = sessionStorage.getItem(storageKey);
+          const localRaw = localStorage.getItem(storageKey);
+          if (!sessionRaw && localRaw) {
+            sessionStorage.setItem(storageKey, localRaw);
+          }
+        } catch (storageErr) {
+          console.warn("[AuthCallback] Storage recovery warning:", storageErr);
+        }
+
+        const result = await completeHostedAuthRedirect(client, callbackUrl);
+        const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
+        const role: 'citizen' | 'worker' | 'admin' = 
+          rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
+
+        await loginWithNamoID(result.identity, role, result.tokens.id_token);
+        window.history.replaceState({}, document.title, '/');
+
+        if (role === 'admin') onTransition('admin-dashboard');
+        else if (role === 'worker') onTransition('worker-dashboard');
+        else onTransition('home');
+      } catch (e: any) {
+        console.error("❌ [AuthCallback] Auth callback error:", e);
+        setErrorMessage(e?.message || "Authentication callback could not be completed.");
+      }
+    }
+    processCallback();
+  }, [client, loginWithNamoID, onTransition]);
+
+  if (errorMessage) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-6 text-center">
+        <div className="max-w-md bg-[#11192e] border border-red-500/30 p-6 rounded-2xl shadow-xl">
+          <p className="text-red-400 font-bold text-base mb-2">Sign In Notice</p>
+          <p className="text-zinc-400 text-xs mb-4 leading-relaxed">{errorMessage}</p>
+          <button
+            onClick={() => onTransition('auth')}
+            className="px-4 py-2 bg-[#c5a059] text-black font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-[#d8b46e] transition-all cursor-pointer"
+          >
+            Return to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] text-center">
+      <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)] mb-4"></div>
+      <p className="text-sm font-bold text-white uppercase tracking-wider">Completing NamoID Authorization...</p>
+      <p className="text-xs text-zinc-400 mt-1">Verifying security token & initializing profile</p>
+    </div>
+  );
+}
+
 function AppMain() {
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
 
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
     const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
     const search = window.location.search.toLowerCase();
+    if (rawPath === '/auth/callback' || search.includes('code=') || search.includes('state=')) return 'auth-callback';
     if (rawPath === '/privacy-policy' || rawPath === '/privacy' || search.includes('/privacy-policy') || search.includes('/privacy')) return 'privacy-policy';
     if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service' || search.includes('/terms-and-conditions') || search.includes('/terms')) return 'terms-and-conditions';
     if (rawPath === '/worker-signup' || search.includes('/worker-signup')) return 'worker-signup';
@@ -317,6 +390,9 @@ function AppMain() {
           </div>
         }>
 
+        {currentScreen === 'auth-callback' && (
+          <AuthCallback onTransition={handleTransition} />
+        )}
         {currentScreen === 'splash' && (
           <Splash onTransition={handleTransition} />
         )}
@@ -545,11 +621,15 @@ function AppMain() {
   );
 }
 
+const NAMOID_CLIENT_ID = import.meta.env.VITE_NAMOID_CLIENT_ID || 'namoid_client_live_6SHiIOdLuGIBZmiJjC5Iu5KCbqB2QQjd';
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AppMain />
-      <Analytics />
-    </AuthProvider>
+    <NamoIDProvider clientId={NAMOID_CLIENT_ID} fetcher={namoidFetcher}>
+      <AuthProvider>
+        <AppMain />
+        <Analytics />
+      </AuthProvider>
+    </NamoIDProvider>
   );
 }

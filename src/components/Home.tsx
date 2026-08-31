@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
-import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass, Bell, Zap, Grid } from 'lucide-react';
+import { Search, MapPin, ChevronRight, Star, Verified, Home, Shield, Wrench, Navigation, Plus, Laptop, CreditCard, User, Mail, Phone, Calendar, X, CheckCircle, AlertTriangle, ShieldCheck, Edit3, ChevronDown, FileText, BookOpen, Compass, Bell, Zap, Grid, Clock } from 'lucide-react';
 import { AppScreen, Worker, ServiceCategory, OrderRecord, CustomerReview } from '../types';
 import CategoryIcon, { CategoryProfileBadge } from './CategoryIcon';
 import PUNCHX_LOGO from '../assets/logo';
