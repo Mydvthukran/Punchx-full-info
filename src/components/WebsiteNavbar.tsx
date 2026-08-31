@@ -125,6 +125,13 @@ export default function WebsiteNavbar({
           <span className="text-zinc-600">|</span>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => handleNavClick('founder')}
+              className="text-zinc-300 hover:text-[#e9c176] font-semibold transition-colors cursor-pointer"
+            >
+              Founders &amp; Leadership
+            </button>
+            <span className="text-zinc-600">•</span>
+            <button
               onClick={() => {
                 setActivePanelRole('worker');
                 onTransition('worker-dashboard');
@@ -263,6 +270,18 @@ export default function WebsiteNavbar({
             }`}
           >
             Find Specialists
+          </button>
+
+          <button
+            id="nav-link-founder"
+            onClick={() => handleNavClick('founder')}
+            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+              currentScreen === 'founder'
+                ? 'text-[#e9c176] bg-[#c5a059]/15 font-bold'
+                : 'hover:text-white hover:bg-zinc-800/60'
+            }`}
+          >
+            Founding Team
           </button>
 
           <button
@@ -506,11 +525,10 @@ export default function WebsiteNavbar({
                 <span>Alerts ({unreadCount})</span>
               </button>
               <button
-                onClick={() => handleNavClick('panel-select')}
-                className="py-2 px-3 bg-[#0a152e] rounded-xl text-xs font-semibold text-[#c5a059] hover:bg-zinc-800 flex items-center justify-center gap-1.5 border border-[#c5a059]/30"
+                onClick={() => handleNavClick('founder')}
+                className="py-2 px-3 bg-[#0a152e] rounded-xl text-xs font-semibold text-white hover:text-[#e9c176] flex items-center justify-center gap-1.5 border border-zinc-800"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#c5a059]" />
-                <span>Switch Portal</span>
+                <span>👥 Founders</span>
               </button>
             </div>
 

@@ -18,7 +18,8 @@ export type AppScreen =
   | 'worker-dashboard' 
   | 'admin-dashboard'
   | 'privacy-policy'
-  | 'terms-and-conditions';
+  | 'terms-and-conditions'
+  | 'founder';
 
 export interface WorkerApplication {
   id: string;

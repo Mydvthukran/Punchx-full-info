@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, Trash2, Edit3, Save, Wrench, DollarSign, ShieldCheck, Zap, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { ALL_EXPERTS } from '../../data/experts';
 
 interface PlatformSettingsManagerProps {
   showNotification: (msg: string) => void;

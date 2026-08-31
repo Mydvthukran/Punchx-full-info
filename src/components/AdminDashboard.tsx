@@ -9,12 +9,14 @@ import {
   MapPin, Clock, Lock, UserCheck, XCircle, LogOut, Phone,
   User, Calendar, Activity, ChevronRight, Layers, Download,
   PlusCircle, Radio, Navigation, FileSpreadsheet, Check, Send,
-  Sparkles, MessageSquare, AlertCircle
+  Sparkles, MessageSquare, AlertCircle, Trash2
 } from 'lucide-react';
-import { ALL_EXPERTS } from '../data/experts';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { collection, getDocs, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
 import { ensureFirebaseDashboardCredentials, verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
+import { purgeMockUsersAndData } from '../lib/purgeMockData';
+import { useAuth } from '../lib/authContext';
 import WarrantyClaimsManager from './admin/WarrantyClaimsManager';
 import ComplaintsManager from './admin/ComplaintsManager';
 import PlatformSettingsManager from './admin/PlatformSettingsManager';
@@ -29,9 +31,25 @@ const DEFAULT_ORDERS: OrderRecord[] = [];
 const DEFAULT_WORKER_APPS: WorkerApplication[] = [];
 
 export default function AdminDashboard({ onTransition, showNotification }: AdminDashboardProps) {
+  const { currentUser, userProfile } = useAuth();
+
   // Dashboard Access Gate State
-  const [isUnlocked, setIsUnlocked] = useState(false);
-  const [gateEmail, setGateEmail] = useState(ADMIN_DASHBOARD_EMAIL);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const unlockedLocal = localStorage.getItem('punchx_admin_unlocked') === 'true';
+      if (unlockedLocal) return true;
+    }
+    return userProfile?.role === 'admin' || currentUser?.email?.toLowerCase() === ADMIN_DASHBOARD_EMAIL.toLowerCase();
+  });
+
+  useEffect(() => {
+    if (userProfile?.role === 'admin' || currentUser?.email?.toLowerCase() === ADMIN_DASHBOARD_EMAIL.toLowerCase()) {
+      setIsUnlocked(true);
+      localStorage.setItem('punchx_admin_unlocked', 'true');
+    }
+  }, [userProfile, currentUser]);
+
+  const [gateEmail, setGateEmail] = useState(currentUser?.email || ADMIN_DASHBOARD_EMAIL);
   const [gatePassword, setGatePassword] = useState('');
   const [gateError, setGateError] = useState('');
   const [isCheckingGate, setIsCheckingGate] = useState(false);
@@ -42,23 +60,54 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
 
   const handleUnlockDashboard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!gatePassword) {
-      setGateError('invalid password');
-      showNotification('⚠️ invalid password');
+    if (!gatePassword.trim()) {
+      setGateError('Please enter the dashboard password');
+      showNotification('⚠️ Please enter the dashboard password');
       return;
     }
     setIsCheckingGate(true);
     setGateError('');
-    const result = await verifyDashboardPassword(gateEmail, gatePassword);
-    setIsCheckingGate(false);
+    const targetEmail = gateEmail.trim() || ADMIN_DASHBOARD_EMAIL;
+    const result = await verifyDashboardPassword(targetEmail, gatePassword);
 
     if (result.success) {
+      try {
+        if (!auth.currentUser) {
+          try {
+            await signInWithEmailAndPassword(auth, targetEmail, gatePassword);
+          } catch {
+            try {
+              await createUserWithEmailAndPassword(auth, targetEmail, gatePassword);
+            } catch {
+              try {
+                await signInAnonymously(auth);
+              } catch (e) {
+                console.warn("Auth error:", e);
+              }
+            }
+          }
+        }
+
+        if (auth.currentUser) {
+          await setDoc(doc(db, 'users', auth.currentUser.uid), {
+            uid: auth.currentUser.uid,
+            email: targetEmail,
+            role: 'admin',
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      } catch (authErr) {
+        console.warn("Firebase Auth sync notice:", authErr);
+      }
+
+      localStorage.setItem('punchx_admin_unlocked', 'true');
       setIsUnlocked(true);
       showNotification('✅ Dashboard Unlocked. Authorized Access Granted.');
     } else {
       setGateError('invalid password');
       showNotification('⚠️ invalid password');
     }
+    setIsCheckingGate(false);
   };
 
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -85,9 +134,10 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [newCustomerAddress, setNewCustomerAddress] = useState('');
-  const [newWorkerName, setNewWorkerName] = useState('Rajesh Kumar');
+  const [newWorkerName, setNewWorkerName] = useState('');
   const [newPrice, setNewPrice] = useState(699);
   const [newIssueDesc, setNewIssueDesc] = useState('');
+  const [isPurging, setIsPurging] = useState(false);
 
   // Emergency SOS state
   const [emergencyAlerts, setEmergencyAlerts] = useState<Array<{ id: string; worker: string; location: string; time: string; issue: string }>>([]);
@@ -406,6 +456,28 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     showNotification('📄 Enterprise Ledger CSV exported successfully!');
   };
 
+  // One-click Purge Mock & Test Data function
+  const handlePurgeMockData = async () => {
+    const confirmed = window.confirm(
+      "⚠️ PURGE TEST / MOCK RECORDS\n\nThis will permanently remove all test/mock accounts, dummy orders, placeholder reviews, and seed worker profiles from Firestore and local storage.\n\nReal user profiles will NOT be deleted.\n\nDo you wish to proceed?"
+    );
+    if (!confirmed) return;
+
+    setIsPurging(true);
+    showNotification("🧹 Purging test and mock records across database...");
+    try {
+      const summary = await purgeMockUsersAndData();
+      showNotification(`✅ Purge complete: ${summary.deletedUsers} test users, ${summary.deletedWorkerApplications} workers, ${summary.deletedOrders} orders, ${summary.deletedReviews} reviews removed.`);
+      addActivityLog(`Database Mock Purge executed: ${JSON.stringify(summary)}`, 'SYSTEM');
+      await loadData();
+    } catch (err) {
+      console.error("Purge error:", err);
+      showNotification("❌ Error during database purge. Check console for details.");
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   // Compute live analytical totals
   const totalRevenue = orders.reduce((acc, o) => acc + (o.status === 'Done' ? o.price : 0), 0);
   const totalOrdersCount = orders.length;
@@ -579,7 +651,19 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
           </button>
 
           <button
+            onClick={handlePurgeMockData}
+            disabled={isPurging}
+            className="px-3 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500 hover:text-black transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono font-bold whitespace-nowrap shadow-sm active:scale-95 disabled:opacity-50"
+            title="Purge Test/Mock Data"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{isPurging ? 'PURGING...' : 'PURGE MOCK DATA'}</span>
+          </button>
+
+          <button
             onClick={() => {
+              localStorage.removeItem('punchx_admin_unlocked');
+              setIsUnlocked(false);
               showNotification('🚪 Logged out from Company Admin Dashboard');
               onTransition('panel-select');
             }}
@@ -659,7 +743,7 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               }`}
             >
               <Wrench className="w-4 h-4" />
-              <span>Worker Fleet ({ALL_EXPERTS.length})</span>
+              <span>Worker Fleet ({workerApps.filter(a => a.status === 'APPROVED').length})</span>
             </button>
 
             {/* 5. Customer Reviews Tab */}
@@ -823,8 +907,8 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               <span>On-Duty Specialists</span>
               <Wrench className="w-4 h-4 text-[#c5a059]" />
             </div>
-            <div className="text-2xl font-bold font-mono text-white">{ALL_EXPERTS.filter(e => e.available).length} Online</div>
-            <div className="text-[10px] text-zinc-400 font-mono">Out of {ALL_EXPERTS.length} Total Verified</div>
+            <div className="text-2xl font-bold font-mono text-white">{workerApps.filter(a => a.status === 'APPROVED').length} Active</div>
+            <div className="text-[10px] text-zinc-400 font-mono">Out of {workerApps.length} Total Registered</div>
           </div>
         </div>
 
@@ -1534,24 +1618,32 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
               </p>
 
               <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar pt-1">
-                {ALL_EXPERTS.map(expert => (
-                  <button
-                    key={expert.id}
-                    onClick={() => handleReassignWorker(expert.name)}
-                    className="w-full bg-[#07122a] hover:bg-[#15203b] border border-zinc-800 hover:border-[#c5a059] p-3 rounded-xl flex items-center justify-between text-xs transition-all cursor-pointer text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img src={expert.avatar} alt={expert.name} className="w-8 h-8 rounded-full object-cover border border-[#c5a059]" referrerPolicy="no-referrer" />
-                      <div>
-                        <p className="font-bold text-white">{expert.name}</p>
-                        <p className="text-[10px] text-zinc-400 font-mono">{expert.category} • ₹{expert.price}/hr</p>
+                {workerApps.filter(a => a.status === 'APPROVED').length > 0 ? (
+                  workerApps.filter(a => a.status === 'APPROVED').map(expert => (
+                    <button
+                      key={expert.id}
+                      onClick={() => handleReassignWorker(expert.legalName || 'Authorized Worker')}
+                      className="w-full bg-[#07122a] hover:bg-[#15203b] border border-zinc-800 hover:border-[#c5a059] p-3 rounded-xl flex items-center justify-between text-xs transition-all cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#15203b] border border-[#c5a059] flex items-center justify-center font-bold text-white text-xs">
+                          {(expert.legalName || 'W').charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-white">{expert.legalName || 'Authorized Worker'}</p>
+                          <p className="text-[10px] text-zinc-400 font-mono">{expert.skill} • ID: {expert.id}</p>
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-[10px] font-mono text-[#e9c176] font-bold bg-[#c5a059]/20 px-2 py-1 rounded">
-                      Select
-                    </span>
-                  </button>
-                ))}
+                      <span className="text-[10px] font-mono text-[#e9c176] font-bold bg-[#c5a059]/20 px-2 py-1 rounded">
+                        Select
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-zinc-500 font-mono">
+                    No approved technicians in fleet yet.
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
@@ -1785,9 +1877,13 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
                       onChange={(e) => setNewWorkerName(e.target.value)}
                       className="w-full bg-[#07122a] border border-zinc-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-[#c5a059] font-mono"
                     >
-                      {ALL_EXPERTS.map(exp => (
-                        <option key={exp.id} value={exp.name}>{exp.name} ({exp.category})</option>
-                      ))}
+                      {workerApps.filter(a => a.status === 'APPROVED').length > 0 ? (
+                        workerApps.filter(a => a.status === 'APPROVED').map(exp => (
+                          <option key={exp.id} value={exp.legalName}>{exp.legalName} ({exp.skill})</option>
+                        ))
+                      ) : (
+                        <option value="">No approved technician available</option>
+                      )}
                     </select>
                   </div>
                   <div className="space-y-1">

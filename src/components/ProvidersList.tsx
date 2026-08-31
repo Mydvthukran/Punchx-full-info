@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
-import { ALL_EXPERTS } from '../data/experts';
 import { ArrowLeft, Star, ShieldCheck, Clock, MapPin, CheckCircle, AlertTriangle, Filter, Laptop, User, Mail, Phone, Calendar, Compass, RefreshCw, Grid, Search } from 'lucide-react';
 import { CategoryProfileBadge } from './CategoryIcon';
 import { db } from '../lib/firebase';
@@ -100,64 +99,6 @@ export default function ProvidersList({
         }
       });
 
-      // Default registered specialists mapped to customer's current sector if none in DB
-      if (list.length === 0) {
-        const defaultAddr = citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru';
-        const defaultArea = extractAreaFromAddress(defaultAddr);
-        const defaultSector = getSectorFromAddress(defaultAddr, defaultArea);
-
-        list.push(
-          {
-            id: 'wrk_default_1',
-            name: 'Rajesh Kumar',
-            category: 'AC Repair',
-            rating: 4.9,
-            reviewsCount: 142,
-            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
-            proBadge: 'AUTHORIZED',
-            price: 199,
-            visitingFee: 199,
-            available: true,
-            address: defaultAddr,
-            area: defaultArea,
-            sector: defaultSector,
-            phone: '+91 98765 43210'
-          },
-          {
-            id: 'wrk_default_2',
-            name: 'Suresh Patel',
-            category: 'Electrical Systems',
-            rating: 4.8,
-            reviewsCount: 98,
-            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-            proBadge: 'PRO',
-            price: 179,
-            visitingFee: 179,
-            available: true,
-            address: defaultAddr,
-            area: defaultArea,
-            sector: defaultSector,
-            phone: '+91 98765 11223'
-          },
-          {
-            id: 'wrk_default_3',
-            name: 'Anil Sharma',
-            category: 'Plumbing & Drainage',
-            rating: 4.95,
-            reviewsCount: 210,
-            avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-            proBadge: 'TOP',
-            price: 149,
-            visitingFee: 149,
-            available: true,
-            address: defaultAddr,
-            area: defaultArea,
-            sector: defaultSector,
-            phone: '+91 98765 44556'
-          }
-        );
-      }
-
       setRegisteredWorkers(list);
     }, (err) => {
       console.warn("Firestore workerApplications listener notice:", err);
@@ -182,8 +123,8 @@ export default function ProvidersList({
   // Customer current active Sector
   const customerSector = getSectorFromAddress(citizenAddress);
 
-  // Combine static and dynamic authorized workers
-  const allProvidersList = [...ALL_EXPERTS, ...registeredWorkers];
+  // Use dynamic authorized workers directly from Firestore
+  const allProvidersList = registeredWorkers;
 
   // Normalize category name for filtering
   const displayCategory = selectedCategory || 'AC Repair';

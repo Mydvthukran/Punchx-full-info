@@ -336,43 +336,11 @@ export default function ProviderDetails({
                 </div>
               ))}
 
-              {/* Seed / Default Reviews fallback if none in Firestore */}
+              {/* Clean Empty State when no real customer reviews yet */}
               {firestoreReviews.length === 0 && (
-                <>
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-white text-xs">Sanjay M.</span>
-                      <span className="text-zinc-500 text-[10px]">2 days ago</span>
-                    </div>
-                    <div className="flex items-center text-[#e9c176]">
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                    </div>
-                    <p className="text-xs text-zinc-400 leading-normal">
-                      "Arrived exactly on time! His behavior was extremely professional. He explained the problem patiently and cleaned up the room after completing work. Highly recommend."
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5 pt-3">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-white text-xs">Rekha Sharma</span>
-                      <span className="text-zinc-500 text-[10px]">1 week ago</span>
-                    </div>
-                    <div className="flex items-center text-[#e9c176]">
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                      <Star className="w-3 h-3 fill-current" />
-                    </div>
-                    <p className="text-xs text-zinc-400 leading-normal">
-                      "Very polite behaviour. Completed work quickly without any hassle. No hidden payments or extra changes. Absolute five stars!"
-                    </p>
-                  </div>
-                </>
+                <div className="py-6 text-center text-zinc-500 text-xs font-mono">
+                  No verified citizen reviews logged for this specialist yet.
+                </div>
               )}
             </div>
           )}

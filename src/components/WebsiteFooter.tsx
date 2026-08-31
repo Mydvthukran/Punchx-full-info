@@ -196,6 +196,19 @@ export default function WebsiteFooter({
           {/* Legal Links */}
           <div className="flex flex-wrap items-center gap-4 font-mono text-[11px]">
             <a
+              id="footer-link-founder"
+              href="/founder"
+              onClick={(e) => {
+                e.preventDefault();
+                onTransition('founder');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-zinc-300 hover:text-[#e9c176] font-semibold transition-colors cursor-pointer hover:underline"
+            >
+              Founder &amp; Leadership
+            </a>
+            <span>•</span>
+            <a
               id="footer-link-terms"
               href="/terms-and-conditions"
               onClick={(e) => {
@@ -205,7 +218,7 @@ export default function WebsiteFooter({
               }}
               className="text-zinc-400 hover:text-[#e9c176] transition-colors cursor-pointer hover:underline"
             >
-              Terms & Conditions
+              Terms &amp; Conditions
             </a>
             <span>•</span>
             <a
@@ -225,7 +238,7 @@ export default function WebsiteFooter({
               onClick={() => setIsRefundModalOpen(true)}
               className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
-              Refund & Warranty
+              Refund &amp; Warranty
             </button>
           </div>
         </div>
