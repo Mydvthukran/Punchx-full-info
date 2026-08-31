@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
   ShieldCheck, ArrowRight, ExternalLink, Copy, Check, Printer, 
-  ChevronRight, Mail, Globe, Users, Building2, Award, Sparkles, 
-  Compass, MapPin, CheckCircle2, Linkedin, Briefcase, Share2
+  ChevronRight, Globe, Users, Building2, Award, 
+  MapPin, CheckCircle2, Linkedin, Briefcase, Share2
 } from 'lucide-react';
 import { AppScreen } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
@@ -18,7 +18,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
   useEffect(() => {
     // 1. Official SEO Document Title & Description
     const previousTitle = document.title;
-    document.title = "Rimil Das — Founder & COO of PunchX | PunchX";
+    document.title = "PunchX Founders — Rimil Das & Abhradip Ghosh";
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     // Meta description tag
@@ -29,7 +29,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
       metaDesc.name = "description";
       document.head.appendChild(metaDesc);
     }
-    metaDesc.content = "Rimil Das is the Founder & COO of PunchX, with Abhradip Ghosh as Co-Founder & CEO. Learn about the founding team behind PunchX.";
+    metaDesc.content = "Meet the PunchX founders: Rimil Das, Founder & COO, and Abhradip Ghosh, Co-Founder & CEO. Discover the leadership team behind PunchX (www.punchxapp.co.in).";
 
     // Canonical link tag update/insertion
     let canonicalTag = document.querySelector("link[rel='canonical']") as HTMLLinkElement;
@@ -44,11 +44,11 @@ export default function Founder({ onTransition, showNotification }: FounderProps
     // Open Graph Title & Description
     let ogTitle = document.querySelector("meta[property='og:title']") as HTMLMetaElement;
     const prevOgTitle = ogTitle ? ogTitle.content : null;
-    if (ogTitle) ogTitle.content = "Rimil Das — Founder & COO of PunchX";
+    if (ogTitle) ogTitle.content = "PunchX Founders — Rimil Das & Abhradip Ghosh";
 
     let ogDesc = document.querySelector("meta[property='og:description']") as HTMLMetaElement;
     const prevOgDesc = ogDesc ? ogDesc.content : null;
-    if (ogDesc) ogDesc.content = "Rimil Das is the Founder & COO of PunchX, with Abhradip Ghosh as Co-Founder & CEO. Discover PunchX leadership.";
+    if (ogDesc) ogDesc.content = "Meet the PunchX founders: Rimil Das, Founder & COO, and Abhradip Ghosh, Co-Founder & CEO. Learn about PunchX leadership.";
 
     let ogUrl = document.querySelector("meta[property='og:url']") as HTMLMetaElement;
     const prevOgUrl = ogUrl ? ogUrl.content : null;
@@ -64,14 +64,15 @@ export default function Founder({ onTransition, showNotification }: FounderProps
           "name": "PunchX",
           "url": "https://www.punchxapp.co.in/",
           "logo": "https://www.punchxapp.co.in/favicon.jpg",
-          "description": "India's prestige on-demand service utility platform connecting citizens with verified master specialists.",
+          "description": "PunchX is an on-demand service platform connecting users with verified technicians and specialists across Bengaluru, India.",
           "founder": {
             "@type": "Person",
+            "@id": "https://www.punchxapp.co.in/founder#rimil-das",
             "name": "Rimil Das",
             "jobTitle": "Founder & COO",
-            "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba",
+            "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba/",
             "sameAs": [
-              "https://www.linkedin.com/in/rimil-das-a0537a3ba"
+              "https://www.linkedin.com/in/rimil-das-a0537a3ba/"
             ],
             "worksFor": {
               "@id": "https://www.punchxapp.co.in/#organization"
@@ -80,20 +81,22 @@ export default function Founder({ onTransition, showNotification }: FounderProps
           "member": [
             {
               "@type": "Person",
+              "@id": "https://www.punchxapp.co.in/founder#rimil-das",
               "name": "Rimil Das",
               "jobTitle": "Founder & COO",
-              "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba",
+              "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba/",
               "sameAs": [
-                "https://www.linkedin.com/in/rimil-das-a0537a3ba"
+                "https://www.linkedin.com/in/rimil-das-a0537a3ba/"
               ]
             },
             {
               "@type": "Person",
+              "@id": "https://www.punchxapp.co.in/founder#abhradip-ghosh",
               "name": "Abhradip Ghosh",
               "jobTitle": "Co-Founder & CEO",
-              "url": "https://www.linkedin.com/in/abhradip-ghosh-858383404",
+              "url": "https://www.linkedin.com/in/abhradip-ghosh-858383404/",
               "sameAs": [
-                "https://www.linkedin.com/in/abhradip-ghosh-858383404"
+                "https://www.linkedin.com/in/abhradip-ghosh-858383404/"
               ]
             }
           ]
@@ -106,11 +109,11 @@ export default function Founder({ onTransition, showNotification }: FounderProps
           "worksFor": {
             "@id": "https://www.punchxapp.co.in/#organization"
           },
-          "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba",
+          "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba/",
           "sameAs": [
-            "https://www.linkedin.com/in/rimil-das-a0537a3ba"
+            "https://www.linkedin.com/in/rimil-das-a0537a3ba/"
           ],
-          "description": "Rimil Das is the Founder and Chief Operating Officer (COO) of PunchX, responsible for helping build and operate the PunchX platform and its ecosystem."
+          "description": "Rimil Das is the Founder & COO of PunchX, responsible for operations, platform governance, and specialist service delivery."
         },
         {
           "@type": "Person",
@@ -120,11 +123,11 @@ export default function Founder({ onTransition, showNotification }: FounderProps
           "worksFor": {
             "@id": "https://www.punchxapp.co.in/#organization"
           },
-          "url": "https://www.linkedin.com/in/abhradip-ghosh-858383404",
+          "url": "https://www.linkedin.com/in/abhradip-ghosh-858383404/",
           "sameAs": [
-            "https://www.linkedin.com/in/abhradip-ghosh-858383404"
+            "https://www.linkedin.com/in/abhradip-ghosh-858383404/"
           ],
-          "description": "Abhradip Ghosh is the Co-Founder and Chief Executive Officer (CEO) of PunchX, helping lead the company's vision, strategy, and growth."
+          "description": "Abhradip Ghosh is the Co-Founder & CEO of PunchX, leading corporate strategy, product vision, and platform growth."
         }
       ]
     };
@@ -176,7 +179,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
           <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
           <span className="text-zinc-500">Company</span>
           <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
-          <span className="text-[#e9c176] font-bold">Leadership & Founding Team</span>
+          <span className="text-[#e9c176] font-bold">Founders &amp; Leadership</span>
         </nav>
 
         {/* Hero Header Card */}
@@ -187,16 +190,22 @@ export default function Founder({ onTransition, showNotification }: FounderProps
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#c5a059]/15 border border-[#c5a059]/30 text-[#e9c176] text-xs font-mono font-bold tracking-wide">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#e9c176]" />
-                <span>OFFICIAL LEADERSHIP & GOVERNANCE</span>
+                <span>OFFICIAL LEADERSHIP DIRECTORY</span>
               </div>
               
               {/* Primary H1 Heading for Search Engines & Visitors */}
-              <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
-                Rimil Das — <span className="text-[#e9c176]">Founder & COO</span> of PunchX
+              <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
+                PunchX Founders
               </h1>
+
+              <div className="text-sm sm:text-base font-mono text-[#e9c176] font-bold flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                <span>Rimil Das — Founder &amp; COO</span>
+                <span className="hidden sm:inline text-zinc-500">•</span>
+                <span>Abhradip Ghosh — Co-Founder &amp; CEO</span>
+              </div>
               
               <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
-                Official leadership and founding team directory for PunchX. Learn about the executive leadership establishing Bengaluru's prestige service utility.
+                PunchX was founded by <strong>Rimil Das</strong> (Founder &amp; COO) and co-founded by <strong>Abhradip Ghosh</strong> (Co-Founder &amp; CEO). Learn about the executive leadership establishing Bengaluru's prestige on-demand service utility.
               </p>
 
               <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-zinc-400 pt-1">
@@ -289,7 +298,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
                   </div>
                   <div className="space-y-1 min-w-0">
                     <h3 className="text-xl sm:text-2xl font-extrabold text-white group-hover:text-[#e9c176] transition-colors">
-                      Rimil Das
+                      Rimil Das — Founder &amp; COO of PunchX
                     </h3>
                     <div className="text-sm font-mono text-[#c5a059] font-bold">
                       Founder &amp; COO (Chief Operating Officer)
@@ -304,7 +313,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
                 {/* Accurate Biography Text */}
                 <div className="p-4 rounded-xl bg-[#050c1c] border border-zinc-800/80 space-y-2">
                   <p className="text-xs sm:text-sm text-zinc-200 leading-relaxed font-sans">
-                    Rimil Das is the Founder and Chief Operating Officer (COO) of PunchX, responsible for helping build and operate the PunchX platform and its ecosystem.
+                    <strong>Rimil Das</strong> is the <strong>Founder and Chief Operating Officer (COO)</strong> of PunchX, responsible for helping build and operate the PunchX platform and its ecosystem.
                   </p>
                 </div>
 
@@ -334,7 +343,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
               <div className="pt-6 mt-6 border-t border-zinc-800/80 relative z-10">
                 <a
                   id="rimil-das-linkedin-btn"
-                  href="https://www.linkedin.com/in/rimil-das-a0537a3ba"
+                  href="https://www.linkedin.com/in/rimil-das-a0537a3ba/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 bg-[#0077b5] hover:bg-[#006396] text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-md hover:shadow-lg cursor-pointer group/btn"
@@ -370,7 +379,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
                   </div>
                   <div className="space-y-1 min-w-0">
                     <h3 className="text-xl sm:text-2xl font-extrabold text-white group-hover:text-[#e9c176] transition-colors">
-                      Abhradip Ghosh
+                      Abhradip Ghosh — Co-Founder &amp; CEO of PunchX
                     </h3>
                     <div className="text-sm font-mono text-[#c5a059] font-bold">
                       Co-Founder &amp; CEO (Chief Executive Officer)
@@ -385,7 +394,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
                 {/* Accurate Biography Text */}
                 <div className="p-4 rounded-xl bg-[#050c1c] border border-zinc-800/80 space-y-2">
                   <p className="text-xs sm:text-sm text-zinc-200 leading-relaxed font-sans">
-                    Abhradip Ghosh is the Co-Founder and Chief Executive Officer (CEO) of PunchX, helping lead the company's vision, strategy, and growth.
+                    <strong>Abhradip Ghosh</strong> is the <strong>Co-Founder and Chief Executive Officer (CEO)</strong> of PunchX, helping lead the company's vision, strategy, and growth.
                   </p>
                 </div>
 
@@ -415,7 +424,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
               <div className="pt-6 mt-6 border-t border-zinc-800/80 relative z-10">
                 <a
                   id="abhradip-ghosh-linkedin-btn"
-                  href="https://www.linkedin.com/in/abhradip-ghosh-858383404"
+                  href="https://www.linkedin.com/in/abhradip-ghosh-858383404/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full py-3 px-4 bg-[#0077b5] hover:bg-[#006396] text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-md hover:shadow-lg cursor-pointer group/btn"
@@ -442,7 +451,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs sm:text-sm text-zinc-300 leading-relaxed">
             <div className="space-y-3">
               <p>
-                <strong>PunchX</strong> is an on-demand prestige home service utility operating in Bengaluru, Karnataka. The platform connects urban households and residential societies with vetted master specialists across 50 verified trades including electrical maintenance, high-pressure plumbing, AC repair, carpentry, and home care.
+                <strong>PunchX</strong> is an on-demand service utility operating in Bengaluru, Karnataka. The platform connects households with vetted master specialists across electrical maintenance, plumbing, AC repair, carpentry, and home care.
               </p>
               <p>
                 As <strong>Founder &amp; COO, Rimil Das</strong> oversees operational performance, platform execution, specialist onboarding compliance, and rapid dispatch logistics to deliver consistent service excellence across all Bengaluru sectors.

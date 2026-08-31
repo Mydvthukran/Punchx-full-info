@@ -33,6 +33,7 @@ const CustomerLocationSetup = lazy(() => import('./components/CustomerLocationSe
 const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'));
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'));
+const Founder = lazy(() => import('./components/Founder'));
 
 async function completePunchXAuthRedirect(client: any, callbackUrl: string = window.location.href) {
   const url = new URL(callbackUrl);
@@ -173,6 +174,7 @@ function AppMain() {
     if (rawPath === '/privacy-policy' || rawPath === '/privacy' || search.includes('/privacy-policy') || search.includes('/privacy')) return 'privacy-policy';
     if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service' || search.includes('/terms-and-conditions') || search.includes('/terms')) return 'terms-and-conditions';
     if (rawPath === '/worker-signup' || search.includes('/worker-signup')) return 'worker-signup';
+    if (rawPath === '/founder' || rawPath === '/leadership' || rawPath === '/founders' || search.includes('/founder') || search.includes('/founders') || search.includes('/leadership')) return 'founder';
     return 'splash';
   });
 
@@ -187,8 +189,10 @@ function AppMain() {
         setCurrentScreen('terms-and-conditions');
       } else if (rawPath === '/worker-signup' || search.includes('/worker-signup')) {
         setCurrentScreen('worker-signup');
+      } else if (rawPath === '/founder' || rawPath === '/leadership' || rawPath === '/founders' || search.includes('/founder') || search.includes('/founders') || search.includes('/leadership')) {
+        setCurrentScreen('founder');
       } else if (rawPath === '' || rawPath === '/') {
-        if (currentScreen === 'privacy-policy' || currentScreen === 'terms-and-conditions') {
+        if (currentScreen === 'privacy-policy' || currentScreen === 'terms-and-conditions' || currentScreen === 'founder' || currentScreen === 'worker-signup') {
           setCurrentScreen(currentUser ? 'home' : 'panel-select');
         }
       }
@@ -353,9 +357,12 @@ function AppMain() {
     } else if (resolvedTarget === 'worker-signup') {
       window.history.pushState({}, '', '/worker-signup');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (resolvedTarget === 'founder') {
+      window.history.pushState({}, '', '/founder');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       const currentPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
-      if (currentPath === '/privacy-policy' || currentPath === '/terms-and-conditions' || currentPath === '/terms' || currentPath === '/privacy' || currentPath === '/worker-signup') {
+      if (currentPath === '/privacy-policy' || currentPath === '/terms-and-conditions' || currentPath === '/terms' || currentPath === '/privacy' || currentPath === '/worker-signup' || currentPath === '/founder' || currentPath === '/leadership' || currentPath === '/founders') {
         window.history.pushState({}, '', '/');
       }
     }
@@ -639,6 +646,12 @@ function AppMain() {
         )}
         {currentScreen === 'terms-and-conditions' && (
           <TermsAndConditions
+            onTransition={handleTransition}
+            showNotification={showToast}
+          />
+        )}
+        {currentScreen === 'founder' && (
+          <Founder
             onTransition={handleTransition}
             showNotification={showToast}
           />

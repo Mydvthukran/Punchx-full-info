@@ -1027,6 +1027,33 @@ export default function HomeDashboard({
           </div>
         </section>
 
+        {/* Founding Team & Leadership Trust Showcase */}
+        <section id="home-leadership-spotlight" className="rounded-3xl bg-gradient-to-b from-[#0a162e] to-[#071124] border border-[#c5a059]/30 p-6 sm:p-8 space-y-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#c5a059]/15 border border-[#c5a059]/30 text-[#e9c176] text-[10px] font-mono font-bold tracking-wide">
+                <ShieldCheck className="w-3 h-3 text-[#c5a059]" />
+                <span>EXECUTIVE GOVERNANCE</span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                PunchX Founders &amp; Leadership
+              </h2>
+              <p className="text-xs text-zinc-300 max-w-2xl leading-relaxed">
+                PunchX was founded by <strong>Rimil Das</strong> (Founder &amp; COO) and <strong>Abhradip Ghosh</strong> (Co-Founder &amp; CEO), building an on-demand service ecosystem backed by verified specialists and 30-day warranty protection.
+              </p>
+            </div>
+
+            <button
+              id="home-founder-link-btn"
+              onClick={() => onTransition('founder')}
+              className="px-4 py-2.5 rounded-xl bg-[#111f3d] hover:bg-[#182a52] border border-[#c5a059]/40 text-xs font-bold text-[#e9c176] hover:text-white flex items-center gap-2 transition-all cursor-pointer shadow-md self-start sm:self-auto whitespace-nowrap"
+            >
+              <span>View Founder Profiles</span>
+              <ChevronRight className="w-4 h-4 text-[#c5a059]" />
+            </button>
+          </div>
+        </section>
+
       </main>
 
       {/* Floating Action CTA Button */}

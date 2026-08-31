@@ -31,55 +31,93 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      "@id": "https://www.punchxapp.co.in/#organization",
-      "name": "PunchX",
-      "url": "https://www.punchxapp.co.in/",
-      "logo": "https://www.punchxapp.co.in/favicon.jpg",
-      "description": "India's premium on-demand home services platform. Book verified professionals for AC repair, plumbing, electrical, and cleaning.",
-      "founder": {
-        "@type": "Person",
-        "name": "Rimil Das",
-        "jobTitle": "Founder & COO",
-        "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba",
-        "sameAs": [
-          "https://www.linkedin.com/in/rimil-das-a0537a3ba"
-        ]
-      },
-      "member": [
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.punchxapp.co.in/#organization",
+          "name": "PunchX",
+          "url": "https://www.punchxapp.co.in/",
+          "logo": "https://www.punchxapp.co.in/favicon.jpg",
+          "description": "PunchX is an on-demand service platform connecting users with verified technicians and specialists across Bengaluru, India.",
+          "founder": {
+            "@type": "Person",
+            "@id": "https://www.punchxapp.co.in/founder#rimil-das",
+            "name": "Rimil Das",
+            "jobTitle": "Founder & COO",
+            "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba/",
+            "sameAs": [
+              "https://www.linkedin.com/in/rimil-das-a0537a3ba/"
+            ],
+            "worksFor": {
+              "@id": "https://www.punchxapp.co.in/#organization"
+            }
+          },
+          "member": [
+            {
+              "@type": "Person",
+              "@id": "https://www.punchxapp.co.in/founder#rimil-das",
+              "name": "Rimil Das",
+              "jobTitle": "Founder & COO",
+              "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba/",
+              "sameAs": [
+                "https://www.linkedin.com/in/rimil-das-a0537a3ba/"
+              ]
+            },
+            {
+              "@type": "Person",
+              "@id": "https://www.punchxapp.co.in/founder#abhradip-ghosh",
+              "name": "Abhradip Ghosh",
+              "jobTitle": "Co-Founder & CEO",
+              "url": "https://www.linkedin.com/in/abhradip-ghosh-858383404/",
+              "sameAs": [
+                "https://www.linkedin.com/in/abhradip-ghosh-858383404/"
+              ]
+            }
+          ],
+          "contactPoint": [
+            {
+              "@type": "ContactPoint",
+              "telephone": "+91-7029828029",
+              "contactType": "customer service",
+              "areaServed": "IN",
+              "availableLanguage": ["en", "hi"]
+            },
+            {
+              "@type": "ContactPoint",
+              "telephone": "+91-9732682763",
+              "contactType": "customer service",
+              "areaServed": "IN",
+              "availableLanguage": ["en", "hi"]
+            }
+          ]
+        },
         {
           "@type": "Person",
+          "@id": "https://www.punchxapp.co.in/founder#rimil-das",
           "name": "Rimil Das",
           "jobTitle": "Founder & COO",
-          "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba",
+          "worksFor": {
+            "@id": "https://www.punchxapp.co.in/#organization"
+          },
+          "url": "https://www.linkedin.com/in/rimil-das-a0537a3ba/",
           "sameAs": [
-            "https://www.linkedin.com/in/rimil-das-a0537a3ba"
-          ]
+            "https://www.linkedin.com/in/rimil-das-a0537a3ba/"
+          ],
+          "description": "Rimil Das is the Founder & COO of PunchX, responsible for platform operations, specialist verification, and service delivery."
         },
         {
           "@type": "Person",
+          "@id": "https://www.punchxapp.co.in/founder#abhradip-ghosh",
           "name": "Abhradip Ghosh",
           "jobTitle": "Co-Founder & CEO",
-          "url": "https://www.linkedin.com/in/abhradip-ghosh-858383404",
+          "worksFor": {
+            "@id": "https://www.punchxapp.co.in/#organization"
+          },
+          "url": "https://www.linkedin.com/in/abhradip-ghosh-858383404/",
           "sameAs": [
-            "https://www.linkedin.com/in/abhradip-ghosh-858383404"
-          ]
-        }
-      ],
-      "contactPoint": [
-        {
-          "@type": "ContactPoint",
-          "telephone": "+91-7029828029",
-          "contactType": "customer service",
-          "areaServed": "IN",
-          "availableLanguage": ["en", "hi"]
-        },
-        {
-          "@type": "ContactPoint",
-          "telephone": "+91-9732682763",
-          "contactType": "customer service",
-          "areaServed": "IN",
-          "availableLanguage": ["en", "hi"]
+            "https://www.linkedin.com/in/abhradip-ghosh-858383404/"
+          ],
+          "description": "Abhradip Ghosh is the Co-Founder & CEO of PunchX, leading corporate strategy, product vision, and platform growth."
         }
       ]
     }
