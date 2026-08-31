@@ -24,23 +24,6 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
       });
     }
 
-    // Persist NamoID PKCE transaction from sessionStorage to localStorage so callback survives redirects
-    const syncOidcTransaction = () => {
-      try {
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const k = sessionStorage.key(i);
-          if (k && k.startsWith("namoid_oidc")) {
-            const val = sessionStorage.getItem(k);
-            if (val) localStorage.setItem(k, val);
-          }
-        }
-      } catch {
-        // Storage access guard
-      }
-    };
-
-    window.addEventListener("beforeunload", syncOidcTransaction);
-    return () => window.removeEventListener("beforeunload", syncOidcTransaction);
   }, [activePanelRole]);
 
   const handleRequestLocation = async () => {

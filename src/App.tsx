@@ -15,7 +15,6 @@ import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
 import { NamoIDProvider, useNamoID, completeHostedAuthRedirect } from "@namoidhq/react";
-import { namoidFetcher } from './lib/namoidFetcher';
 
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
@@ -47,18 +46,6 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
     async function processCallback() {
       try {
         const callbackUrl = window.location.href;
-        const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
-
-        try {
-          const sessionRaw = sessionStorage.getItem(storageKey);
-          const localRaw = localStorage.getItem(storageKey);
-          if (!sessionRaw && localRaw) {
-            sessionStorage.setItem(storageKey, localRaw);
-          }
-        } catch (storageErr) {
-          console.warn("[AuthCallback] Storage recovery warning:", storageErr);
-        }
-
         const result = await completeHostedAuthRedirect(client, callbackUrl);
         const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
         const role: 'citizen' | 'worker' | 'admin' = 
@@ -625,7 +612,7 @@ const NAMOID_CLIENT_ID = import.meta.env.VITE_NAMOID_CLIENT_ID || 'namoid_client
 
 export default function App() {
   return (
-    <NamoIDProvider clientId={NAMOID_CLIENT_ID} fetcher={namoidFetcher}>
+    <NamoIDProvider clientId={NAMOID_CLIENT_ID}>
       <AuthProvider>
         <AppMain />
         <Analytics />
