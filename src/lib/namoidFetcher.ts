@@ -1,7 +1,7 @@
 /**
  * Custom fetcher for NamoID SDK (@namoidhq/react / @namoidhq/js):
  * 1. Pre-loads OpenID Connect discovery configuration locally.
- * 2. Pre-loads JWKS keys to eliminate unnecessary latency on startup.
+ * 2. Pre-loads JWKS keys to eliminate CORS failures during ID token signature verification.
  * 3. Transparently routes token exchange (/v1/oauth/token) through the backend proxy (/api/namoid-proxy)
  *    to resolve CORS and domain mismatch restrictions on dev & preview deployments.
  */
@@ -28,6 +28,19 @@ export const NAMOID_DISCOVERY = {
   end_session_endpoint: "https://punch-x-747dd7.id.namoid.in/oauth/logout"
 };
 
+export const NAMOID_JWKS = {
+  keys: [
+    {
+      kty: "RSA",
+      use: "sig",
+      alg: "RS256",
+      kid: "key-2026-05",
+      n: "3ESxw5mFBtlHprbE7ehcoOs6F_kxN_QsmHl4TSkiz6zBgzPQ8qwv-DXjXLxmPzYX4_puiaE2yIBHctrYxcwLwD6_sZ6irYa-ogzYSQWNhbee8ycD4hJpWO6O3ClpR_-IDPb4AQTbvGPo5tSbpNYzh5FkIWTRIZTCBfz7XUzsNaEVKO9KdtR4HLqNpPneBxCIPB022znp1dVRqgIVI6yIIAyTUkbD28HbD-LwtxRadxN_O9SaHt-Hjjo6_iPPNhJZnNx_vHWjpCIVQRtpCYO-eCVv_WpzopbF25yc9zV70KRP1BwZgbbA5ZyAARcuI87aJuxvSKK9BSkQaUZt7dNeoQ",
+      e: "AQAB"
+    }
+  ]
+};
+
 export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -39,7 +52,15 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     });
   }
 
-  // 2. Token exchange handling
+  // 2. Intercept JWKS public key request to bypass browser CORS blocks on key-2026-05
+  if (url.includes("/jwks.json") || url.includes("/jwks")) {
+    return new Response(JSON.stringify(NAMOID_JWKS), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // 3. Token exchange handling
   if (url.includes("/v1/oauth/token") || url.includes("/oauth/token")) {
     const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";
 
@@ -139,7 +160,7 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     }
   }
 
-  // 3. Default fallback for other endpoints
+  // 4. Default fallback for other endpoints (userinfo, etc.)
   try {
     const res = await fetch(input, init);
     if (res.ok || (res.status >= 400 && res.status !== 400)) {
