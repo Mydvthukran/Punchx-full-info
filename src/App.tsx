@@ -14,7 +14,8 @@ import { AuthProvider, useAuth } from './lib/authContext';
 import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
 import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
-import { NamoIDProvider, useNamoID, completeHostedAuthRedirect } from "@namoidhq/react";
+import { NamoIDProvider, useNamoID } from "@namoidhq/react";
+import { namoidFetcher } from './lib/namoidFetcher';
 
 // Lazy-loaded heavy screens to improve initial load time
 const HomeDashboard = lazy(() => import('./components/Home'));
@@ -33,6 +34,77 @@ const WorkerLocationSetup = lazy(() => import('./components/WorkerLocationSetup'
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const TermsAndConditions = lazy(() => import('./components/TermsAndConditions'));
 
+async function completePunchXAuthRedirect(client: any, callbackUrl: string = window.location.href) {
+  const url = new URL(callbackUrl);
+  const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
+
+  let raw = sessionStorage.getItem(storageKey);
+  if (!raw) {
+    raw = localStorage.getItem(storageKey);
+  }
+  if (!raw) {
+    throw new Error("Authorization transaction is missing. Please try signing in again.");
+  }
+  const transaction = JSON.parse(raw);
+
+  const returnedState = url.searchParams.get("state");
+  if (!returnedState || transaction.state !== returnedState) {
+    throw new Error("Authorization state mismatch. Please try signing in again.");
+  }
+
+  const authError = url.searchParams.get("error");
+  if (authError) {
+    sessionStorage.removeItem(storageKey);
+    localStorage.removeItem(storageKey);
+    throw new Error(url.searchParams.get("error_description") || authError);
+  }
+
+  const code = url.searchParams.get("code");
+  if (!code) {
+    throw new Error("Authorization code is missing");
+  }
+
+  // 1. Exchange authorization code for tokens using NamoID client (routed via namoidFetcher proxy)
+  const tokens = await client.hostedAuth.exchangeCode({
+    code,
+    redirectUri: transaction.redirectUri,
+    codeVerifier: transaction.codeVerifier,
+  });
+
+  if (!tokens || !tokens.access_token) {
+    throw new Error("Token exchange did not return an access token");
+  }
+
+  // 2. Retrieve user identity using NamoID client UserInfo endpoint
+  const identity = await client.hostedAuth.userInfo(tokens.access_token);
+
+  // 3. Decode id_token payload safely (if present)
+  let idTokenClaims: any = {};
+  if (tokens.id_token) {
+    try {
+      const parts = tokens.id_token.split('.');
+      if (parts.length === 3) {
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        idTokenClaims = JSON.parse(jsonPayload);
+      }
+    } catch (jwtErr) {
+      console.warn("Notice: decoding id_token payload:", jwtErr);
+    }
+  }
+
+  // Clean up transaction keys
+  sessionStorage.removeItem(storageKey);
+  localStorage.removeItem(storageKey);
+
+  return { tokens, identity, idTokenClaims };
+}
+
 function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => void }) {
   const client = useNamoID();
   const { loginWithNamoID } = useAuth();
@@ -46,7 +118,7 @@ function AuthCallback({ onTransition }: { onTransition: (target: AppScreen) => v
     async function processCallback() {
       try {
         const callbackUrl = window.location.href;
-        const result = await completeHostedAuthRedirect(client, callbackUrl);
+        const result = await completePunchXAuthRedirect(client, callbackUrl);
         const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
         const role: 'citizen' | 'worker' | 'admin' = 
           rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
@@ -612,7 +684,7 @@ const NAMOID_CLIENT_ID = import.meta.env.VITE_NAMOID_CLIENT_ID || 'namoid_client
 
 export default function App() {
   return (
-    <NamoIDProvider clientId={NAMOID_CLIENT_ID}>
+    <NamoIDProvider clientId={NAMOID_CLIENT_ID} fetcher={namoidFetcher}>
       <AuthProvider>
         <AppMain />
         <Analytics />
