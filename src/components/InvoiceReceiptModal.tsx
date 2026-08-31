@@ -81,7 +81,6 @@ export default function InvoiceReceiptModal({
                 </div>
               </div>
               <p className="text-[11px] text-zinc-600 pt-1">
-                CIN: U74999KA2026PTC189012 • GSTIN: 29AABCU9603R1ZM<br />
                 Indiranagar Prestige Tech Center, Bengaluru, KA - 560038
               </p>
             </div>

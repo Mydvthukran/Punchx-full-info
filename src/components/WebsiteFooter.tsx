@@ -190,7 +190,7 @@ export default function WebsiteFooter({
           <div className="flex flex-wrap items-center gap-4">
             <span>© {new Date().getFullYear()} PUNCHX SERVICE PLATFORM PVT. LTD.</span>
             <span>•</span>
-            <span>CIN: U74999KA2026PTC189012</span>
+            <span>All Rights Reserved.</span>
           </div>
 
           {/* Legal Links */}
