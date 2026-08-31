@@ -73,7 +73,7 @@ export default function HomeDashboard({
   isProfileDrawerOpen,
   setIsProfileDrawerOpen,
 }: HomeProps) {
-  const { currentUser, userProfile, updateUserProfile } = useAuth() as any;
+  const { currentUser, userProfile, updateUserProfile, logout } = useAuth() as any;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'home' | 'categories' | 'bookings' | 'profile'>('home');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -1647,9 +1647,16 @@ export default function HomeDashboard({
               {/* Secure Token Footer inside Drawer */}
               <div className="p-6 bg-[#0c121e] border-t border-zinc-850 space-y-3">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setIsProfileOpen(false);
-                    onTransition('auth');
+                    try {
+                      if (logout) {
+                        await logout();
+                      }
+                    } catch (e) {
+                      console.warn("Logout error:", e);
+                    }
+                    onTransition('panel-select');
                     showNotification("✓ Logged out successfully.");
                   }}
                   className="w-full py-2.5 bg-red-600/20 hover:bg-red-600 text-red-200 hover:text-white font-extrabold text-[11px] uppercase tracking-wider rounded-xl transition-all font-sans cursor-pointer border border-red-600/40 text-center"

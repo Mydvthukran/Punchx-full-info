@@ -90,7 +90,7 @@ export default function WebsiteNavbar({
       await logout();
       setIsProfileDropdownOpen(false);
       showNotification('✓ Signed out successfully.');
-      onTransition('auth');
+      onTransition('panel-select');
     } catch (e) {
       console.warn('Sign out error:', e);
     }

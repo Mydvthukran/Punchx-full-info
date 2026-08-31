@@ -201,6 +201,15 @@ function AppMain() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentUser, currentScreen]);
 
+  // Handle AuthContext logout events by redirecting to 'panel-select' screen
+  useEffect(() => {
+    const handleLogoutEvent = () => {
+      setCurrentScreen('panel-select');
+    };
+    window.addEventListener('punchx_logout', handleLogoutEvent);
+    return () => window.removeEventListener('punchx_logout', handleLogoutEvent);
+  }, []);
+
   const [activePanelRole, setActivePanelRole] = useState<'customer' | 'worker' | 'admin'>(() => {
     return (localStorage.getItem('punchx_auth_role') as 'customer' | 'worker' | 'admin') || 'customer';
   });
@@ -266,8 +275,8 @@ function AppMain() {
   useEffect(() => {
     const protectedScreens: AppScreen[] = ['home', 'customer-setup', 'worker-setup', 'worker-dashboard', 'admin-dashboard', 'tracking', 'booking', 'payment', 'providers', 'provider-details'];
     if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen)) {
-      showToast("🔒 Active session required. Redirecting to login...");
-      setCurrentScreen('auth');
+      showToast("🔒 Active session required. Redirecting to portal select...");
+      setCurrentScreen('panel-select');
     }
 
     // After login, direct user to their respective dashboard instead of panel selection or auth screens

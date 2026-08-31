@@ -182,6 +182,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       setUserProfile(null);
       localStorage.removeItem('punchx_namoid_identity');
       localStorage.removeItem('punchx_namoid_profile');
+      localStorage.removeItem('punchx_auth_role');
+      window.dispatchEvent(new CustomEvent('punchx_logout'));
     } catch (error) {
       console.error('Error signing out:', error);
     }

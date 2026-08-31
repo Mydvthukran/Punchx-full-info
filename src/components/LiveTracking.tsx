@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { doc, updateDoc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { AppScreen } from '../types';
+import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import {
   ArrowLeft, Star, Phone, MessageSquare, MapPin, Send, X, Compass,
   CheckCircle, ShieldCheck, RefreshCw, Navigation2, Clock, Check,
@@ -17,6 +18,30 @@ import WarrantyClaimModal from './WarrantyClaimModal';
 interface LiveTrackingProps {
   onTransition: (target: AppScreen) => void;
   bookingTime?: string;
+}
+
+// Declarative Polyline helper component using @vis.gl/react-google-maps
+function Polyline({ path }: { path: { lat: number; lng: number }[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || typeof google === 'undefined') return;
+
+    const polyline = new google.maps.Polyline({
+      path,
+      geodesic: true,
+      strokeColor: '#c5a059',
+      strokeOpacity: 0.8,
+      strokeWeight: 4,
+      map: map
+    });
+
+    return () => {
+      polyline.setMap(null);
+    };
+  }, [map, path]);
+
+  return null;
 }
 
 // Utility to check if an order is genuinely live/active in progress
@@ -48,6 +73,7 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
   const [statusStep, setStatusStep] = useState<number>(1); // 0: Assigned, 1: Out for Service, 2: Arrived, 3: Completed
   const [workerPos, setWorkerPos] = useState({ x: 28, y: 68 });
   const [calculatedDistanceKm, setCalculatedDistanceKm] = useState<number>(2.4);
+  const [mapViewMode, setMapViewMode] = useState<'map' | 'radar'>('map');
 
   // Communication & modaling
   const [showChatModal, setShowChatModal] = useState(false);
@@ -345,6 +371,50 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
     }
   }, [liveCoords?.lat, liveCoords?.lng, workerCoords?.lat, workerCoords?.lng, statusStep, activeOrder?.id]);
 
+  // 4b. Simulation: Move the technician towards the customer in real-time when "Out for Service"
+  useEffect(() => {
+    if (!activeOrder || statusStep !== 1) return;
+
+    // Check distance; if they are too close to start, offset them for a nice simulation journey
+    const initialDistance = calculateDistanceKm(liveCoords.lat, liveCoords.lng, workerCoords.lat, workerCoords.lng);
+    if (initialDistance < 0.2) {
+      // Offset by ~1.5 - 2km to create a visible journey
+      setWorkerCoords({
+        lat: liveCoords.lat - 0.015,
+        lng: liveCoords.lng - 0.015
+      });
+    }
+
+    const intervalId = setInterval(() => {
+      setWorkerCoords((prev) => {
+        const dLat = liveCoords.lat - prev.lat;
+        const dLng = liveCoords.lng - prev.lng;
+        const distance = Math.sqrt(dLat * dLat + dLng * dLng);
+
+        // Standard lat/lng delta to trigger arrival (less than ~0.0006 degrees is roughly ~60 meters)
+        if (distance < 0.0006) {
+          clearInterval(intervalId);
+          // Update status in Firestore so worker dashboard reflects it too
+          if (activeOrder?.id) {
+            updateDoc(doc(db, 'orders', activeOrder.id), { status: 'Arrived' })
+              .catch(err => console.warn("Firestore status update failed:", err));
+          }
+          setStatusStep(2);
+          setEta(0);
+          setCalculatedDistanceKm(0);
+          return liveCoords;
+        }
+
+        // Interpolate position: move closer by 8% each tick
+        const nextLat = prev.lat + dLat * 0.08;
+        const nextLng = prev.lng + dLng * 0.08;
+        return { lat: nextLat, lng: nextLng };
+      });
+    }, 4000); // simulation tick every 4 seconds
+
+    return () => clearInterval(intervalId);
+  }, [statusStep, activeOrder?.id, liveCoords.lat, liveCoords.lng]);
+
   // 5. User action: Refresh and Sync Live GPS
   const handleManualTrack = () => {
     syncLiveGpsPosition(true);
@@ -556,112 +626,260 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           
-          {/* Radar Satellite Map Canvas */}
-          <div
-            id="tracking-radar-map"
-            className="lg:col-span-6 xl:col-span-7 relative w-full h-[320px] sm:h-[380px] lg:h-[580px] bg-[#030d25] rounded-3xl border border-[#c5a059]/30 overflow-hidden shadow-2xl relative"
-          >
-            {/* Map background imagery */}
-            <img
-              alt="Satellite GPS Grid"
-              className="w-full h-full object-cover opacity-35 grayscale contrast-125 brightness-60"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxXiIqRoq-vYxFfQWmh6nEJJVEZLuG8_XTloJupDAGo2KWEJare7l0lhFePpI4RBeHQPKLEls1Uq-y3NPjeNJX2LjJ673Y6rMncGzquudeN-dAeLsSPD77j1C0d-Xmd-hUfyTyD3nzJnIZ9Umfw67crjYLaYmNKoQnAym9LdhqNDzx2lDLM6AktT4POIRyNHM_MlEdhEcQDKxhKCKdiqvbBMGTDHa1G-R-ES3bAbsdN1kDhH05W21Z_9hcjIO7ZdktPvds37JFxwE"
-              referrerPolicy="no-referrer"
-            />
-
-            {/* Radar Sweep Effect & Concentric Distance Rings */}
-            <div className="absolute inset-0 pointer-events-none opacity-25 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(197,160,89,0.2)_100%)]"></div>
-            
-            {/* Concentric Satellite Radar Circles */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-[72%] h-[72%] rounded-full border border-[#c5a059]/20 flex items-center justify-center">
-                <span className="text-[8px] font-mono text-[#c5a059]/40 absolute top-2">5 KM RADIUS</span>
-                <div className="w-[60%] h-[60%] rounded-full border border-[#c5a059]/25 flex items-center justify-center">
-                  <span className="text-[8px] font-mono text-[#c5a059]/40 absolute top-2">2.5 KM</span>
-                  <div className="w-[45%] h-[45%] rounded-full border border-emerald-500/30 flex items-center justify-center">
-                    <span className="text-[7px] font-mono text-emerald-400/50 absolute top-1">1 KM</span>
-                  </div>
-                </div>
+          {/* Left Column: Segmented View Selector & Map Container */}
+          <div className="lg:col-span-6 xl:col-span-7 space-y-3">
+            {/* View Mode Segmented Controls */}
+            <div className="flex items-center justify-between gap-2 bg-[#0c1525]/90 border border-[#c5a059]/20 p-2 rounded-2xl">
+              <span className="text-[10px] font-mono font-bold text-zinc-400 pl-2">TELEMETRY VIEW:</span>
+              <div className="flex bg-[#07122a] p-1 rounded-xl border border-[#c5a059]/10">
+                <button
+                  onClick={() => setMapViewMode('map')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    mapViewMode === 'map'
+                      ? 'bg-[#c5a059] text-black shadow-md'
+                      : 'text-[#e9c176] hover:bg-zinc-800'
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>Real-Time Map</span>
+                </button>
+                <button
+                  onClick={() => setMapViewMode('radar')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    mapViewMode === 'radar'
+                      ? 'bg-[#c5a059] text-black shadow-md'
+                      : 'text-[#e9c176] hover:bg-zinc-800'
+                  }`}
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Radar HUD</span>
+                </button>
               </div>
             </div>
 
-            {/* Animated Live Route SVG */}
-            <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-10">
-              <defs>
-                <linearGradient id="route-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="50%" stopColor="#c5a059" />
-                  <stop offset="100%" stopColor="#10b981" />
-                </linearGradient>
-              </defs>
-
-              {/* Glowing flight trajectory from Worker to Customer */}
-              <path
-                d={`M ${workerPos.x} ${workerPos.y} Q ${(workerPos.x + 50) / 2 - 3} ${(workerPos.y + 50) / 2 + 4} 50 50`}
-                fill="none"
-                stroke="url(#route-gradient)"
-                strokeWidth="1.5"
-                strokeDasharray="4, 2"
-                strokeLinecap="round"
-                className="animate-[shimmer_1.5s_linear_infinite]"
-              />
-
-              {/* Target radar ping at center (Customer) */}
-              <circle cx="50" cy="50" r="3.5" fill="none" stroke="#10b981" strokeWidth="0.8" className="animate-ping" />
-              <circle cx="50" cy="50" r="1.8" fill="#10b981" />
-            </svg>
-
-            {/* Customer Location Pin (Destination Centered at 50%, 50%) */}
-            <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 pointer-events-none">
-              <div className="p-2 bg-emerald-500 rounded-full shadow-lg border-2 border-white text-black animate-pulse">
-                <MapPin className="w-4 h-4 fill-black text-black" />
-              </div>
-              <span className="mt-1 bg-black/90 px-2 py-0.5 rounded text-[9px] text-emerald-300 font-mono font-bold border border-emerald-500/40 shadow-xl whitespace-nowrap">
-                YOU ({liveCoords.lat.toFixed(4)}°, {liveCoords.lng.toFixed(4)}°)
-              </span>
-            </div>
-
-            {/* Moving Technician Pin */}
+            {/* Radar / Satellite Map Canvas */}
             <div
-              className="absolute flex flex-col items-center duration-1000 transition-all ease-out z-20 pointer-events-none"
-              style={{ left: `${workerPos.x}%`, top: `${workerPos.y}%`, transform: 'translate(-50%, -50%)' }}
+              id="tracking-radar-map"
+              className="relative w-full h-[320px] sm:h-[380px] lg:h-[580px] bg-[#030d25] rounded-3xl border border-[#c5a059]/30 overflow-hidden shadow-2xl"
             >
-              <div className="relative">
-                <div className="absolute -inset-1 bg-[#c5a059] rounded-full blur-sm opacity-70 animate-ping"></div>
-                <div className="relative p-2.5 bg-[#0a1428] rounded-full shadow-2xl border-2 border-[#c5a059] flex items-center justify-center text-[#e9c176]">
-                  <Navigation2 className="w-4 h-4 rotate-45 animate-pulse text-[#e9c176]" />
-                </div>
-              </div>
-              <span className="mt-1 bg-[#0a1428]/95 px-2.5 py-0.5 rounded-md text-[9px] text-[#e9c176] font-mono font-extrabold uppercase border border-[#c5a059]/50 shadow-xl whitespace-nowrap">
-                {activeOrder.workerName || 'Technician'} • {eta > 0 ? `${eta}m away` : 'Arrived'}
-              </span>
-            </div>
+              {mapViewMode === 'map' ? (
+                // Google Maps View
+                (() => {
+                  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+                  if (!apiKey) {
+                    return (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07122a]/95 p-6 text-center space-y-4 z-30">
+                        <div className="w-16 h-16 bg-[#c5a059]/10 rounded-full flex items-center justify-center border border-[#c5a059]/30">
+                          <Compass className="w-8 h-8 text-[#e9c176] animate-pulse" />
+                        </div>
+                        <div className="space-y-2 max-w-md">
+                          <h3 className="text-base font-bold text-white">Google Maps API Key Required</h3>
+                          <p className="text-xs text-zinc-300 leading-relaxed">
+                            To view the active GPS route of your specialist on a live Google Map, please configure the <code className="px-1.5 py-0.5 bg-black/40 rounded text-amber-400 font-mono">VITE_GOOGLE_MAPS_API_KEY</code> environment variable in your <code className="px-1.5 py-0.5 bg-black/40 rounded text-amber-400 font-mono">.env</code> file.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 justify-center pt-2">
+                          <a
+                            href="https://mapsplatform.google.com/maps-demo-key?utm_campaign=gmp_mcp_codeassist_v1_aistudio"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-[#c5a059] hover:bg-[#e9c176] text-black text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                          >
+                            <span>Get Maps Demo Key</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          <button
+                            onClick={() => setMapViewMode('radar')}
+                            className="px-4 py-2 bg-[#101b33] hover:bg-[#152342] border border-[#c5a059]/40 text-xs font-bold text-[#e9c176] rounded-xl transition-all cursor-pointer"
+                          >
+                            Use Simulated Radar HUD
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
 
-            {/* Top HUD Badges */}
-            <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2 pointer-events-none">
-              <div className="bg-[#07122a]/95 border border-[#c5a059]/50 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-xl">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span className="font-mono text-[10px] font-extrabold text-[#e9c176] uppercase">
-                  {statusStep === 0 ? 'Assigned' : statusStep === 1 ? 'Out for Service' : statusStep === 2 ? 'Arrived at Doorstep' : 'Service Completed'}
-                </span>
-              </div>
-              <div className="bg-[#07122a]/95 border border-zinc-800 rounded-xl px-3 py-1.5 flex items-center gap-1.5 shadow-xl font-mono text-[10px] text-zinc-300">
-                <Clock className="w-3 h-3 text-[#c5a059]" />
-                <span>{eta > 0 ? `ETA: ${eta} mins` : 'Arrived'}</span>
-                <span className="text-zinc-500">•</span>
-                <span>{calculatedDistanceKm} km</span>
-              </div>
-            </div>
+                  return (
+                    <div className="w-full h-full relative z-10">
+                      <APIProvider apiKey={apiKey}>
+                        <Map
+                          mapId="DEMO_MAP_ID"
+                          style={{ width: '100%', height: '100%' }}
+                          defaultCenter={liveCoords}
+                          defaultZoom={14}
+                          center={liveCoords}
+                          disableDefaultUI={true}
+                          gestureHandling={'cooperative'}
+                          internalUsageAttributionIds={["gmp_mcp_codeassist_v1_aistudio"]}
+                        >
+                          {/* Route line connecting technician and customer */}
+                          <Polyline path={[workerCoords, liveCoords]} />
 
-            {/* Bottom Floating Map Controls */}
-            <div className="absolute bottom-4 right-4 z-20 flex gap-2">
-              <button
-                onClick={handleManualTrack}
-                className="p-2.5 bg-[#07122a]/90 hover:bg-[#c5a059] text-[#e9c176] hover:text-black border border-[#c5a059]/40 rounded-xl shadow-xl transition-all cursor-pointer"
-                title="Recenter and scan GPS"
-              >
-                <Compass className="w-4 h-4" />
-              </button>
+                          {/* Customer Location Pin */}
+                          <AdvancedMarker position={liveCoords}>
+                            <div className="flex flex-col items-center">
+                              <div className="p-2 bg-emerald-500 rounded-full shadow-lg border-2 border-white text-black animate-pulse">
+                                <MapPin className="w-4 h-4 fill-black text-black" />
+                              </div>
+                              <span className="mt-1 bg-black/90 px-2 py-0.5 rounded text-[9px] text-emerald-300 font-mono font-bold border border-emerald-500/40 shadow-xl whitespace-nowrap">
+                                YOU
+                              </span>
+                            </div>
+                          </AdvancedMarker>
+
+                          {/* Moving Technician Location Pin */}
+                          <AdvancedMarker position={workerCoords}>
+                            <div className="flex flex-col items-center">
+                              <div className="relative">
+                                <div className="absolute -inset-1 bg-[#c5a059] rounded-full blur-sm opacity-70 animate-ping"></div>
+                                <div className="relative p-2.5 bg-[#0a1428] rounded-full shadow-2xl border-2 border-[#c5a059] flex items-center justify-center text-[#e9c176]">
+                                  <Navigation2 className="w-4 h-4 rotate-45 text-[#e9c176]" />
+                                </div>
+                              </div>
+                              <span className="mt-1 bg-[#0a1428]/95 px-2.5 py-0.5 rounded-md text-[9px] text-[#e9c176] font-mono font-extrabold uppercase border border-[#c5a059]/50 shadow-xl whitespace-nowrap">
+                                {activeOrder.workerName || 'Technician'} • {eta > 0 ? `${eta}m away` : 'Arrived'}
+                              </span>
+                            </div>
+                          </AdvancedMarker>
+                        </Map>
+                      </APIProvider>
+
+                      {/* Top HUD Badges over map */}
+                      <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2 pointer-events-none">
+                        <div className="bg-[#07122a]/95 border border-[#c5a059]/50 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-xl">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                          <span className="font-mono text-[10px] font-extrabold text-[#e9c176] uppercase">
+                            {statusStep === 0 ? 'Assigned' : statusStep === 1 ? 'Out for Service' : statusStep === 2 ? 'Arrived' : 'Service Completed'}
+                          </span>
+                        </div>
+                        <div className="bg-[#07122a]/95 border border-zinc-800 rounded-xl px-3 py-1.5 flex items-center gap-1.5 shadow-xl font-mono text-[10px] text-zinc-300">
+                          <Clock className="w-3 h-3 text-[#c5a059]" />
+                          <span>{eta > 0 ? `ETA: ${eta} mins` : 'Arrived'}</span>
+                          <span className="text-zinc-500">•</span>
+                          <span>{calculatedDistanceKm} km</span>
+                        </div>
+                      </div>
+
+                      {/* Bottom Floating Map Controls */}
+                      <div className="absolute bottom-4 right-4 z-20 flex gap-2">
+                        <button
+                          onClick={handleManualTrack}
+                          className="p-2.5 bg-[#07122a]/90 hover:bg-[#c5a059] hover:text-black text-[#e9c176] border border-[#c5a059]/40 rounded-xl shadow-xl transition-all cursor-pointer"
+                          title="Recenter and scan GPS"
+                        >
+                          <Compass className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                // Radar HUD Simulation View
+                <>
+                  {/* Map background imagery */}
+                  <img
+                    alt="Satellite GPS Grid"
+                    className="w-full h-full object-cover opacity-35 grayscale contrast-125 brightness-60"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxXiIqRoq-vYxFfQWmh6nEJJVEZLuG8_XTloJupDAGo2KWEJare7l0lhFePpI4RBeHQPKLEls1Uq-y3NPjeNJX2LjJ673Y6rMncGzquudeN-dAeLsSPD77j1C0d-Xmd-hUfyTyD3nzJnIZ9Umfw67crjYLaYmNKoQnAym9LdhqNDzx2lDLM6AktT4POIRyNHM_MlEdhEcQDKxhKCKdiqvbBMGTDHa1G-R-ES3bAbsdN1kDhH05W21Z_9hcjIO7ZdktPvds37JFxwE"
+                    referrerPolicy="no-referrer"
+                  />
+
+                  {/* Radar Sweep Effect & Concentric Distance Rings */}
+                  <div className="absolute inset-0 pointer-events-none opacity-25 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(197,160,89,0.2)_100%)]"></div>
+                  
+                  {/* Concentric Satellite Radar Circles */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-[72%] h-[72%] rounded-full border border-[#c5a059]/20 flex items-center justify-center">
+                      <span className="text-[8px] font-mono text-[#c5a059]/40 absolute top-2">5 KM RADIUS</span>
+                      <div className="w-[60%] h-[60%] rounded-full border border-[#c5a059]/25 flex items-center justify-center">
+                        <span className="text-[8px] font-mono text-[#c5a059]/40 absolute top-2">2.5 KM</span>
+                        <div className="w-[45%] h-[45%] rounded-full border border-emerald-500/30 flex items-center justify-center">
+                          <span className="text-[7px] font-mono text-emerald-400/50 absolute top-1">1 KM</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Animated Live Route SVG */}
+                  <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                    <defs>
+                      <linearGradient id="route-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="50%" stopColor="#c5a059" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Glowing flight trajectory from Worker to Customer */}
+                    <path
+                      d={`M ${workerPos.x} ${workerPos.y} Q ${(workerPos.x + 50) / 2 - 3} ${(workerPos.y + 50) / 2 + 4} 50 50`}
+                      fill="none"
+                      stroke="url(#route-gradient)"
+                      strokeWidth="1.5"
+                      strokeDasharray="4, 2"
+                      strokeLinecap="round"
+                      className="animate-[shimmer_1.5s_linear_infinite]"
+                    />
+
+                    {/* Target radar ping at center (Customer) */}
+                    <circle cx="50" cy="50" r="3.5" fill="none" stroke="#10b981" strokeWidth="0.8" className="animate-ping" />
+                    <circle cx="50" cy="50" r="1.8" fill="#10b981" />
+                  </svg>
+
+                  {/* Customer Location Pin (Destination Centered at 50%, 50%) */}
+                  <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 pointer-events-none">
+                    <div className="p-2 bg-emerald-500 rounded-full shadow-lg border-2 border-white text-black animate-pulse">
+                      <MapPin className="w-4 h-4 fill-black text-black" />
+                    </div>
+                    <span className="mt-1 bg-black/90 px-2 py-0.5 rounded text-[9px] text-emerald-300 font-mono font-bold border border-emerald-500/40 shadow-xl whitespace-nowrap">
+                      YOU ({liveCoords.lat.toFixed(4)}°, {liveCoords.lng.toFixed(4)}°)
+                    </span>
+                  </div>
+
+                  {/* Moving Technician Pin */}
+                  <div
+                    className="absolute flex flex-col items-center duration-1000 transition-all ease-out z-20 pointer-events-none"
+                    style={{ left: `${workerPos.x}%`, top: `${workerPos.y}%`, transform: 'translate(-50%, -50%)' }}
+                  >
+                    <div className="relative">
+                      <div className="absolute -inset-1 bg-[#c5a059] rounded-full blur-sm opacity-70 animate-ping"></div>
+                      <div className="relative p-2.5 bg-[#0a1428] rounded-full shadow-2xl border-2 border-[#c5a059] flex items-center justify-center text-[#e9c176]">
+                        <Navigation2 className="w-4 h-4 rotate-45 animate-pulse text-[#e9c176]" />
+                      </div>
+                    </div>
+                    <span className="mt-1 bg-[#0a1428]/95 px-2.5 py-0.5 rounded-md text-[9px] text-[#e9c176] font-mono font-extrabold uppercase border border-[#c5a059]/50 shadow-xl whitespace-nowrap">
+                      {activeOrder.workerName || 'Technician'} • {eta > 0 ? `${eta}m away` : 'Arrived'}
+                    </span>
+                  </div>
+
+                  {/* Top HUD Badges */}
+                  <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2 pointer-events-none">
+                    <div className="bg-[#07122a]/95 border border-[#c5a059]/50 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-xl">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                      <span className="font-mono text-[10px] font-extrabold text-[#e9c176] uppercase">
+                        {statusStep === 0 ? 'Assigned' : statusStep === 1 ? 'Out for Service' : statusStep === 2 ? 'Arrived at Doorstep' : 'Service Completed'}
+                      </span>
+                    </div>
+                    <div className="bg-[#07122a]/95 border border-zinc-800 rounded-xl px-3 py-1.5 flex items-center gap-1.5 shadow-xl font-mono text-[10px] text-zinc-300">
+                      <Clock className="w-3 h-3 text-[#c5a059]" />
+                      <span>{eta > 0 ? `ETA: ${eta} mins` : 'Arrived'}</span>
+                      <span className="text-zinc-500">•</span>
+                      <span>{calculatedDistanceKm} km</span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Floating Map Controls */}
+                  <div className="absolute bottom-4 right-4 z-20 flex gap-2">
+                    <button
+                      onClick={handleManualTrack}
+                      className="p-2.5 bg-[#07122a]/90 hover:bg-[#c5a059] text-[#e9c176] hover:text-black border border-[#c5a059]/40 rounded-xl shadow-xl transition-all cursor-pointer"
+                      title="Recenter and scan GPS"
+                    >
+                      <Compass className="w-4 h-4" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
