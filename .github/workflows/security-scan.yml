@@ -1,0 +1,108 @@
+# Weekly Security Scan
+# Runs every Monday at 9 AM UTC to catch newly discovered vulnerabilities.
+# Creates a GitHub Issue if any high/critical CVEs are found.
+
+name: Weekly Security Scan
+
+on:
+  schedule:
+    # Every Monday at 9:00 AM UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dependency-audit:
+    name: 🔒 Weekly Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          rm -rf package-lock.json node_modules
+          npm install
+
+      - name: Run npm audit
+        id: audit
+        run: |
+          echo "## 🔒 Weekly Dependency Audit Report" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          npm audit --json > audit-results.json 2>&1 || true
+
+          # Count vulnerabilities
+          TOTAL=$(jq '.metadata.vulnerabilities.total // 0' audit-results.json 2>/dev/null || echo 0)
+          HIGH=$(jq '.metadata.vulnerabilities.high // 0' audit-results.json 2>/dev/null || echo 0)
+          CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' audit-results.json 2>/dev/null || echo 0)
+
+          echo "TOTAL=$TOTAL" >> $GITHUB_OUTPUT
+          echo "HIGH=$HIGH" >> $GITHUB_OUTPUT
+          echo "CRITICAL=$CRITICAL" >> $GITHUB_OUTPUT
+
+          echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+          echo "| High | $HIGH |" >> $GITHUB_STEP_SUMMARY
+          echo "| Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+
+          # Generate readable report
+          npm audit 2>&1 > audit-readable.txt || true
+
+      - name: Create GitHub Issue if vulnerabilities found
+        if: steps.audit.outputs.HIGH != '0' || steps.audit.outputs.CRITICAL != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const auditReport = fs.readFileSync('audit-readable.txt', 'utf-8');
+            const high = '${{ steps.audit.outputs.HIGH }}';
+            const critical = '${{ steps.audit.outputs.CRITICAL }}';
+
+            const title = `🔒 Security Alert: ${critical} critical, ${high} high vulnerabilities found`;
+
+            // Check if an open issue with this title pattern already exists
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security',
+            });
+
+            const alreadyExists = existingIssues.data.some(
+              issue => issue.title.includes('Security Alert')
+            );
+
+            if (!alreadyExists) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body: `## Weekly Security Scan Report\n\n**Date:** ${new Date().toISOString()}\n**Critical:** ${critical}\n**High:** ${high}\n\n### Full Audit Report\n\n\`\`\`\n${auditReport.substring(0, 60000)}\n\`\`\`\n\n### Recommended Actions\n1. Run \`npm audit fix\` to auto-fix compatible updates\n2. Run \`npm audit fix --force\` for breaking changes (test thoroughly)\n3. Manually review and update packages that can't be auto-fixed\n\n---\n*This issue was auto-created by the Weekly Security Scan workflow.*`,
+                labels: ['security', 'automated'],
+              });
+            }
+
+  secret-scan:
+    name: 🔒 Weekly Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Deep Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified --results=verified,unknown
