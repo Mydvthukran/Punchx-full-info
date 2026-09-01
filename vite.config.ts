@@ -31,7 +31,6 @@ export default defineConfig(() => {
     },
     build: {
       // Strip console.log and console.warn in production (keep console.error for critical errors)
-      minify: 'esbuild',
       target: 'es2020',
       rollupOptions: {
         output: {
@@ -46,7 +45,7 @@ export default defineConfig(() => {
     },
     esbuild: {
       // Remove console.log and console.warn in production builds
-      drop: process.env.NODE_ENV === 'production' ? ['console'] : [],
+      drop: process.env.NODE_ENV === 'production' ? (['console'] as any) : [],
     },
   };
 });

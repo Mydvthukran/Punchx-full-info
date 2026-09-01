@@ -123,7 +123,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 interface AuthSession {
   recaptchaVerifier: unknown;
-  confirmationResult: unknown;
+  confirmationResult: any;
 }
 
 export const authSession: AuthSession = {

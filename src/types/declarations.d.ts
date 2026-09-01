@@ -5,12 +5,14 @@ declare module '@namoidhq/react' {
 
   export interface NamoIDProviderProps {
     clientId: string;
-    redirectUri: string;
+    redirectUri?: string;
     children: ReactNode;
     onError?: (error: Error) => void;
+    fetcher?: any;
   }
 
   export const NamoIDProvider: FC<NamoIDProviderProps>;
+  export const SignIn: FC<any>;
 
   export interface UseNamoIDReturn {
     login: () => void;
@@ -33,6 +35,7 @@ declare module '@namoidhq/js' {
     name?: string;
     email?: string;
     phone?: string;
+    phone_number?: string;
     picture?: string;
     given_name?: string;
     family_name?: string;
