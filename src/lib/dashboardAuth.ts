@@ -1,50 +1,32 @@
-import { db } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-export const ADMIN_DASHBOARD_EMAIL = 'businressguy@gmail.com';
-
-const MASTER_ADMIN_PASSWORDS = [
-  'PUNCHX2026',
-  'punchx2026',
-  'admin',
-  'admin123',
-  '0910',
-  'punchx@2026',
-  'PUNCHX^(@)0910',
-  'masteradmin'
-];
+/**
+ * Dashboard Authentication — Server-Side Verification
+ * 
+ * SECURITY: Admin credentials are stored in server environment variables (ADMIN_EMAIL, ADMIN_PASSWORD).
+ * The client sends credentials to /api/admin/verify and receives a session token.
+ * No passwords are stored in or transmitted from client-side code.
+ */
 
 export interface DashboardAuthResult {
   success: boolean;
   message: string;
+  token?: string;
 }
 
 /**
- * Ensures the admin dashboard credentials document exists in Firebase Firestore.
- */
-export async function ensureFirebaseDashboardCredentials(): Promise<void> {
-  try {
-    const configRef = doc(db, 'system_config', 'dashboard_access');
-    const snap = await getDoc(configRef);
-    if (!snap.exists()) {
-      await setDoc(configRef, {
-        email: ADMIN_DASHBOARD_EMAIL,
-        password: 'PUNCHX2026',
-        requiredRole: 'admin',
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    }
-  } catch (err) {
-    console.warn('Dashboard credentials initialization notice:', err);
-  }
-}
-
-/**
- * Verifies email and password against Firebase stored credentials and master admin passcodes.
+ * Verifies admin dashboard credentials via the server-side API endpoint.
+ * The server reads admin credentials from environment variables and uses
+ * constant-time comparison to prevent timing attacks.
  */
 export async function verifyDashboardPassword(email: string, password: string): Promise<DashboardAuthResult> {
   const cleanPass = (password || '').trim();
   const cleanEmail = (email || '').trim().toLowerCase();
+
+  if (!cleanEmail) {
+    return {
+      success: false,
+      message: 'Please enter your email'
+    };
+  }
 
   if (!cleanPass) {
     return {
@@ -53,44 +35,55 @@ export async function verifyDashboardPassword(email: string, password: string): 
     };
   }
 
-  // 1. Direct Master Passcode validation
-  if (MASTER_ADMIN_PASSWORDS.includes(cleanPass) || MASTER_ADMIN_PASSWORDS.includes(cleanPass.toUpperCase()) || MASTER_ADMIN_PASSWORDS.includes(cleanPass.toLowerCase())) {
-    return {
-      success: true,
-      message: 'Access granted.'
-    };
-  }
-
-  // 2. Match authorized owner email with any valid length password
-  if (cleanEmail === ADMIN_DASHBOARD_EMAIL.toLowerCase() && cleanPass.length >= 4) {
-    return {
-      success: true,
-      message: 'Access granted.'
-    };
-  }
-
-  // 3. Query Firestore dynamic dashboard_access document
   try {
-    const configRef = doc(db, 'system_config', 'dashboard_access');
-    const snap = await getDoc(configRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      const storedPass = (data.password || '').trim();
+    // Determine the API base URL
+    const backendUrl = import.meta.env?.VITE_BACKEND_URL || '';
+    const apiBase = backendUrl || '';
+    
+    const response = await fetch(`${apiBase}/api/admin/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
+    });
 
-      if (storedPass && cleanPass === storedPass) {
-        return {
-          success: true,
-          message: 'Access granted.'
-        };
+    const data = await response.json();
+
+    if (data.success) {
+      // Store session token for subsequent requests
+      if (data.token) {
+        sessionStorage.setItem('punchx_admin_session', data.token);
       }
+      return {
+        success: true,
+        message: data.message || 'Access granted.',
+        token: data.token,
+      };
     }
-  } catch (err) {
-    console.warn('Firestore password verification failed:', err);
-  }
 
-  return {
-    success: false,
-    message: 'invalid password'
-  };
+    return {
+      success: false,
+      message: data.message || 'Invalid credentials'
+    };
+  } catch (err) {
+    // If the server is unreachable (e.g., static GitHub Pages deployment),
+    // fall back to a notice that server-side auth is required
+    return {
+      success: false,
+      message: 'Admin authentication requires the server to be running. Please ensure the backend is deployed.'
+    };
+  }
 }
 
+/**
+ * Checks if the current session has a valid admin token.
+ */
+export function hasActiveAdminSession(): boolean {
+  return Boolean(sessionStorage.getItem('punchx_admin_session'));
+}
+
+/**
+ * Clears the admin session.
+ */
+export function clearAdminSession(): void {
+  sessionStorage.removeItem('punchx_admin_session');
+}

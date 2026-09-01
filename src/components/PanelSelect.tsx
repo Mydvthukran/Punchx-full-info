@@ -6,7 +6,7 @@ import {
   ChevronRight, Lock, Key, Eye, EyeOff, AlertCircle, X, ShieldAlert, CheckCircle2
 } from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
-import { ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
+// Admin credentials are now server-side — no client-side email hints
 
 interface PanelSelectProps {
   onSelectPanel: (panel: 'customer' | 'worker' | 'admin', action?: 'login' | 'signup') => void;
@@ -301,7 +301,7 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
                     </button>
                   </div>
                   <p className="text-[10px] font-mono text-zinc-400">
-                    Default Master Admin Email: <span className="text-[#c5a059] font-bold">{ADMIN_DASHBOARD_EMAIL}</span>
+                    Enter your admin credentials to access the dashboard.
                   </p>
                 </div>
 
