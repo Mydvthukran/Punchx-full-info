@@ -39,13 +39,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
   const fetchOrCreateProfile = async (identity: NamoIDUserInfo, role: 'citizen' | 'worker' | 'admin' = activeRole): Promise<UserProfile> => {
     const extractedName = identity.name || 
-      ((identity as any).given_name ? `${(identity as any).given_name} ${(identity as any).family_name || ''}`.trim() : '') || 
+      (identity.given_name ? `${identity.given_name} ${identity.family_name || ''}`.trim() : '') || 
       (identity.email ? identity.email.split('@')[0] : 'PunchX Member');
 
-    const extractedDob = ((identity as any).birthdate as string) || 
-      ((identity as any).dob as string) || 
-      ((identity as any).date_of_birth as string) || 
-      ((identity as any).birth_date as string) || 
+    const extractedDob = (identity.birthdate as string) || 
+      (identity.dob as string) || 
+      (identity.date_of_birth as string) || 
+      (identity.birth_date as string) || 
       '';
 
     try {
@@ -133,6 +133,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
   const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
     setCurrentUser(identity);
+    // SECURITY NOTE: Storing auth identity in localStorage is vulnerable to XSS.
+    // In a production environment, this should be moved to httpOnly cookies
+    // managed by a secure backend. Currently kept here for demo/MVP purposes.
     localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
     
     // Connect NamoID token to Firebase Auth if token exists
