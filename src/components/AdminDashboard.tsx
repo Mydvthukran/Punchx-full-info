@@ -14,7 +14,7 @@ import {
 import { db, auth } from '../lib/firebase';
 import { collection, getDocs, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
-import { ensureFirebaseDashboardCredentials, verifyDashboardPassword, ADMIN_DASHBOARD_EMAIL } from '../lib/dashboardAuth';
+import { verifyDashboardPassword, hasActiveAdminSession } from '../lib/dashboardAuth';
 import { purgeMockUsersAndData } from '../lib/purgeMockData';
 import { useAuth } from '../lib/authContext';
 import WarrantyClaimsManager from './admin/WarrantyClaimsManager';
@@ -39,24 +39,22 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
       const unlockedLocal = localStorage.getItem('punchx_admin_unlocked') === 'true';
       if (unlockedLocal) return true;
     }
-    return userProfile?.role === 'admin' || currentUser?.email?.toLowerCase() === ADMIN_DASHBOARD_EMAIL.toLowerCase();
+    return userProfile?.role === 'admin' || hasActiveAdminSession();
   });
 
   useEffect(() => {
-    if (userProfile?.role === 'admin' || currentUser?.email?.toLowerCase() === ADMIN_DASHBOARD_EMAIL.toLowerCase()) {
+    if (userProfile?.role === 'admin' || hasActiveAdminSession()) {
       setIsUnlocked(true);
       localStorage.setItem('punchx_admin_unlocked', 'true');
     }
   }, [userProfile, currentUser]);
 
-  const [gateEmail, setGateEmail] = useState(currentUser?.email || ADMIN_DASHBOARD_EMAIL);
+  const [gateEmail, setGateEmail] = useState(currentUser?.email || '');
   const [gatePassword, setGatePassword] = useState('');
   const [gateError, setGateError] = useState('');
   const [isCheckingGate, setIsCheckingGate] = useState(false);
 
-  useEffect(() => {
-    ensureFirebaseDashboardCredentials();
-  }, []);
+  // Admin auth is now server-side — no client-side credential setup needed
 
   const handleUnlockDashboard = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +65,13 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
     }
     setIsCheckingGate(true);
     setGateError('');
-    const targetEmail = gateEmail.trim() || ADMIN_DASHBOARD_EMAIL;
+    const targetEmail = gateEmail.trim();
+    if (!targetEmail) {
+      setGateError('Please enter your admin email');
+      showNotification('⚠️ Please enter your admin email');
+      setIsCheckingGate(false);
+      return;
+    }
     const result = await verifyDashboardPassword(targetEmail, gatePassword);
 
     if (result.success) {

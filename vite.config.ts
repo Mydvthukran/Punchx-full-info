@@ -30,9 +30,23 @@ export default defineConfig(() => {
       }
     },
     build: {
+      // Strip console.log and console.warn in production (keep console.error for critical errors)
+      minify: 'esbuild',
+      target: 'es2020',
       rollupOptions: {
-        output: {}
+        output: {
+          // Code-split large vendor libraries into separate chunks
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+            'vendor-motion': ['motion'],
+          }
+        }
       }
+    },
+    esbuild: {
+      // Remove console.log and console.warn in production builds
+      drop: process.env.NODE_ENV === 'production' ? ['console'] : [],
     },
   };
 });

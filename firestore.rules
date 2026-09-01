@@ -2,12 +2,75 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Global Catch-All for Frontend Demo Mode
-    // NamoID lacks standard OIDC discovery, preventing Firebase Auth integration.
-    // UI is protected by NamoID, but database is open for the demo.
+
+    // ─── System Config (Admin credentials, app settings) ───
+    // Block ALL client access — admin auth is handled server-side
+    match /system_config/{document} {
+      allow read, write: if false;
+    }
+
+    // ─── User Profiles ───
+    // Allow reads for service discovery (providers list, worker profiles)
+    // Allow writes only with basic data validation
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAny(['name', 'email', 'phone']);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['name', 'email', 'phone', 'role', 'address', 'avatar',
+                                 'location', 'dob', 'sector', 'updatedAt', 'lastSeen',
+                                 'serviceCategory', 'visitFee', 'bio', 'experience',
+                                 'serviceRadius', 'serviceRadiusKm', 'isOnline',
+                                 'workerStatus', 'rating', 'reviewCount', 'completedJobs']);
+      allow delete: if false;
+    }
+
+    // ─── Worker Applications ───
+    match /worker_applications/{appId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['name', 'phone', 'category']);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status', 'updatedAt', 'reviewedBy', 'otpVerified',
+                                 'otpCode', 'approvedAt', 'rejectedAt', 'rejectionReason']);
+      allow delete: if false;
+    }
+
+    // ─── Orders / Bookings ───
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['customerId', 'category']);
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ─── Reviews ───
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['orderId', 'rating']);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ─── Warranty Claims ───
+    match /warranty_claims/{claimId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['orderId', 'description']);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status', 'updatedAt', 'resolution', 'resolvedAt']);
+      allow delete: if false;
+    }
+
+    // ─── Service Locations / Hubs ───
+    match /service_locations/{locId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAny(['address', 'location']);
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ─── Catch-all: Block everything else ───
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

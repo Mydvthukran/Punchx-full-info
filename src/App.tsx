@@ -11,7 +11,7 @@ import WebsiteNavbar from './components/WebsiteNavbar';
 import WebsiteFooter from './components/WebsiteFooter';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
-import { ensureFirebaseDashboardCredentials } from './lib/dashboardAuth';
+// Dashboard auth is now handled server-side via /api/admin/verify
 import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
 import { NamoIDProvider, useNamoID } from "@namoidhq/react";
@@ -248,10 +248,7 @@ function AppMain() {
   // State for Global Profile & Orders Drawer
   const [isGlobalProfileOpen, setIsGlobalProfileOpen] = useState(false);
 
-  // Initialize Firebase credentials for Dashboard security
-  useEffect(() => {
-    ensureFirebaseDashboardCredentials();
-  }, []);
+  // Admin dashboard auth is now handled server-side (no client-side credential setup needed)
 
   // Sync authenticated profile from AuthContext
   useEffect(() => {

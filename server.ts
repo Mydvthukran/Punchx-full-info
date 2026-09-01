@@ -2,13 +2,58 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import crypto from "crypto";
+
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  "https://www.punchxapp.co.in",
+  "https://punchxapp.co.in",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  // ─── Security Middleware ───
+
+  // Helmet: Sets security HTTP headers (CSP, HSTS, X-Frame-Options, etc.)
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disabled for now — SPA loads inline scripts
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  // CORS: Restrict to known origins only
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+  }));
+
+  // Rate Limiting: 100 requests per 15 minutes per IP
+  app.use("/api/", rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later." },
+  }));
+
+  // Body size limits to prevent DoS via large payloads
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
   // Health check
   app.get("/api/health", (req, res) => {
@@ -17,8 +62,11 @@ async function startServer() {
 
   // NamoID Proxy API (routes requests server-side to prevent browser CORS blocks)
   app.all(["/api/namoid-proxy", "/api/oauth/token"], async (req, res) => {
-    // Set CORS headers for cross-origin or proxy requests
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    // CORS is now handled by the cors middleware above — no wildcard needed
+    const requestOrigin = req.headers.origin || "";
+    if (ALLOWED_ORIGINS.includes(requestOrigin)) {
+      res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+    }
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
     res.setHeader("Access-Control-Max-Age", "86400");
@@ -162,13 +210,58 @@ async function startServer() {
     }
   });
 
-  // Google Maps Platform Public Client Config API
+  // ─── Server-Side Admin Dashboard Authentication ───
+  // Passwords are stored in env vars, NEVER in client code
+  app.post("/api/admin/verify", async (req, res) => {
+    const { email, password } = req.body;
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const cleanPass = (password || "").trim();
+
+    if (!cleanEmail || !cleanPass) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+
+    // Admin credentials from environment variables
+    const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || "";
+
+    if (!adminEmail || !adminPassword) {
+      console.error("ADMIN_EMAIL and ADMIN_PASSWORD environment variables are not set.");
+      return res.status(500).json({ success: false, message: "Admin authentication is not configured." });
+    }
+
+    // Constant-time comparison to prevent timing attacks
+    const emailMatch = cleanEmail === adminEmail;
+    const passBuffer = Buffer.from(cleanPass);
+    const adminBuffer = Buffer.from(adminPassword);
+    const passMatch = passBuffer.length === adminBuffer.length &&
+                      crypto.timingSafeEqual(passBuffer, adminBuffer);
+
+    if (emailMatch && passMatch) {
+      // Generate a simple session token (in production, use JWT or proper sessions)
+      const sessionToken = crypto.randomBytes(32).toString('hex');
+      return res.json({
+        success: true,
+        message: "Access granted.",
+        token: sessionToken,
+      });
+    }
+
+    return res.status(401).json({ success: false, message: "Invalid credentials." });
+  });
+
+  // Google Maps Platform Config API — Origin-restricted
   app.get("/api/maps/config", (req, res) => {
+    // Only serve API key to requests from allowed origins
+    const requestOrigin = req.headers.origin || req.headers.referer || "";
+    const isAllowed = ALLOWED_ORIGINS.some(o => requestOrigin.startsWith(o));
+
     const mapsKey = process.env.GOOGLE_MAPS_PLATFORM_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || "";
     res.json({
       enabled: true,
       hasKey: Boolean(mapsKey),
-      apiKey: mapsKey,
+      // Only expose the key to allowed origins
+      apiKey: isAllowed ? mapsKey : "",
       mapId: "PUNCHX_MAP_ID",
       attributionId: "gmp_mcp_codeassist_v1_aistudio",
       defaultCenter: { lat: 12.9716, lng: 77.5946 }, // Bengaluru tech corridor center
