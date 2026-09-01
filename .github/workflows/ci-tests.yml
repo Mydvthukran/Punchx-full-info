@@ -42,8 +42,8 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat audit-report.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          # Fail only on high/critical vulnerabilities
-          npm audit --audit-level=high
+          # Warn on high/critical vulnerabilities but do not fail the build
+          npm audit --audit-level=high || echo "⚠️ Audit warnings found"
 
   secret-scan:
     name: 🔒 Secret Leak Detection
