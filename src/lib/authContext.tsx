@@ -54,7 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
     try {
       setIsLoadingProfile(true);
-      const userDocRef = doc(db, 'users', identity.sub);
+      const firebaseUid = auth.currentUser?.uid;
+
+if (!firebaseUid) {
+  throw new Error('Firebase user is not authenticated');
+}
+
+const userDocRef = doc(db, 'users', firebaseUid);
 
       const userSnap = await Promise.race([
         getDoc(userDocRef),
@@ -67,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
         const existingData = userSnap.data() as UserProfile;
         const updatedProfile: UserProfile = {
           ...existingData,
-          uid: identity.sub,
+          uid: firebaseUid,
           email: existingData.email || identity.email || '',
           photoURL: existingData.photoURL || (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
           name: existingData.name || extractedName,
@@ -85,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       } else {
         const isCompleted = !!extractedName && !!extractedDob;
         const newProfile: UserProfile = {
-          uid: identity.sub,
+          uid: firebaseUid,
           name: extractedName,
           email: identity.email || '',
           photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
@@ -116,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
     } catch (error) {
       console.warn('Notice fetching or creating user profile:', error);
       const fallbackProfile: UserProfile = {
-        uid: identity.sub,
+        uid: firebaseUid,
         name: extractedName,
         email: identity.email || '',
         photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
@@ -174,7 +180,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     if (!currentUser) return;
     try {
-      const userDocRef = doc(db, 'users', currentUser.sub);
+      const firebaseUid = auth.currentUser?.uid;
+
+if (!firebaseUid) {
+  throw new Error('Firebase user is not authenticated');
+}
+
+const userDocRef = doc(db, 'users', firebaseUid);
       const payload = {
         ...updates,
         updatedAt: new Date().toISOString()
