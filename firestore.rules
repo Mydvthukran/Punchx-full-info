@@ -3,74 +3,239 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── System Config (Admin credentials, app settings) ───
-    // Block ALL client access — admin auth is handled server-side
+    // =====================================================
+    // HELPER FUNCTIONS
+    // =====================================================
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+
+    // =====================================================
+    // SYSTEM CONFIG
+    // Client applications must NEVER access admin credentials
+    // =====================================================
+
     match /system_config/{document} {
       allow read, write: if false;
     }
 
-    // ─── User Profiles ───
-    // Allow reads for service discovery (providers list, worker profiles)
-    // Allow writes only with basic data validation
+
+    // =====================================================
+    // USER PROFILES
+    // =====================================================
+
     match /users/{userId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAny(['name', 'email', 'phone']);
-      allow update: if request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['name', 'email', 'phone', 'role', 'address', 'avatar',
-                                 'location', 'dob', 'sector', 'updatedAt', 'lastSeen',
-                                 'serviceCategory', 'visitFee', 'bio', 'experience',
-                                 'serviceRadius', 'serviceRadiusKm', 'isOnline',
-                                 'workerStatus', 'rating', 'reviewCount', 'completedJobs']);
+
+      // Authenticated users can discover profiles.
+      allow read: if signedIn();
+
+      // A user can create only their own profile.
+      // New client-created profiles cannot make themselves admin.
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.role in ['citizen', 'worker'];
+
+      // Users can update their own profile.
+      // Admins can update profiles.
+      // The role field cannot be changed by the user.
+      allow update: if isAdmin()
+        || (
+          isOwner(userId)
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'name',
+              'email',
+              'phone',
+              'address',
+              'avatar',
+              'location',
+              'dob',
+              'sector',
+              'updatedAt',
+              'lastSeen',
+              'serviceCategory',
+              'visitFee',
+              'bio',
+              'experience',
+              'serviceRadius',
+              'serviceRadiusKm',
+              'isOnline',
+              'workerStatus'
+            ])
+        );
+
+      // Profiles cannot be deleted from the client.
       allow delete: if false;
     }
 
-    // ─── Worker Applications ───
+
+    // =====================================================
+    // WORKER APPLICATIONS
+    // =====================================================
+
     match /worker_applications/{appId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['name', 'phone', 'category']);
-      allow update: if request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['status', 'updatedAt', 'reviewedBy', 'otpVerified',
-                                 'otpCode', 'approvedAt', 'rejectedAt', 'rejectionReason']);
+
+      // Only authenticated users can read applications.
+      allow read: if signedIn() && (
+        isAdmin()
+        || resource.data.userId == request.auth.uid
+        || resource.data.uid == request.auth.uid
+      );
+
+      // Authenticated users can submit applications.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'name',
+          'phone',
+          'category'
+        ]);
+
+      // Only admins can approve/reject applications.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'status',
+            'updatedAt',
+            'reviewedBy',
+            'otpVerified',
+            'otpCode',
+            'approvedAt',
+            'rejectedAt',
+            'rejectionReason'
+          ]);
+
       allow delete: if false;
     }
 
-    // ─── Orders / Bookings ───
+
+    // =====================================================
+    // ORDERS / BOOKINGS
+    // =====================================================
+
     match /orders/{orderId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['customerId', 'category']);
-      allow update: if true;
+
+      // Customer or assigned worker can read.
+      // Admin can read everything.
+      allow read: if signedIn() && (
+        isAdmin()
+        || resource.data.customerId == request.auth.uid
+        || resource.data.workerId == request.auth.uid
+      );
+
+      // Customer creates their own order.
+      allow create: if signedIn()
+        && request.resource.data.customerId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'customerId',
+          'category'
+        ]);
+
+      // Customer/worker can update an order they are involved in.
+      // Admin can update everything.
+      allow update: if signedIn() && (
+        isAdmin()
+        || resource.data.customerId == request.auth.uid
+        || resource.data.workerId == request.auth.uid
+      );
+
       allow delete: if false;
     }
 
-    // ─── Reviews ───
+
+    // =====================================================
+    // REVIEWS
+    // =====================================================
+
     match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['orderId', 'rating']);
-      allow update: if false;
-      allow delete: if false;
+
+      // Authenticated users can read reviews.
+      allow read: if signedIn();
+
+      // Authenticated users can create reviews.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'orderId',
+          'rating'
+        ])
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+
+      // Reviews cannot be changed after creation.
+      allow update, delete: if false;
     }
 
-    // ─── Warranty Claims ───
+
+    // =====================================================
+    // WARRANTY CLAIMS
+    // =====================================================
+
     match /warranty_claims/{claimId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAll(['orderId', 'description']);
-      allow update: if request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['status', 'updatedAt', 'resolution', 'resolvedAt']);
+
+      // Customer/worker involved in the claim or admin.
+      allow read: if signedIn() && (
+        isAdmin()
+        || resource.data.customerId == request.auth.uid
+        || resource.data.workerId == request.auth.uid
+      );
+
+      // Authenticated users can submit a claim.
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'orderId',
+          'description'
+        ]);
+
+      // Only admins can change claim status/resolution.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'status',
+            'updatedAt',
+            'resolution',
+            'resolvedAt'
+          ]);
+
       allow delete: if false;
     }
 
-    // ─── Service Locations / Hubs ───
+
+    // =====================================================
+    // SERVICE LOCATIONS / HUBS
+    // =====================================================
+
     match /service_locations/{locId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasAny(['address', 'location']);
-      allow update: if true;
+
+      // Authenticated users can view service locations.
+      allow read: if signedIn();
+
+      // Only admins can create/update locations.
+      allow create, update: if isAdmin();
+
       allow delete: if false;
     }
 
-    // ─── Catch-all: Block everything else ───
+
+    // =====================================================
+    // CATCH-ALL
+    // Everything not explicitly allowed above is DENIED.
+    // =====================================================
+
     match /{document=**} {
-      allow read: if false;
-      allow write: if false;
+      allow read, write: if false;
     }
   }
 }
