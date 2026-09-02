@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signOut as firebaseSignOut, OAuthProvider, signInWithCredential } from 'firebase/auth';
+import { signOut as firebaseSignOut, signInWithCustomToken, onAuthStateChanged, User } from 'firebase/auth'; 
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile } from '../types';
@@ -19,8 +19,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'citizen' | 'worker' | 'admin' }> = ({ children, activeRole = 'citizen' }) => {
   const [currentUser, setCurrentUser] = useState<NamoIDUserInfo | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
+  useEffect( () => { const unsubscribe = onAuthStateChanged(auth, (user) => { setFirebaseUser(user); });
+                    return () => unsubscribe(); }, []);
 
   // Initialize from localStorage on mount
   useEffect(() => {
@@ -71,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
           birthdate: existingData.birthdate || existingData.dob || extractedDob,
           isProfileCompleted: existingData.isProfileCompleted ?? (!!existingData.name && !!(existingData.dob || existingData.birthdate) && !!existingData.address),
           role: existingData.role || role,
-          address: existingData.address !== undefined ? existingData.address : '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
+          address: existingData.address !== undefined ? existingData.address : '',
           phone: existingData.phone || identity.phone_number || ''
         };
         
@@ -89,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
           dob: extractedDob,
           birthdate: extractedDob,
           isProfileCompleted: isCompleted,
-          address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
+          address: '',
           phone: identity.phone_number || '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -120,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
         dob: extractedDob,
         birthdate: extractedDob,
         isProfileCompleted: false,
-        address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
+        address: '',
         phone: identity.phone_number || ''
       };
       setUserProfile(fallbackProfile);
@@ -139,15 +143,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
     localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
     
     // Connect NamoID token to Firebase Auth if token exists
-    if (idToken && auth) {
-      try {
-        const provider = new OAuthProvider('oidc.namoid');
-        const credential = provider.credential({ idToken });
-        await signInWithCredential(auth, credential);
-      } catch (fbAuthErr) {
-        console.warn("Notice: Firebase Auth OIDC link skipped/failed:", fbAuthErr);
-      }
-    }
+    // Authenticate with Firebase before accessing protected Firestore data
+if (!idToken) {
+  throw new Error('NamoID ID token is required for Firebase authentication');
+}
+
+try {
+  const provider = new OAuthProvider('oidc.namoid');
+  const credential = provider.credential({ idToken });
+  await signInWithCredential(auth, credential);
+
+  if (!auth.currentUser) {
+    throw new Error('Firebase authentication failed');
+  }
+} catch (fbAuthErr) {
+  console.error('Firebase authentication failed:', fbAuthErr);
+  setCurrentUser(null);
+  localStorage.removeItem('punchx_namoid_identity');
+  throw new Error('Unable to authenticate with Firebase');
+}
 
     return await fetchOrCreateProfile(identity, role || activeRole);
   };
