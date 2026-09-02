@@ -136,35 +136,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
   };
 
   const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
-    setCurrentUser(identity);
-    // SECURITY NOTE: Storing auth identity in localStorage is vulnerable to XSS.
-    // In a production environment, this should be moved to httpOnly cookies
-    // managed by a secure backend. Currently kept here for demo/MVP purposes.
-    localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
-    
-    // Connect NamoID token to Firebase Auth if token exists
-    // Authenticate with Firebase before accessing protected Firestore data
-if (!idToken) {
-  throw new Error('NamoID ID token is required for Firebase authentication');
-}
-
-try {
-  const provider = new OAuthProvider('oidc.namoid');
-  const credential = provider.credential({ idToken });
-  await signInWithCredential(auth, credential);
-
-  if (!auth.currentUser) {
-    throw new Error('Firebase authentication failed');
+  
+  // Authenticate with Firebase before accessing protected Firestore data
+  if (!idToken) {
+    throw new Error('NamoID ID token is required for Firebase authentication');
   }
-} catch (fbAuthErr) {
-  console.error('Firebase authentication failed:', fbAuthErr);
-  setCurrentUser(null);
-  localStorage.removeItem('punchx_namoid_identity');
-  throw new Error('Unable to authenticate with Firebase');
-}
+
+  try {
+    const provider = new OAuthProvider('oidc.namoid');
+    const credential = provider.credential({ idToken });
+
+    await signInWithCredential(auth, credential);
+
+    if (!auth.currentUser) {
+      throw new Error('Firebase authentication failed');
+    }
+
+    // Only store application identity after Firebase authentication succeeds
+    setCurrentUser(identity);
+    localStorage.setItem(
+      'punchx_namoid_identity',
+      JSON.stringify(identity)
+    );
 
     return await fetchOrCreateProfile(identity, role || activeRole);
-  };
+  } catch (fbAuthErr) {
+    console.error('Firebase authentication failed:', fbAuthErr);
+
+    setCurrentUser(null);
+    localStorage.removeItem('punchx_namoid_identity');
+
+    throw new Error('Unable to authenticate with Firebase');
+  }
+};
+
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     if (!currentUser) return;
