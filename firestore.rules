@@ -97,12 +97,9 @@ service cloud.firestore {
       );
 
       // Authenticated users can submit applications.
-      allow create: if signedIn()
-        && request.resource.data.keys().hasAll([
-          'name',
-          'phone',
-          'category'
-        ]);
+allow create: if signedIn()
+  && request.resource.data.uid == request.auth.uid
+  && request.resource.data.keys().hasAll(['name','phone','category','uid']);
 
       // Only admins can approve/reject applications.
       allow update: if isAdmin()
