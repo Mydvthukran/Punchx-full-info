@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, WorkerApplication } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { requestAndAutoUpdateLocation } from '../lib/location';
 import { 
   Wrench, UserCheck, Calendar, MapPin, Briefcase, Award, Phone, Mail, 
@@ -115,6 +115,12 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       setErrorMsg('You must review and accept the PunchX Terms & Conditions and Privacy Policy to proceed.');
       return;
     }
+    const firebaseUid = auth.currentUser?.uid;
+
+if (!firebaseUid) {
+  setErrorMsg('You must be logged in before submitting a worker application.');
+  return;
+}
 
     const application: WorkerApplication = {
       id: `APP-${crypto.randomUUID()}`,
