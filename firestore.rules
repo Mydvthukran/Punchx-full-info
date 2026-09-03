@@ -123,35 +123,41 @@ allow create: if signedIn()
     // ORDERS / BOOKINGS
     // =====================================================
 
-    match /orders/{orderId} {
+match /orders/{orderId} {
 
-      // Customer or assigned worker can read.
-      // Admin can read everything.
-      allow read: if signedIn() && (
-        isAdmin()
-        || resource.data.customerId == request.auth.uid
+  // Customers and assigned workers can read their own orders.
+  // Admins can read all orders.
+  allow read: if signedIn() && (
+    isAdmin()
+    || resource.data.customerId == request.auth.uid
+    || resource.data.workerId == request.auth.uid
+  );
+
+  // A customer can create only an order belonging to themselves.
+  allow create: if signedIn()
+    && request.resource.data.customerId == request.auth.uid
+    && request.resource.data.keys().hasAll([
+      'customerId',
+      'category'
+    ]);
+
+  // Prevent customers/workers from changing ownership.
+  // Admins can update orders.
+  allow update: if signedIn() && (
+    isAdmin()
+    || (
+      (
+        resource.data.customerId == request.auth.uid
         || resource.data.workerId == request.auth.uid
-      );
+      )
+      && request.resource.data.customerId == resource.data.customerId
+      && request.resource.data.workerId == resource.data.workerId
+    )
+  );
 
-      // Customer creates their own order.
-      allow create: if signedIn()
-        && request.resource.data.customerId == request.auth.uid
-        && request.resource.data.keys().hasAll([
-          'customerId',
-          'category'
-        ]);
-
-      // Customer/worker can update an order they are involved in.
-      // Admin can update everything.
-      allow update: if signedIn() && (
-        isAdmin()
-        || resource.data.customerId == request.auth.uid
-        || resource.data.workerId == request.auth.uid
-      );
-
-      allow delete: if false;
-    }
-
+  // Orders must never be deleted directly from the client.
+  allow delete: if false;
+}
 
     // =====================================================
     // REVIEWS
