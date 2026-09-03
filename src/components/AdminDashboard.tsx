@@ -13,8 +13,6 @@ import {
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
 import { collection, getDocs, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
-import { verifyDashboardPassword, hasActiveAdminSession } from '../lib/dashboardAuth';
 import { purgeMockUsersAndData } from '../lib/purgeMockData';
 import { useAuth } from '../lib/authContext';
 import WarrantyClaimsManager from './admin/WarrantyClaimsManager';
