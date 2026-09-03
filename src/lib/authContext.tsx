@@ -175,18 +175,15 @@ const userDocRef = doc(db, 'users', firebaseUid);
     throw new Error('Unable to authenticate with Firebase');
   }
 };
+const updateUserProfile = async (updates: Partial<UserProfile>) => {
+  const firebaseUid = auth.currentUser?.uid;
+
+  if (!firebaseUid) return;
+
+  try {
+    const userDocRef = doc(db, 'users', firebaseUid);
 
 
-  const updateUserProfile = async (updates: Partial<UserProfile>) => {
-    if (!currentUser) return;
-    try {
-      const firebaseUid = auth.currentUser?.uid;
-
-if (!firebaseUid) {
-  throw new Error('Firebase user is not authenticated');
-}
-
-const userDocRef = doc(db, 'users', firebaseUid);
       const payload = {
         ...updates,
         updatedAt: new Date().toISOString()
