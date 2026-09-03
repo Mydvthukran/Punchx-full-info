@@ -169,14 +169,15 @@ match /orders/{orderId} {
       allow read: if signedIn();
 
       // Authenticated users can create reviews.
-      allow create: if signedIn()
-        && request.resource.data.keys().hasAll([
-          'orderId',
-          'rating'
-        ])
-        && request.resource.data.rating >= 1
-        && request.resource.data.rating <= 5;
-
+     allow create: if signedIn()
+  && request.resource.data.keys().hasAll([
+    'orderId',
+    'rating'
+  ])
+  && exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId))
+  && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == request.auth.uid
+  && request.resource.data.rating >= 1
+  && request.resource.data.rating <= 5;
       // Reviews cannot be changed after creation.
       allow update, delete: if false;
     }
