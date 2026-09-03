@@ -197,12 +197,13 @@ match /orders/{orderId} {
       );
 
       // Authenticated users can submit a claim.
-      allow create: if signedIn()
-        && request.resource.data.keys().hasAll([
-          'orderId',
-          'description'
-        ]);
-
+    allow create: if signedIn()
+  && request.resource.data.keys().hasAll(['orderId', 'description'])
+  && exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId))
+  && (
+    get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == request.auth.uid
+    || get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.workerId == request.auth.uid
+  );
       // Only admins can change claim status/resolution.
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys()
