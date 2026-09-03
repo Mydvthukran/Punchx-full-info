@@ -11,7 +11,7 @@ import {
   PlusCircle, Radio, Navigation, FileSpreadsheet, Check, Send,
   Sparkles, MessageSquare, AlertCircle, Trash2
 } from 'lucide-react';
-import { db, auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { collection, getDocs, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { purgeMockUsersAndData } from '../lib/purgeMockData';
 import { useAuth } from '../lib/authContext';
@@ -31,87 +31,9 @@ const DEFAULT_WORKER_APPS: WorkerApplication[] = [];
 export default function AdminDashboard({ onTransition, showNotification }: AdminDashboardProps) {
   const { currentUser, userProfile } = useAuth();
 
-  // Dashboard Access Gate State
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const unlockedLocal = localStorage.getItem('punchx_admin_unlocked') === 'true';
-      if (unlockedLocal) return true;
-    }
-    return userProfile?.role === 'admin' || hasActiveAdminSession();
-  });
-
-  useEffect(() => {
-    if (userProfile?.role === 'admin' || hasActiveAdminSession()) {
-      setIsUnlocked(true);
-      localStorage.setItem('punchx_admin_unlocked', 'true');
-    }
-  }, [userProfile, currentUser]);
-
-  const [gateEmail, setGateEmail] = useState(currentUser?.email || '');
-  const [gatePassword, setGatePassword] = useState('');
-  const [gateError, setGateError] = useState('');
-  const [isCheckingGate, setIsCheckingGate] = useState(false);
-
-  // Admin auth is now server-side — no client-side credential setup needed
-
-  const handleUnlockDashboard = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!gatePassword.trim()) {
-      setGateError('Please enter the dashboard password');
-      showNotification('⚠️ Please enter the dashboard password');
-      return;
-    }
-    setIsCheckingGate(true);
-    setGateError('');
-    const targetEmail = gateEmail.trim();
-    if (!targetEmail) {
-      setGateError('Please enter your admin email');
-      showNotification('⚠️ Please enter your admin email');
-      setIsCheckingGate(false);
-      return;
-    }
-    const result = await verifyDashboardPassword(targetEmail, gatePassword);
-
-    if (result.success) {
-      try {
-        if (!auth.currentUser) {
-          try {
-            await signInWithEmailAndPassword(auth, targetEmail, gatePassword);
-          } catch {
-            try {
-              await createUserWithEmailAndPassword(auth, targetEmail, gatePassword);
-            } catch {
-              try {
-                await signInAnonymously(auth);
-              } catch (e) {
-                console.warn("Auth error:", e);
-              }
-            }
-          }
-        }
-
-        if (auth.currentUser) {
-          await setDoc(doc(db, 'users', auth.currentUser.uid), {
-            uid: auth.currentUser.uid,
-            email: targetEmail,
-            role: 'admin',
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-        }
-      } catch (authErr) {
-        console.warn("Firebase Auth sync notice:", authErr);
-      }
-
-      localStorage.setItem('punchx_admin_unlocked', 'true');
-      setIsUnlocked(true);
-      showNotification('✅ Dashboard Unlocked. Authorized Access Granted.');
-    } else {
-      setGateError('invalid password');
-      showNotification('⚠️ invalid password');
-    }
-    setIsCheckingGate(false);
-  };
-
+// Admin access is controlled exclusively by Firebase Authentication
+  // and the admin role stored in Firestore.
+  const isUnlocked = userProfile?.role === 'admin';
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [workerApps, setWorkerApps] = useState<WorkerApplication[]>([]);
   const [warrantyClaims, setWarrantyClaims] = useState<WarrantyClaim[]>([]);
