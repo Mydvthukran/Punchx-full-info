@@ -117,7 +117,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     }
 
     const application: WorkerApplication = {
-      id: `APP-${Math.floor(100000 + Math.random() * 900000)}`,
+      id: `APP-${crypto.randomUUID()}`,
+      uid: auth.currentUser?.uid,
       legalName: legalName.trim(),
       address: address.trim(),
       categories: selectedCategories.length > 0 ? selectedCategories : (customSkill.trim() ? [customSkill.trim()] : ['Electrician']),
@@ -135,18 +136,43 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     setWorkerApplicationData(application);
     
     // Save to Firestore & localStorage
-    try {
-      await setDoc(doc(db, 'workerApplications', application.id), application);
-      console.log('Successfully saved worker application to Firestore:', application.id);
-    } catch (e) {
-      console.error('Firestore save application failed:', e);
-    }
+// Save worker application to Firestore
+try {
+  await setDoc(
+    doc(db, 'workerApplications', application.id),
+    application
+  );
 
-    const existingApps = JSON.parse(localStorage.getItem('punchx_worker_applications') || '[]');
-    localStorage.setItem('punchx_worker_applications', JSON.stringify([application, ...existingApps]));
+  console.log(
+    'Successfully saved worker application to Firestore:',
+    application.id
+  );
+} catch (error) {
+  console.error('Firestore save application failed:', error);
 
-    showNotification('✓ Worker profile details saved! Moving to Dual OTP verification.');
-    onTransition('worker-otp-pass');
+  showNotification(
+    'Unable to submit your application. Please try again.'
+  );
+
+  return;
+}
+
+// Local storage is only a temporary UI cache.
+// Firestore is the source of truth.
+const existingApps = JSON.parse(
+  localStorage.getItem('punchx_worker_applications') || '[]'
+);
+
+localStorage.setItem(
+  'punchx_worker_applications',
+  JSON.stringify([application, ...existingApps])
+);
+
+showNotification(
+  '✓ Worker profile details saved! Moving to Dual OTP verification.'
+);
+
+onTransition('worker-otp-pass');
   };
 
   return (
