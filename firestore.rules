@@ -87,7 +87,7 @@ service cloud.firestore {
     // WORKER APPLICATIONS
     // =====================================================
 
-    match /worker_applications/{appId} {
+    match /workerapplications/{appId} {
 
       // Only authenticated users can read applications.
       allow read: if signedIn() && (
