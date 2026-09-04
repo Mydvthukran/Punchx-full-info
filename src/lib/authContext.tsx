@@ -139,7 +139,7 @@ const userDocRef = doc(db, 'users', firebaseUid);
       JSON.stringify(identity)
     );
 
-    return fetchOrCreateProfile(identity, role || activeRole);
+    return await fetchOrCreateProfile(identity, role || activeRole);
   } catch (fbAuthErr) {
     console.error('Firebase authentication failed:', fbAuthErr);
 
