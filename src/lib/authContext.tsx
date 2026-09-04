@@ -106,19 +106,18 @@ const userDocRef = doc(db, 'users', firebaseUid);
         };
         
         try {
-          await Promise.race([
-            setDoc(userDocRef, newProfile),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Firestore setDoc timeout')), 2000)
-            )
-          ]);
-        }
-      } catch (e) {
-  console.error('Failed to create Firestore user profile:', error);
-  throw error;
-    } finally {
-      setIsLoading(false);
-      }
+  await Promise.race([
+    setDoc(userDocRef, newProfile),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore setDoc timeout')), 2000)
+    )
+  ]);
+} catch (e) {
+  console.error('Failed to create Firestore user profile:', e);
+  throw e;
+} finally {
+  setIsLoadingProfile(false);
+}
     catch (error) {
       console.warn('Notice fetching or creating user profile:', error);
       const fallbackProfile: UserProfile = {
