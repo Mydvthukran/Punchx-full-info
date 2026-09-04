@@ -103,6 +103,8 @@ const userDocRef = doc(db, 'users', firebaseUid);
           phone: identity.phone_number || '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
+        };
+        
         try {
           await Promise.race([
             setDoc(userDocRef, newProfile),
