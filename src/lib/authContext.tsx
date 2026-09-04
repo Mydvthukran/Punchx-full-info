@@ -88,57 +88,49 @@ const userDocRef = doc(db, 'users', firebaseUid);
         setUserProfile(updatedProfile);
         localStorage.setItem('punchx_namoid_profile', JSON.stringify(updatedProfile));
         return updatedProfile;
-      } else {
+     } else {
         const isCompleted = !!extractedName && !!extractedDob;
+
         const newProfile: UserProfile = {
           uid: firebaseUid,
           name: extractedName,
           email: identity.email || '',
-          photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-          role: role,
+          photoURL:
+            (identity.picture as string) ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          role,
           dob: extractedDob,
           birthdate: extractedDob,
           isProfileCompleted: isCompleted,
           address: '',
           phone: identity.phone_number || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
         };
-        
-        try {
-  await Promise.race([
-    setDoc(userDocRef, newProfile),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Firestore setDoc timeout')), 2000)
-    )
-  ]);
-} catch (e) {
-  console.error('Failed to create Firestore user profile:', e);
-  throw e;
-} finally {
-  setIsLoadingProfile(false);
-}
+
+        await Promise.race([
+          setDoc(userDocRef, newProfile),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Firestore setDoc timeout')),
+              2500
+            )
+          ),
+        ]);
+
+        setUserProfile(newProfile);
+        localStorage.setItem(
+          'punchx_namoid_profile',
+          JSON.stringify(newProfile)
+        );
+
+        return newProfile;
+      }
+    } catch (error) {
+      console.error('Failed to fetch or create user profile:', error);
+      throw error;
     } finally {
       setIsLoadingProfile(false);
     }
   };
-
-  const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
-  
-  // Authenticate with Firebase before accessing protected Firestore data
-  if (!idToken) {
-    throw new Error('NamoID ID token is required for Firebase authentication');
-  }
-
-  try {
-    const provider = new OAuthProvider('oidc.namoid');
-    const credential = provider.credential({ idToken });
-
-    await signInWithCredential(auth, credential);
-
-    if (!auth.currentUser) {
-      throw new Error('Firebase authentication failed');
-    }
 
     // Only store application identity after Firebase authentication succeeds
     setCurrentUser(identity);
