@@ -198,7 +198,7 @@ match /orders/{orderId} {
 
       // Authenticated users can submit a claim.
     allow create: if signedIn()
-  && request.resource.data.keys().hasAll(['orderId', 'description'])
+  && request.resource.data.keys().hasAll(['orderId', 'problemDescription'])
   && exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId))
   && (
     get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == request.auth.uid
