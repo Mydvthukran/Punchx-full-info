@@ -96,7 +96,7 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
           liveOrders.push({ id: docSnap.id, ...docSnap.data() } as OrderRecord);
         });
         setOrders(liveOrders);
-        localStorage.setItem('punchx_order_history', JSON.stringify(liveOrders));
+        
       }, (err) => {
         console.warn('Firestore orders subscription offline:', err);
       });
