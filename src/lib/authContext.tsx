@@ -118,23 +118,6 @@ const userDocRef = doc(db, 'users', firebaseUid);
 } finally {
   setIsLoadingProfile(false);
 }
-    catch (error) {
-      console.warn('Notice fetching or creating user profile:', error);
-      const fallbackProfile: UserProfile = {
-        uid: firebaseUid,
-        name: extractedName,
-        email: identity.email || '',
-        photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-        role: role,
-        dob: extractedDob,
-        birthdate: extractedDob,
-        isProfileCompleted: false,
-        address: '',
-        phone: identity.phone_number || ''
-      };
-      setUserProfile(fallbackProfile);
-      localStorage.setItem('punchx_namoid_profile', JSON.stringify(fallbackProfile));
-      return fallbackProfile;
     } finally {
       setIsLoadingProfile(false);
     }
