@@ -1790,6 +1790,4 @@ if (!isUnlocked) {
         )}
       </AnimatePresence>
 
-    </div>
-  );
 }
