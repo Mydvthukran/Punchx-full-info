@@ -116,7 +116,8 @@ const userDocRef = doc(db, 'users', firebaseUid);
   console.error('Failed to create Firestore user profile:', e);
   throw e;
 }
-    } catch (error) {
+    } 
+    catch (error) {
       console.warn('Notice fetching or creating user profile:', error);
       const fallbackProfile: UserProfile = {
         uid: firebaseUid,
