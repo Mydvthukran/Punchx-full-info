@@ -113,12 +113,9 @@ const userDocRef = doc(db, 'users', firebaseUid);
             )
           ]);
         } catch (e) {
-          console.warn("SetDoc offline fallback notice:", e);
-        }
-        setUserProfile(newProfile);
-        localStorage.setItem('punchx_namoid_profile', JSON.stringify(newProfile));
-        return newProfile;
-      }
+  console.error('Failed to create Firestore user profile:', e);
+  throw e;
+}
     } catch (error) {
       console.warn('Notice fetching or creating user profile:', error);
       const fallbackProfile: UserProfile = {
