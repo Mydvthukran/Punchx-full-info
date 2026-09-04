@@ -138,7 +138,7 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
           liveComplaints.push({ id: docSnap.id, ...docSnap.data() } as ComplaintRecord);
         });
         setComplaints(liveComplaints);
-        localStorage.setItem('punchx_complaints', JSON.stringify(liveComplaints));
+      
       }, (err) => {
         console.warn('Firestore complaints subscription offline:', err);
       });
