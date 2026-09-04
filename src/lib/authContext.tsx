@@ -103,8 +103,6 @@ const userDocRef = doc(db, 'users', firebaseUid);
           phone: identity.phone_number || '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
-        };
-
         try {
           await Promise.race([
             setDoc(userDocRef, newProfile),
@@ -115,8 +113,8 @@ const userDocRef = doc(db, 'users', firebaseUid);
         } catch (e) {
   console.error('Failed to create Firestore user profile:', e);
   throw e;
-}
     } 
+      }
     catch (error) {
       console.warn('Notice fetching or creating user profile:', error);
       const fallbackProfile: UserProfile = {
