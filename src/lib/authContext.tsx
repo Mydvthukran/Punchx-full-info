@@ -110,10 +110,12 @@ const userDocRef = doc(db, 'users', firebaseUid);
               setTimeout(() => reject(new Error('Firestore setDoc timeout')), 2000)
             )
           ]);
-        } catch (e) {
-  console.error('Failed to create Firestore user profile:', e);
-  throw e;
-    } 
+        }
+      } catch (e) {
+  console.error('Failed to create Firestore user profile:', error);
+  throw error;
+    } finally {
+      setIsLoading(false);
       }
     catch (error) {
       console.warn('Notice fetching or creating user profile:', error);
