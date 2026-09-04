@@ -110,7 +110,7 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
           liveApps.push({ id: docSnap.id, ...docSnap.data() } as WorkerApplication);
         });
         setWorkerApps(liveApps);
-        localStorage.setItem('punchx_worker_applications', JSON.stringify(liveApps));
+        
       }, (err) => {
         console.warn('Firestore applications subscription offline:', err);
       });
@@ -124,7 +124,7 @@ export default function AdminDashboard({ onTransition, showNotification }: Admin
           liveClaims.push({ id: docSnap.id, ...docSnap.data() } as WarrantyClaim);
         });
         setWarrantyClaims(liveClaims);
-        localStorage.setItem('punchx_warranty_claims', JSON.stringify(liveClaims));
+        
       }, (err) => {
         console.warn('Firestore claims subscription offline:', err);
       });
