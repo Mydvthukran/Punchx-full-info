@@ -1789,5 +1789,6 @@ if (!isUnlocked) {
           </div>
         )}
       </AnimatePresence>
-
+    </div>
+  );
 }
