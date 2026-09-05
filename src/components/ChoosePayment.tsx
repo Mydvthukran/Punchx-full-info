@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
 import { ArrowLeft, Check, Lock, ShieldCheck, Ticket, Plus, X, ArrowRight, Wallet, CreditCard, Landmark, Coins } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
 
 interface ChoosePaymentProps {
@@ -136,9 +136,16 @@ export default function ChoosePayment({
     const warrantyExpiryDate = expiryDateObj.toISOString();
 
     const newOrderId = `PX-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newOrder = {
-      id: newOrderId,
-      category: selectedWorker ? selectedWorker.category : 'AC Repair',
+   const firebaseUid = auth.currentUser?.uid;
+
+if (!firebaseUid) {
+  throw new Error('You must be signed in to create an order');
+}
+
+const newOrder = {
+  id: newOrderId,
+  customerId: firebaseUid,
+  category: selectedWorker ? selectedWorker.category : 'AC Repair',
       workerName: selectedWorker ? selectedWorker.name : (dispatchMode === 'BROADCAST_15KM' ? 'Pending Broadcast (15km)' : 'Rajesh Kumar'),
       workerAvatar: selectedWorker ? selectedWorker.avatar : 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
       workerRating: selectedWorker ? (selectedWorker.rating || 4.9) : 4.9,

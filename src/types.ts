@@ -23,6 +23,7 @@ export type AppScreen =
 
 export interface WorkerApplication {
   id: string;
+  uid: string;
   legalName: string;
   address: string;
   area?: string;

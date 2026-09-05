@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signOut as firebaseSignOut, OAuthProvider, signInWithCredential } from 'firebase/auth';
+import { signOut as firebaseSignOut, signInWithCustomToken, onAuthStateChanged, User } from 'firebase/auth'; 
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile } from '../types';
@@ -19,8 +19,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'citizen' | 'worker' | 'admin' }> = ({ children, activeRole = 'citizen' }) => {
   const [currentUser, setCurrentUser] = useState<NamoIDUserInfo | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
+  useEffect( () => { const unsubscribe = onAuthStateChanged(auth, (user) => { setFirebaseUser(user); });
+                    return () => unsubscribe(); }, []);
 
   // Initialize from localStorage on mount
   useEffect(() => {
@@ -50,7 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
     try {
       setIsLoadingProfile(true);
-      const userDocRef = doc(db, 'users', identity.sub);
+      const firebaseUid = auth.currentUser?.uid;
+
+if (!firebaseUid) {
+  throw new Error('Firebase user is not authenticated');
+}
+
+const userDocRef = doc(db, 'users', firebaseUid);
 
       const userSnap = await Promise.race([
         getDoc(userDocRef),
@@ -63,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
         const existingData = userSnap.data() as UserProfile;
         const updatedProfile: UserProfile = {
           ...existingData,
-          uid: identity.sub,
+          uid: firebaseUid,
           email: existingData.email || identity.email || '',
           photoURL: existingData.photoURL || (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
           name: existingData.name || extractedName,
@@ -71,91 +81,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
           birthdate: existingData.birthdate || existingData.dob || extractedDob,
           isProfileCompleted: existingData.isProfileCompleted ?? (!!existingData.name && !!(existingData.dob || existingData.birthdate) && !!existingData.address),
           role: existingData.role || role,
-          address: existingData.address !== undefined ? existingData.address : '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
+          address: existingData.address !== undefined ? existingData.address : '',
           phone: existingData.phone || identity.phone_number || ''
         };
         
         setUserProfile(updatedProfile);
         localStorage.setItem('punchx_namoid_profile', JSON.stringify(updatedProfile));
         return updatedProfile;
-      } else {
+     } else {
         const isCompleted = !!extractedName && !!extractedDob;
+
         const newProfile: UserProfile = {
-          uid: identity.sub,
+          uid: firebaseUid,
           name: extractedName,
           email: identity.email || '',
-          photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-          role: role,
+          photoURL:
+            (identity.picture as string) ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+          role,
           dob: extractedDob,
           birthdate: extractedDob,
           isProfileCompleted: isCompleted,
-          address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
+          address: '',
           phone: identity.phone_number || '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
         };
 
-        try {
-          await Promise.race([
-            setDoc(userDocRef, newProfile),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Firestore setDoc timeout')), 2000)
+        await Promise.race([
+          setDoc(userDocRef, newProfile),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Firestore setDoc timeout')),
+              2500
             )
-          ]);
-        } catch (e) {
-          console.warn("SetDoc offline fallback notice:", e);
-        }
+          ),
+        ]);
+
         setUserProfile(newProfile);
-        localStorage.setItem('punchx_namoid_profile', JSON.stringify(newProfile));
+        localStorage.setItem(
+          'punchx_namoid_profile',
+          JSON.stringify(newProfile)
+        );
+
         return newProfile;
       }
     } catch (error) {
-      console.warn('Notice fetching or creating user profile:', error);
-      const fallbackProfile: UserProfile = {
-        uid: identity.sub,
-        name: extractedName,
-        email: identity.email || '',
-        photoURL: (identity.picture as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-        role: role,
-        dob: extractedDob,
-        birthdate: extractedDob,
-        isProfileCompleted: false,
-        address: '42nd Galaxy Towers, Block C, Bengaluru, KA 560001',
-        phone: identity.phone_number || ''
-      };
-      setUserProfile(fallbackProfile);
-      localStorage.setItem('punchx_namoid_profile', JSON.stringify(fallbackProfile));
-      return fallbackProfile;
+      console.error('Failed to fetch or create user profile:', error);
+      throw error;
     } finally {
       setIsLoadingProfile(false);
     }
   };
 
-  const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
+    // Only store application identity after Firebase authentication succeeds
     setCurrentUser(identity);
-    // SECURITY NOTE: Storing auth identity in localStorage is vulnerable to XSS.
-    // In a production environment, this should be moved to httpOnly cookies
-    // managed by a secure backend. Currently kept here for demo/MVP purposes.
-    localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
-    
-    // Connect NamoID token to Firebase Auth if token exists
-    if (idToken && auth) {
-      try {
-        const provider = new OAuthProvider('oidc.namoid');
-        const credential = provider.credential({ idToken });
-        await signInWithCredential(auth, credential);
-      } catch (fbAuthErr) {
-        console.warn("Notice: Firebase Auth OIDC link skipped/failed:", fbAuthErr);
-      }
-    }
+    localStorage.setItem(
+      'punchx_namoid_identity',
+      JSON.stringify(identity)
+    );
 
     return await fetchOrCreateProfile(identity, role || activeRole);
-  };
+  } catch (fbAuthErr) {
+    console.error('Firebase authentication failed:', fbAuthErr);
 
-  const updateUserProfile = async (updates: Partial<UserProfile>) => {
-    if (!currentUser) return;
-    try {
-      const userDocRef = doc(db, 'users', currentUser.sub);
+    setCurrentUser(null);
+    localStorage.removeItem('punchx_namoid_identity');
+
+    throw new Error('Unable to authenticate with Firebase');
+  }
+};
+const updateUserProfile = async (updates: Partial<UserProfile>) => {
+  const firebaseUid = auth.currentUser?.uid;
+
+  if (!firebaseUid) return;
+
+  try {
+    const userDocRef = doc(db, 'users', firebaseUid);
+
+
       const payload = {
         ...updates,
         updatedAt: new Date().toISOString()
