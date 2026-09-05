@@ -1,30 +1,18 @@
-# Deploy PunchX to GitHub Pages
-# Builds the Vite React app and deploys the compiled output.
-# This workflow only runs AFTER a push to main (i.e., after PR CI checks pass).
-
-name: Deploy to GitHub Pages
+name: Deploy to Vercel
 
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
 jobs:
   # ──────────────────────────────────────────────────────────
   # Pre-deploy sanity checks (fast — catches issues before deploy)
   # ──────────────────────────────────────────────────────────
-
   pre-deploy-checks:
     name: 🛡️ Pre-Deploy Sanity Check
     runs-on: ubuntu-latest
@@ -49,68 +37,24 @@ jobs:
         run: npm audit --audit-level=high || echo "⚠️ Audit warnings found, proceeding with deploy"
 
   # ──────────────────────────────────────────────────────────
-  # Build
+  # Deploy to Vercel
   # ──────────────────────────────────────────────────────────
-
-  build:
-    name: 🏗️ Build
+  deploy:
+    name: 🚀 Deploy to Vercel
     runs-on: ubuntu-latest
     needs: pre-deploy-checks
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
 
-      - name: Install dependencies
-        run: |
-          rm -rf package-lock.json node_modules
-          npm install
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Build
-        run: npm run build:pages
-        env:
-          GOOGLE_MAPS_PLATFORM_KEY: ${{ secrets.GOOGLE_MAPS_PLATFORM_KEY }}
-          VITE_NAMOID_CLIENT_ID: ${{ secrets.VITE_NAMOID_CLIENT_ID }}
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Bundle size report
-        run: node scripts/check-bundle-size.js || echo "⚠️ Bundle size warning"
-
-      - name: Security headers report
-        run: node scripts/check-security-headers.js || echo "⚠️ Security headers advisory"
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "./dist"
-
-  # ──────────────────────────────────────────────────────────
-  # Deploy
-  # ──────────────────────────────────────────────────────────
-
-  deploy:
-    name: 🚀 Deploy
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Deployment Summary
-        run: |
-          echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** main" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
