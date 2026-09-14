@@ -175,7 +175,7 @@ export default function HomeDashboard({
             price: data.visitingFee || 199,
             visitingFee: data.visitingFee || 199,
             available: true,
-            address: data.address || citizenAddress || 'Indiranagar, Bengaluru',
+            address: data.address || citizenAddress || 'Indiranagar, Kolkata',
             area: data.area || 'Indiranagar',
             sector: data.sector || 'Sector 2',
             phone: data.phone || '+91 98765 43210'
@@ -196,7 +196,7 @@ export default function HomeDashboard({
             price: 199,
             visitingFee: 199,
             available: true,
-            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru',
+            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Kolkata',
             area: 'Indiranagar',
             sector: 'Sector 2',
             phone: '+91 98765 43210'
@@ -212,7 +212,7 @@ export default function HomeDashboard({
             price: 179,
             visitingFee: 179,
             available: true,
-            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru',
+            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Kolkata',
             area: 'Indiranagar',
             sector: 'Sector 2',
             phone: '+91 98765 11223'
@@ -228,7 +228,7 @@ export default function HomeDashboard({
             price: 149,
             visitingFee: 149,
             available: true,
-            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Bengaluru',
+            address: citizenAddress || 'Indiranagar 100ft Road, Sector 2, Kolkata',
             area: 'Indiranagar',
             sector: 'Sector 2',
             phone: '+91 98765 44556'
@@ -472,7 +472,7 @@ export default function HomeDashboard({
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400 truncate mt-0.5 max-w-md">
-                📍 {citizenAddress || 'Detecting Bengaluru address...'}
+                📍 {citizenAddress || 'Detecting Kolkata address...'}
               </p>
             </div>
           </div>
@@ -919,7 +919,7 @@ export default function HomeDashboard({
           <div className="p-4 rounded-2xl bg-[#09152e] border border-[#c5a059]/25 text-center shadow-lg">
             <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-tight">15-30m</div>
             <p className="text-[11px] text-emerald-400 font-mono font-bold mt-0.5">DOORSTEP ARRIVAL</p>
-            <span className="text-[9px] text-zinc-500 block">Pan-Bengaluru Smart Radar</span>
+            <span className="text-[9px] text-zinc-500 block">Pan-Kolkata Smart Radar</span>
           </div>
 
           <div className="p-4 rounded-2xl bg-[#09152e] border border-[#c5a059]/25 text-center shadow-lg">
@@ -950,7 +950,7 @@ export default function HomeDashboard({
                 How PunchX Works
               </h2>
               <p className="text-xs sm:text-sm text-zinc-400">
-                Precision 3-step rapid dispatch across Bengaluru
+                Precision 3-step rapid dispatch across Kolkata
               </p>
             </div>
           </div>

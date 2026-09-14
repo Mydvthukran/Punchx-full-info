@@ -726,14 +726,14 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                   </span>
                   <span className="text-[10px] font-mono uppercase bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full font-bold border border-emerald-500/30 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                    PAN-BENGALURU SMART DISPATCH
+                    PAN-Kolkata SMART DISPATCH
                   </span>
                 </div>
                 <h2 className="text-xl font-extrabold text-white tracking-tight mt-1.5">
                   RECEIVED SERVICE ORDERS
                 </h2>
                 <p className="text-xs text-zinc-300">
-                  Accept customer service requests across Bengaluru with proximity radar routing and direct bank settlements.
+                  Accept customer service requests across Kolkata with proximity radar routing and direct bank settlements.
                 </p>
               </div>
 

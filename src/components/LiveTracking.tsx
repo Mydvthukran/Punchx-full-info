@@ -1005,7 +1005,7 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
                     </span>
                   </div>
                   <p className="text-xs font-bold text-white mt-1 truncate">
-                    {liveAddressName || activeOrder.customerAddress || 'Indiranagar, Sector 2, Bengaluru'}
+                    {liveAddressName || activeOrder.customerAddress || 'Indiranagar, Sector 2, Kolkata'}
                   </p>
                   <p className="text-[10px] font-mono text-zinc-400 mt-0.5">
                     Lat: {liveCoords.lat.toFixed(5)}° • Lng: {liveCoords.lng.toFixed(5)}°

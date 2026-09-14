@@ -109,8 +109,8 @@ export function getCoordinatesForAddressOrSector(
     return fallback;
   }
 
-  // Default Central Bengaluru coordinates
-  return { lat: 12.9716, lng: 77.5946 };
+  // Default Central Kolkata coordinates
+  return { lat: 22.5726, lng: 88.3639 };
 }
 
 // Get customer coordinates from localStorage or address
@@ -218,7 +218,7 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
         return {
           address: data.address,
           area: data.area || extractAreaFromAddress(data.address),
-          city: data.city || 'Bengaluru',
+          city: data.city || 'Kolkata',
           sector: data.sector || getSectorFromAddress(data.address, data.area, lat, lng),
           accuracyScore: data.accuracyScore || 100
         };
@@ -255,8 +255,8 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
           addrObj.municipality ||
           addrObj.county ||
           addrObj.state ||
-          'Bengaluru';
-        const state = addrObj.state || 'Karnataka';
+          'Kolkata';
+        const state = addrObj.state || 'West Bengal';
         const postcode = addrObj.postcode || '';
 
         const parts = [
@@ -291,7 +291,7 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
       const bdc = await bdcRes.json();
       if (bdc) {
         const locality = bdc.locality || '';
-        const city = bdc.city || bdc.principalSubdivision || 'Bengaluru';
+        const city = bdc.city || bdc.principalSubdivision || 'Kolkata';
         const state = bdc.principalSubdivision || '';
         const country = bdc.countryName || 'India';
         const area = locality || bdc.principalSubdivision || city;
@@ -312,8 +312,8 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
 
   // 4. Default coordinates representation
   const areaName = `Locality (${lat.toFixed(3)}°, ${lng.toFixed(3)}°)`;
-  const cityName = "Bengaluru";
-  const formattedAddress = `GPS Position (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E), Bengaluru, Karnataka`;
+  const cityName = "Kolkata";
+  const formattedAddress = `GPS Position (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E), Kolkata, West Bengal`;
 
   return {
     address: formattedAddress,
@@ -325,10 +325,11 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
 }
 
 // Resilient GPS Resolver with High Accuracy and Sufficient Timeout
-export async function getAccurateCurrentPosition(): Promise<{ lat: number; lng: number }> {
-  return new Promise((resolve) => {
+export async function getAccurateCurrentPosition(rejectOnDenied = false): Promise<{ lat: number; lng: number }> {
+  return new Promise((resolve, reject) => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      return resolve({ lat: 12.9716, lng: 77.5946 });
+      if (rejectOnDenied) return reject(new Error('Geolocation not supported'));
+      return resolve({ lat: 22.5726, lng: 88.3639 });
     }
 
     let hasResolved = false;
@@ -348,6 +349,9 @@ export async function getAccurateCurrentPosition(): Promise<{ lat: number; lng: 
       },
       (highAccErr) => {
         console.warn("High-accuracy GPS attempt note:", highAccErr?.message);
+        if (rejectOnDenied && highAccErr.code === 1) {
+          return reject(new Error('Permission denied'));
+        }
         
         // Secondary: Standard accuracy with 8s timeout
         navigator.geolocation.getCurrentPosition(
@@ -371,7 +375,7 @@ export async function getAccurateCurrentPosition(): Promise<{ lat: number; lng: 
             }
 
             // Fallback default coordinates
-            safeResolve({ lat: 12.9716, lng: 77.5946 });
+            safeResolve({ lat: 22.5726, lng: 88.3639 });
           },
           { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 }
         );
@@ -590,7 +594,7 @@ export async function fetchGoogleMapsConfig(): Promise<GoogleMapsConfig> {
     apiKey: '',
     mapId: 'PUNCHX_MAP_ID',
     attributionId: 'gmp_mcp_codeassist_v1_aistudio',
-    defaultCenter: { lat: 12.9716, lng: 77.5946 },
+    defaultCenter: { lat: 22.5726, lng: 88.3639 },
     maxRadiusKm: 15.0
   };
 }
