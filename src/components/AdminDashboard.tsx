@@ -861,7 +861,7 @@ if (!isUnlocked) {
                         </div>
                         <div className="flex items-center gap-1.5 text-zinc-400">
                           <MapPin className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
-                          <span className="truncate">{order.customerAddress || 'HSR Layout, Sector 1, Bengaluru'}</span>
+                          <span className="truncate">{order.customerAddress || 'HSR Layout, Sector 1, Kolkata'}</span>
                         </div>
                         {order.issueDescription && (
                           <p className="text-[11px] text-zinc-400 italic pt-1 border-t border-zinc-800/60">
@@ -1403,11 +1403,11 @@ if (!isUnlocked) {
                   <Radio className="w-5 h-5 text-amber-400" />
                   Technician Broadcast Emergency Dispatch Channel
                 </h3>
-                <p className="text-xs text-zinc-400">Broadcast high-priority urgent service demands to all on-duty specialists in Bengaluru.</p>
+                <p className="text-xs text-zinc-400">Broadcast high-priority urgent service demands to all on-duty specialists in Kolkata.</p>
               </div>
 
               <button
-                onClick={() => showNotification("📢 Broadcast alert sent to 8 On-Duty Technicians across Bengaluru!")}
+                onClick={() => showNotification("📢 Broadcast alert sent to 8 On-Duty Technicians across Kolkata!")}
                 className="px-5 py-3 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-lg active:scale-95 whitespace-nowrap"
               >
                 <Send className="w-4 h-4" /> Broadcast Urgent Alert
@@ -1551,7 +1551,7 @@ if (!isUnlocked) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-400">Full Address:</span>
-                    <span className="text-zinc-300 font-mono text-right max-w-[240px] truncate">{inspectModal.customerAddress || 'HSR Layout, Bengaluru'}</span>
+                    <span className="text-zinc-300 font-mono text-right max-w-[240px] truncate">{inspectModal.customerAddress || 'HSR Layout, Kolkata'}</span>
                   </div>
                 </div>
 
