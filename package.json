@@ -39,7 +39,7 @@
     "@types/react-dom": "^19.0.4",
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
-    "@vercel/node": "^13.0.1",
+    "@vercel/node": "^4.0.0",
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
@@ -52,5 +52,14 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
+  },
+  "overrides": {
+    "ajv": "^8.17.1",
+    "esbuild": "^0.25.0",
+    "path-to-regexp": "^8.0.0",
+    "tar": "^7.5.21",
+    "undici": "^8.10.2",
+    "uuid": "^11.1.1",
+    "qs": "^6.16.0"
   }
 }
