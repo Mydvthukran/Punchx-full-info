@@ -194,8 +194,8 @@ jobs:
           echo "**Minimum Score Thresholds:**" >> $GITHUB_STEP_SUMMARY
           echo "| Category | Min Score |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-----------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Performance | 80 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Accessibility | 90 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | 70 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Accessibility | 88 |" >> $GITHUB_STEP_SUMMARY
           echo "| Best Practices | 85 |" >> $GITHUB_STEP_SUMMARY
           echo "| SEO | 85 |" >> $GITHUB_STEP_SUMMARY
 
