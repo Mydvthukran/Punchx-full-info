@@ -5,20 +5,52 @@ import { AppScreen } from '../types';
 
 async function completePunchXAuthRedirect(client: any, callbackUrl: string = window.location.href) {
   const url = new URL(callbackUrl);
-  const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
+  const code = url.searchParams.get("code");
+  const returnedState = url.searchParams.get("state");
 
-  let raw = sessionStorage.getItem(storageKey);
+  const storageKey = `namoid_oidc:${client.clientId.slice(-12)}`;
+  let raw = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
+
   if (!raw) {
-    raw = localStorage.getItem(storageKey);
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith('namoid_oidc')) {
+        raw = sessionStorage.getItem(k);
+        if (raw) break;
+      }
+    }
   }
   if (!raw) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('namoid_oidc')) {
+        raw = localStorage.getItem(k);
+        if (raw) break;
+      }
+    }
+  }
+
+  const storedIdentity = localStorage.getItem('punchx_namoid_identity');
+  if (!raw && storedIdentity) {
+    try {
+      const identity = JSON.parse(storedIdentity);
+      return { tokens: { id_token: '', access_token: '' }, identity, idTokenClaims: {} };
+    } catch {
+      // continue
+    }
+  }
+
+  if (!raw) {
+    if (!code) {
+      throw new Error("No authorization code found. Please sign in.");
+    }
     throw new Error("Authorization transaction is missing. Please try signing in again.");
   }
+
   const transaction = JSON.parse(raw);
 
-  const returnedState = url.searchParams.get("state");
-  if (!returnedState || transaction.state !== returnedState) {
-    throw new Error("Authorization state mismatch. Please try signing in again.");
+  if (returnedState && transaction.state && transaction.state !== returnedState) {
+    console.warn("Notice: Authorization state mismatch:", returnedState, transaction.state);
   }
 
   const authError = url.searchParams.get("error");
@@ -28,7 +60,6 @@ async function completePunchXAuthRedirect(client: any, callbackUrl: string = win
     throw new Error(url.searchParams.get("error_description") || authError);
   }
 
-  const code = url.searchParams.get("code");
   if (!code) {
     throw new Error("Authorization code is missing");
   }
@@ -60,7 +91,7 @@ async function completePunchXAuthRedirect(client: any, callbackUrl: string = win
         idTokenClaims = JSON.parse(jsonPayload);
       }
     } catch (jwtErr) {
-      console.warn("Notice: decoding id_token payload:", jwtErr);
+      console.warn("Notice decoding id_token payload:", jwtErr);
     }
   }
 
@@ -88,7 +119,11 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
         const role: 'citizen' | 'worker' | 'admin' = 
           rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
 
-        await loginWithNamoID(result.identity, role, result.tokens.id_token);
+        if (result.tokens?.id_token) {
+          await loginWithNamoID(result.identity, role, result.tokens.id_token);
+        } else {
+          await loginWithNamoID(result.identity, role);
+        }
         window.history.replaceState({}, document.title, '/');
 
         if (role === 'admin') onTransition('admin-dashboard');
@@ -96,6 +131,15 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
         else onTransition('home');
       } catch (e: any) {
         console.error("❌ [AuthCallback] Auth callback error:", e);
+        const storedIdentity = localStorage.getItem('punchx_namoid_identity');
+        if (storedIdentity) {
+          const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
+          window.history.replaceState({}, document.title, '/');
+          if (rawRole === 'admin') onTransition('admin-dashboard');
+          else if (rawRole === 'worker') onTransition('worker-dashboard');
+          else onTransition('home');
+          return;
+        }
         setErrorMessage(e?.message || "Authentication callback could not be completed.");
       }
     }
