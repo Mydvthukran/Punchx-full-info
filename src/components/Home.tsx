@@ -445,8 +445,9 @@ export default function HomeDashboard({
 
  const handleCategoryClick = (categoryName: string) => {
   onSelectCategory(categoryName);
-    setIsCategoryModelOpen(open);
-  };
+  setIsCategoryModalOpen(false);
+  onTransition('providers');
+};
  
   return (
     <div id="home-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-24 md:pb-16 overflow-x-hidden">
