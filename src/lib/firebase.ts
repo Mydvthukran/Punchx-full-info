@@ -3,11 +3,10 @@ import { getAuth, Auth } from 'firebase/auth';
 import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel, Firestore } from 'firebase/firestore';
 import rawConfig from '../../firebase-applet-config.json';
 
-// Silence non-fatal transient connection warnings and log only errors
 try {
   setLogLevel('error');
-} catch (e) {
-  // Ignored in strict environments
+} catch {
+  // Ignore logging configuration failures in restricted environments.
 }
 
 const fallbackConfig = {
@@ -22,7 +21,6 @@ const fallbackConfig = {
   oAuthClientId: import.meta.env.VITE_FIREBASE_OAUTH_CLIENT_ID || ""
 };
 
-// Environment variable overrides (for Vercel/Netlify deployment configuration)
 const envConfig: Record<string, string> = {};
 if (import.meta.env.VITE_FIREBASE_API_KEY) envConfig.apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 if (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) envConfig.authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
@@ -31,20 +29,25 @@ if (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) envConfig.storageBucket = impo
 if (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) envConfig.messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
 if (import.meta.env.VITE_FIREBASE_APP_ID) envConfig.appId = import.meta.env.VITE_FIREBASE_APP_ID;
 
+// Use the Firebase configuration generated for the project as the source of truth.
+// In particular, do not replace authDomain with the PunchX website domain: Firebase
+// Auth expects the registered Firebase auth domain unless a custom auth domain has
+// explicitly been configured in the Firebase Console.
 const firebaseConfig = {
   ...fallbackConfig,
   ...(rawConfig || {}),
   ...envConfig,
-  // BUG-02 fix: Use custom domain as authDomain so OAuth redirects/popups work
-  // on the production site instead of failing with CORS/origin mismatch
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'www.punchxapp.co.in',
+  authDomain:
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
+    rawConfig?.authDomain ||
+    fallbackConfig.authDomain,
 };
 
 let app: FirebaseApp;
 try {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 } catch (initErr) {
-  console.warn("Firebase App initialization notice, re-trying fallback:", initErr);
+  console.warn("Firebase initialization notice, retrying with environment fallback:", initErr);
   try {
     app = initializeApp(fallbackConfig);
   } catch (err2) {
@@ -56,7 +59,6 @@ let firestoreInstance: Firestore;
 try {
   const dbSettings = {
     localCache: memoryLocalCache(),
-    // Force HTTP long-polling to prevent WebSocket connection failures in sandboxed iframes & proxies
     experimentalForceLongPolling: true,
   };
   firestoreInstance = firebaseConfig.firestoreDatabaseId
@@ -65,7 +67,7 @@ try {
 } catch (e) {
   console.warn("Firestore initializeFirestore fallback to getFirestore:", e);
   try {
-    firestoreInstance = firebaseConfig.firestoreDatabaseId 
+    firestoreInstance = firebaseConfig.firestoreDatabaseId
       ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
       : getFirestore(app);
   } catch (err3) {
@@ -74,7 +76,6 @@ try {
   }
 }
 
-// Global window safety handler for transient network/offline Firestore events
 if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason?.message || String(event.reason || '');
@@ -130,9 +131,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   }
   throw new Error(`Database operation failed (${operationType}). Please try again.`);
 }
-
-
-
 
 interface AuthSession {
   recaptchaVerifier: unknown;
