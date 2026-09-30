@@ -443,11 +443,15 @@ export default function HomeDashboard({
     onTransition('provider-details');
   };
 
- const handleCategoryClick = (categoryName: string) => {
-  onSelectCategory(categoryName);
-  setIsCategoryModalOpen(true);
- 
-};
+const handleCategoryClick = (categoryName: string) => {
+ onSelectCategory(categoryName);
+ setIsCategoryModalOpen(true);
+ onTransition('providers');
+ };
+
+ const handleOpenCategories = () => {
+   setIsCategoryModalOpen(true);
+ };
  
   return (
     <div id="home-dashboard-root" className="w-full min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-24 md:pb-16 overflow-x-hidden">
@@ -527,7 +531,7 @@ export default function HomeDashboard({
           </button>
 
           <button
-            onClick={() => setIsCategoryModalOpen(true)}
+            onClick={() =>handleOpenCategories()}
             className="p-3 bg-[#0a152e] hover:bg-[#111f3d] border border-zinc-800 hover:border-[#c5a059]/50 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer shadow-sm group text-left"
           >
             <div className="w-8 h-8 rounded-xl bg-[#c5a059]/15 text-[#e9c176] flex items-center justify-center flex-shrink-0 group-hover:bg-[#c5a059] group-hover:text-black transition-colors">
@@ -641,7 +645,7 @@ export default function HomeDashboard({
         <div id="search-section" className="relative group">
           <div className="absolute inset-0 bg-gradient-to-r from-[#c5a059]/10 to-transparent blur-md rounded-2xl opacity-70"></div>
           <div 
-            onClick={() => setIsCategoryModalOpen(true)}
+            onClick={() => handleOpenCategories()}
             className="relative bg-[#111415] border border-[#c5a059]/30 hover:border-[#c5a059] rounded-2xl p-1.5 flex items-center shadow-lg cursor-pointer transition-all"
           >
             <Search className="w-5 h-5 text-[#c5a059] ml-4 flex-shrink-0" />
@@ -687,7 +691,7 @@ export default function HomeDashboard({
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 id="find-worker-hero-btn"
-                onClick={() => setIsCategoryModalOpen(true)}
+                onClick={() => handleOpenCategories()}
                 className="py-3 px-6 rounded-xl text-xs font-bold tracking-widest uppercase cursor-pointer transition-all active:scale-[0.98] bg-[#c5a059] text-black shadow-lg shadow-[#c5a059]/20 hover:brightness-110 flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" />
@@ -761,7 +765,7 @@ export default function HomeDashboard({
             </div>
             <button
               id="categories-view-all"
-              onClick={() => setIsCategoryModalOpen(true)}
+              onClick={() =>  handleOpenCategories()}
               className="text-xs font-bold text-[#c5a059] hover:text-[#e9c176] hover:underline cursor-pointer flex items-center gap-1"
             >
               <span>Browse All 50 Services</span>
@@ -1782,7 +1786,7 @@ export default function HomeDashboard({
         </button>
 
         <button
-          onClick={() => setIsCategoryModalOpen(true)}
+          onClick={() =>  handleOpenCategories()}
           className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all text-zinc-400 hover:text-white font-semibold text-[10px] cursor-pointer"
         >
           <span className="text-base">🔍</span>
