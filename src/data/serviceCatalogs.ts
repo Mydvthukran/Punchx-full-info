@@ -42,7 +42,7 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "switch-repair",
             name: "Switch Repair",
             description: "Repair a damaged or faulty switch",
-            price: 69,
+            price: 39,
             image: "/services/switch-repair.png",
             popular: true
           },
@@ -50,28 +50,28 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "switch-replacement",
             name: "Switch Replacement",
             description: "Replace an existing electrical switch",
-            price: 69,
+            price: 49,
             image: "/services/switch-replacement.png"
           },
           {
             id: "socket-repair",
             name: "Socket Repair",
             description: "Repair a faulty electrical socket",
-            price: 79,
+            price: 49,
             image: "/services/socket-repair.png"
           },
           {
             id: "socket-replacement",
             name: "Socket Replacement",
             description: "Replace an existing socket",
-            price: 79,
+            price: 49,
             image: "/services/socket-replacement.png"
           },
           {
             id: "plug-replacement",
             name: "Plug Replacement",
             description: "Replace a damaged electrical plug",
-            price: 69,
+            price: 39,
             image: "/services/plug-replacement.png"
           }
         ]
@@ -88,7 +88,7 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "fan-repair",
             name: "Fan Repair",
             description: "Repair common fan problems",
-            price: 99,
+            price: 69,
             image: "/services/fan-repair.png",
             popular: true
           },
@@ -96,14 +96,14 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "fan-installation",
             name: "Fan Installation",
             description: "Install a ceiling or wall fan",
-            price: 149,
+            price: 89,
             image: "/services/fan-installation.png"
           },
           {
             id: "fan-removal",
             name: "Fan Removal",
             description: "Safely remove an existing fan",
-            price: 79,
+            price: 49,
             image: "/services/fan-removal.png"
           }
         ]
@@ -120,14 +120,14 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "light-repair",
             name: "Light Repair",
             description: "Repair faulty lighting",
-            price: 79,
+            price: 49,
             image: "/services/light-repair.png"
           },
           {
             id: "light-installation",
             name: "Light Installation",
             description: "Install a new light",
-            price: 99,
+            price: 59,
             image: "/services/light-installation.png",
             popular: true
           },
@@ -135,7 +135,7 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "led-replacement",
             name: "LED Replacement",
             description: "Replace an existing LED light",
-            price: 79,
+            price: 49,
             image: "/services/led-replacement.png"
           }
         ]
@@ -152,21 +152,21 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "wiring-repair",
             name: "Wiring Repair",
             description: "Repair minor electrical wiring problems",
-            price: 129,
+            price: 89,
             image: "/services/wiring-repair.png"
           },
           {
             id: "wiring-inspection",
             name: "Wiring Inspection",
             description: "Inspect household electrical wiring",
-            price: 99,
+            price: 69,
             image: "/services/wiring-inspection.png"
           },
           {
             id: "new-electric-point",
             name: "New Electrical Point",
             description: "Install a new switch or socket point",
-            price: 149,
+            price: 99,
             image: "/services/new-electric-point.png"
           }
         ]
@@ -183,21 +183,21 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "mcb-replacement",
             name: "MCB Replacement",
             description: "Replace a faulty MCB",
-            price: 99,
+            price: 69,
             image: "/services/mcb-replacement.png"
           },
           {
             id: "fuse-replacement",
             name: "Fuse Replacement",
             description: "Replace a household fuse",
-            price: 69,
+            price: 39,
             image: "/services/fuse-replacement.png"
           },
           {
             id: "mcb-tripping",
             name: "MCB Tripping Diagnosis",
             description: "Find the reason for repeated MCB tripping",
-            price: 129,
+            price: 79,
             image: "/services/mcb-tripping.png",
             popular: true
           }
@@ -215,21 +215,21 @@ export const SERVICE_CATALOG: ServiceCategory[] = [
             id: "doorbell-repair",
             name: "Doorbell Repair",
             description: "Repair a faulty doorbell",
-            price: 79,
+            price: 49,
             image: "/services/doorbell-repair.png"
           },
           {
             id: "doorbell-installation",
             name: "Doorbell Installation",
             description: "Install a new doorbell",
-            price: 99,
+            price: 79,
             image: "/services/doorbell-installation.png"
           },
           {
             id: "security-installation",
             name: "Security Device Installation",
             description: "Install a basic electrical security device",
-            price: 149,
+            price: 99,
             image: "/services/security-installation.png"
           }
         ]
