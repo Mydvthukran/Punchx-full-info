@@ -41,7 +41,6 @@ export interface WorkerApplication {
   appliedAt: string;
 }
 
-/* Use 'admin' consistently (matches current code usage) */
 export type UserRole = 'citizen' | 'worker' | 'admin';
 
 export interface UserProfile {
@@ -89,7 +88,6 @@ export interface Worker {
   distanceKm?: number;
   completedJobs?: number;
   earningsToday?: number;
-  // 6-Tier Verification Data
   identityVerified?: boolean;
   skillVerified?: boolean;
   backgroundChecked?: boolean;
@@ -128,6 +126,11 @@ export interface OrderRecord {
   punchXGrossRevenue?: number;
   gstAmount?: number;
   totalAmountToPay?: number;
+  personalSelectionFee?: number;
+  personalSelectionRate?: number;
+  priorCompletedBookingsWithWorker?: number;
+  dispatchMode?: 'PERSONAL_SELECT' | 'AUTO_MATCH' | 'BROADCAST_15KM' | 'RANDOM_15KM';
+  isPersonalSelection?: boolean;
   date: string;
   time?: string;
   status: 'Pending' | 'In Progress' | 'In-Progress' | 'Done' | 'Cancelled';
@@ -151,22 +154,17 @@ export interface OrderRecord {
   paymentStatus?: string;
   createdAt?: string;
   completedAt?: string;
-  // 30-Day Guarantee
   hasWarrantyGuarantee?: boolean;
   warrantyFee?: number;
   warrantyExpiryDate?: string;
   warrantyClaimId?: string;
   warrantyClaimStatus?: string;
-  // Dispatch & Emergency
-  dispatchMode?: 'PERSONAL_SELECT' | 'BROADCAST_15KM' | 'RANDOM_15KM';
-  personalSelectFee?: number;
-  isEmergency?: boolean;
+  dispatchModeLegacy?: 'PERSONAL_SELECT' | 'BROADCAST_15KM' | 'RANDOM_15KM';
   emergencyETA?: string;
   emergencySurcharge?: number;
   baseFee?: number;
   isRebooking?: boolean;
   createdTimestamp?: number;
-  // Arrival Quality & Complaints
   arrivalFeedbackSubmitted?: boolean;
   arrivalQuality?: {
     correctEquipment: boolean;
@@ -178,12 +176,26 @@ export interface OrderRecord {
   qualityDiscountApplied?: number;
   prepaidRefundAmount?: number;
   prepaidRefundStatus?: 'NONE' | 'PENDING' | 'REFUNDED';
-  // Warranty rebooking metadata
   isWarrantyRebooking?: boolean;
   originalWarrantyOrderId?: string;
   originalWarrantyClaimId?: string;
   workerPayoutFee?: number;
   warrantyRebookingFeeCovered?: number;
+  additionalWorkRequests?: Array<{
+    id: string;
+    description: string;
+    labour: number;
+    materials: number;
+    total: number;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    createdAt: string;
+  }>;
+  serviceProof?: {
+    beforePhoto?: string;
+    afterPhoto?: string;
+    completionNotes?: string;
+    completionOtpVerified?: boolean;
+  };
 }
 
 export interface WarrantyClaim {
