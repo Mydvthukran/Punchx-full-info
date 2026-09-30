@@ -103,7 +103,7 @@ export default function HomeDashboard({
   const [isLocatingCustomer, setIsLocatingCustomer] = useState(false);
   const [unreadPushCount, setUnreadPushCount] = useState(0);
   const [isEnterpriseModalOpen, setIsEnterpriseModalOpen] = useState(false);
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(true);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
   const [warrantyClaimOrder, setWarrantyClaimOrder] = useState<OrderRecord | null>(null);
 
