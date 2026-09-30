@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
 
 const MAX_PROMPT_LENGTH = 4000;
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 const DRAGO_SYSTEM_INSTRUCTION = `You are DRAGO, the AI assistant for PunchX, a local-services marketplace.
 
@@ -32,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: 'DRAGO AI is not configured. Add GEMINI_API_KEY to the server environment.' });
+      return res.status(500).json({ error: 'DRAGO AI is not configured on Vercel. Add GEMINI_API_KEY to the Production environment.' });
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -41,23 +42,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `PunchX data available for this request:\n${safeContext}\n\nUser request:\n${prompt.trim()}`
       : prompt.trim();
 
-    const response = await ai.models.generateContent({
-      // Can be overridden with GEMINI_MODEL. The alias below matches Google's current quickstart style.
-      model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
-      contents: userContent,
-      config: {
-        systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
-        temperature: 0.2,
-        maxOutputTokens: 700,
-      },
-    });
+    const requestedModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+    const modelsToTry = requestedModel === DEFAULT_GEMINI_MODEL
+      ? [DEFAULT_GEMINI_MODEL, 'gemini-3.5-flash']
+      : [requestedModel, DEFAULT_GEMINI_MODEL, 'gemini-3.5-flash'];
 
-    return res.json({ response: response.text?.trim() || 'I could not generate a response right now.' });
+    let lastError: any = null;
+    for (const model of [...new Set(modelsToTry)]) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: userContent,
+          config: {
+            systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
+            maxOutputTokens: 700,
+          },
+        });
+
+        return res.json({ response: response.text?.trim() || 'I could not generate a response right now.' });
+      } catch (err: any) {
+        lastError = err;
+        const status = Number(err?.status) || 500;
+        // Do not hide authentication/quota errors behind a model fallback.
+        if (status === 401 || status === 403 || status === 429) break;
+      }
+    }
+
+    console.error('Server-side Gemini Error:', lastError);
+    const status = Number(lastError?.status) || 500;
+    if (status === 401 || status === 403) {
+      return res.status(502).json({ error: 'Gemini authentication failed. Check GEMINI_API_KEY in the Vercel Production environment.' });
+    }
+    if (status === 429) {
+      return res.status(429).json({ error: 'DRAGO is temporarily busy because the Gemini API rate limit was reached. Please try again shortly.' });
+    }
+    return res.status(500).json({ error: 'DRAGO could not process the request. Check the Gemini API configuration and Vercel deployment logs.' });
   } catch (err: any) {
-    console.error('Server-side Gemini Error:', err);
-    const status = Number(err?.status) || 500;
-    if (status === 401 || status === 403) return res.status(502).json({ error: 'Gemini authentication failed. Check the server API key.' });
-    if (status === 429) return res.status(429).json({ error: 'DRAGO is temporarily busy. Please try again shortly.' });
-    return res.status(500).json({ error: 'DRAGO could not process the request right now.' });
+    console.error('DRAGO API handler error:', err);
+    return res.status(500).json({ error: 'DRAGO service encountered a server error.' });
   }
 }
