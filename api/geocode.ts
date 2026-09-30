@@ -1,189 +1,159 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     let { lat, lng, address, landmark } = req.body || {};
+    const mapsKey = process.env.GOOGLE_MAPS_PLATFORM_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
+    let fullAddress = address || '';
+    let area = '';
+    let city = '';
 
-    const mapsKey = process.env.GOOGLE_MAPS_PLATFORM_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
-    let fullAddress = address || "";
-    let area = "";
-    let city = "";
-
-    // Forward geocode if address provided without coordinates
     if ((!lat || !lng) && address && address.trim().length > 2) {
       if (mapsKey) {
         try {
-          const gForward = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + (landmark ? ' ' + landmark : ''))}&key=${mapsKey}`);
-          const gData = await gForward.json();
-          if (gData.status === "OK" && gData.results && gData.results[0]) {
-            fullAddress = gData.results[0].formatted_address;
-            lat = gData.results[0].geometry.location.lat;
-            lng = gData.results[0].geometry.location.lng;
-            for (const comp of gData.results[0].address_components) {
-              if (comp.types.includes("sublocality") || comp.types.includes("neighborhood")) {
-                if (!area) area = comp.long_name;
-              }
-              if (comp.types.includes("locality") || comp.types.includes("administrative_area_level_2")) {
-                if (!city) city = comp.long_name;
-              }
+          const query = encodeURIComponent(address + (landmark ? ' ' + landmark : ''));
+          const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${mapsKey}`);
+          const data = await response.json();
+          if (data.status === 'OK' && data.results?.[0]) {
+            const result = data.results[0];
+            fullAddress = result.formatted_address || fullAddress;
+            lat = result.geometry?.location?.lat;
+            lng = result.geometry?.location?.lng;
+            for (const comp of result.address_components || []) {
+              if (!area && (comp.types.includes('sublocality') || comp.types.includes('neighborhood'))) area = comp.long_name;
+              if (!city && (comp.types.includes('locality') || comp.types.includes('administrative_area_level_2'))) city = comp.long_name;
             }
           }
-        } catch (gfErr) {
-          console.warn("Forward Google Geocode warning:", gfErr);
+        } catch (error) {
+          console.warn('Google forward geocoding warning:', error);
         }
       }
 
       if (!lat || !lng) {
         try {
-          const nomSearch = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + (landmark ? ' ' + landmark : ''))}&format=json&addressdetails=1&limit=1`,
-            { headers: { 'Accept-Language': 'en', 'User-Agent': 'PunchX-Service-App/1.0' } }
-          );
-          if (nomSearch.ok) {
-            const nomArr = await nomSearch.json();
-            if (nomArr && nomArr[0]) {
-              lat = parseFloat(nomArr[0].lat);
-              lng = parseFloat(nomArr[0].lon);
-              fullAddress = nomArr[0].display_name;
-              const addrObj = nomArr[0].address || {};
-              area = addrObj.sublocality || addrObj.neighbourhood || addrObj.suburb || addrObj.residential || addrObj.road || addrObj.quarter || addrObj.city_district || "";
-              city = addrObj.city || addrObj.town || addrObj.village || addrObj.county || addrObj.state || "";
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + (landmark ? ' ' + landmark : ''))}&format=json&addressdetails=1&limit=1`, {
+            headers: { 'Accept-Language': 'en', 'User-Agent': 'PunchX-Service-App/1.0' }
+          });
+          if (response.ok) {
+            const results = await response.json();
+            const result = results?.[0];
+            if (result) {
+              lat = Number(result.lat);
+              lng = Number(result.lon);
+              fullAddress = result.display_name || fullAddress;
+              const a = result.address || {};
+              area = a.sublocality || a.neighbourhood || a.suburb || a.residential || a.road || a.quarter || a.city_district || area;
+              city = a.city || a.town || a.village || a.county || city;
             }
           }
-        } catch (nomSearchErr) {
-          console.warn("Nominatim forward search warning:", nomSearchErr);
+        } catch (error) {
+          console.warn('Nominatim forward geocoding warning:', error);
         }
       }
     }
 
-    // If lat/lng are still missing, attempt auto IP detection
     if ((!lat || !lng) && !address) {
       try {
         const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
-        const ipLookupUrl = clientIp && !clientIp.startsWith('127.') && !clientIp.startsWith('10.') && !clientIp.startsWith('192.168.')
+        const ipUrl = clientIp && !clientIp.startsWith('127.') && !clientIp.startsWith('10.') && !clientIp.startsWith('192.168.')
           ? `https://freeipapi.com/api/json/${clientIp}`
-          : `https://freeipapi.com/api/json/`;
-        
-        const ipRes = await fetch(ipLookupUrl, { headers: { 'User-Agent': 'PunchX-Service-App' } });
-        if (ipRes.ok) {
-          const ipData = await ipRes.json();
-          if (ipData && ipData.latitude && ipData.longitude) {
-            lat = ipData.latitude;
-            lng = ipData.longitude;
-            city = ipData.cityName || ipData.regionName || "";
-            area = ipData.cityName || "";
+          : 'https://freeipapi.com/api/json/';
+        const response = await fetch(ipUrl, { headers: { 'User-Agent': 'PunchX-Service-App/1.0' } });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.latitude && data?.longitude) {
+            lat = data.latitude;
+            lng = data.longitude;
+            city = data.cityName || data.regionName || '';
+            area = data.cityName || '';
           }
         }
-      } catch (ipErr) {
-        console.warn("IP Geolocation fallback notice:", ipErr);
+      } catch (error) {
+        console.warn('IP geolocation fallback warning:', error);
       }
     }
 
-    // If coordinates are available, attempt Google Maps Reverse Geocode
     if (lat && lng && mapsKey && (!fullAddress || fullAddress.length < 5)) {
       try {
-        const gRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${mapsKey}`);
-        const gData = await gRes.json();
-        if (gData.status === "OK" && gData.results && gData.results[0]) {
-          fullAddress = gData.results[0].formatted_address;
-          for (const comp of gData.results[0].address_components) {
-            if (comp.types.includes("sublocality") || comp.types.includes("neighborhood")) {
-              if (!area) area = comp.long_name;
-            }
-            if (comp.types.includes("locality") || comp.types.includes("administrative_area_level_2")) {
-              if (!city) city = comp.long_name;
-            }
+        const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${mapsKey}`);
+        const data = await response.json();
+        if (data.status === 'OK' && data.results?.[0]) {
+          const result = data.results[0];
+          fullAddress = result.formatted_address || fullAddress;
+          for (const comp of result.address_components || []) {
+            if (!area && (comp.types.includes('sublocality') || comp.types.includes('neighborhood'))) area = comp.long_name;
+            if (!city && (comp.types.includes('locality') || comp.types.includes('administrative_area_level_2'))) city = comp.long_name;
           }
         }
-      } catch (err) {
-        console.warn("Backend Google Maps geocoding error, using fallback:", err);
+      } catch (error) {
+        console.warn('Google reverse geocoding warning:', error);
       }
     }
 
-    // OpenStreetMap Nominatim fallback
     if ((!fullAddress || !area) && lat && lng) {
       try {
-        const nomRes = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
-          { headers: { 'Accept-Language': 'en', 'User-Agent': 'PunchX-Service-App/1.0' } }
-        );
-        if (nomRes.ok) {
-          const nomData = await nomRes.json();
-          if (nomData && nomData.display_name) {
-            fullAddress = nomData.display_name;
-            const addrObj = nomData.address || {};
-            area = area || addrObj.sublocality || addrObj.neighbourhood || addrObj.suburb || addrObj.residential || addrObj.road || addrObj.quarter || addrObj.city_district || "";
-            city = city || addrObj.city || addrObj.town || addrObj.village || addrObj.county || addrObj.state || "";
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
+          headers: { 'Accept-Language': 'en', 'User-Agent': 'PunchX-Service-App/1.0' }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.display_name) {
+            fullAddress = fullAddress || data.display_name;
+            const a = data.address || {};
+            area = area || a.sublocality || a.neighbourhood || a.suburb || a.residential || a.road || '';
+            city = city || a.city || a.town || a.village || a.county || '';
           }
         }
-      } catch (e) {
-        console.warn("Nominatim fallback warning:", e);
+      } catch (error) {
+        console.warn('Nominatim reverse geocoding warning:', error);
       }
     }
 
-    // BigDataCloud client reverse geocode fallback
     if ((!fullAddress || !area) && lat && lng) {
       try {
-        const bdcRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
-        if (bdcRes.ok) {
-          const bdcData = await bdcRes.json();
-          if (bdcData) {
-            const locality = bdcData.locality || bdcData.principalSubdivision || "";
-            city = city || bdcData.city || locality;
-            area = area || locality;
-            fullAddress = fullAddress || `${locality ? locality + ', ' : ''}${city || ''}, ${bdcData.countryName || ''}`.trim();
-          }
+        const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`);
+        if (response.ok) {
+          const data = await response.json();
+          const locality = data?.locality || data?.principalSubdivision || '';
+          city = city || data?.city || locality;
+          area = area || locality;
+          fullAddress = fullAddress || [locality, city, data?.countryName].filter(Boolean).join(', ');
         }
-      } catch (e) {
-        console.warn("BigDataCloud fallback warning:", e);
+      } catch (error) {
+        console.warn('BigDataCloud reverse geocoding warning:', error);
       }
     }
 
-    // Default fallbacks if address missing
-    if (!fullAddress) {
-      fullAddress = address || "Indiranagar 100ft Road, Sector 2, Bengaluru, KA 560038";
-    }
+    // Never invent a real address or coordinates. Return empty values when location could not be resolved.
+    const rawArea = (area || '').trim();
+    const normalizedCity = (city || '').trim();
+    const normalizedAddress = (fullAddress || '').trim();
 
-    // Clean sector calculation logic
-    const rawArea = (area || fullAddress.split(',')[0] || "Indiranagar").trim();
-    let sectorName = "";
-
-    const lowerStr = (fullAddress + " " + rawArea).toLowerCase();
-    if (lowerStr.includes("hsr")) {
-      sectorName = "Sector 1 (HSR Layout)";
-    } else if (lowerStr.includes("indiranagar")) {
-      sectorName = "Sector 2 (Indiranagar)";
-    } else if (lowerStr.includes("koramangala")) {
-      sectorName = "Sector 3 (Koramangala)";
-    } else if (lowerStr.includes("whitefield")) {
-      sectorName = "Sector 4 (Whitefield)";
-    } else if (lowerStr.includes("jayanagar")) {
-      sectorName = "Sector 5 (Jayanagar)";
-    } else if (lowerStr.includes("jp nagar")) {
-      sectorName = "Sector 6 (JP Nagar)";
-    } else if (lowerStr.includes("electronic city")) {
-      sectorName = "Sector 7 (Electronic City)";
-    } else if (lowerStr.includes("bellandur")) {
-      sectorName = "Sector 8 (Bellandur)";
-    } else {
-      const cleanSub = rawArea.replace(/sector|layout|stage|phase|block/gi, "").trim();
-      sectorName = `Sector (${cleanSub || 'Metro Zone'})`;
-    }
+    let sector = '';
+    const lower = `${normalizedAddress} ${rawArea}`.toLowerCase();
+    if (lower.includes('hsr')) sector = 'HSR Layout';
+    else if (lower.includes('indiranagar')) sector = 'Indiranagar';
+    else if (lower.includes('koramangala')) sector = 'Koramangala';
+    else if (lower.includes('whitefield')) sector = 'Whitefield';
+    else if (lower.includes('jayanagar')) sector = 'Jayanagar';
+    else if (lower.includes('jp nagar')) sector = 'JP Nagar';
+    else if (lower.includes('electronic city')) sector = 'Electronic City';
+    else if (lower.includes('bellandur')) sector = 'Bellandur';
+    else sector = rawArea;
 
     return res.json({
-      address: fullAddress,
+      address: normalizedAddress,
       area: rawArea,
-      city: city || "Bengaluru",
-      sector: sectorName,
-      lat: lat || 12.9716,
-      lng: lng || 77.5946
+      city: normalizedCity,
+      sector,
+      lat: typeof lat === 'number' && Number.isFinite(lat) ? lat : null,
+      lng: typeof lng === 'number' && Number.isFinite(lng) ? lng : null,
+      resolved: Boolean(normalizedAddress || (lat && lng))
     });
-  } catch (err: any) {
-    console.error("Geocode backend error:", err);
-    return res.status(500).json({ error: "Geocoding failed" });
+  } catch (error) {
+    console.error('Geocode backend error:', error);
+    return res.status(500).json({ error: 'Geocoding failed' });
   }
 }
