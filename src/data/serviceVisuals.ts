@@ -40,7 +40,7 @@ const PHOTO_LIBRARY = {
   construction: 'https://images.unsplash.com/photo-1653280668407-50b18ec4ef42?auto=format&fit=crop&w=1200&q=82',
   painter: 'https://images.unsplash.com/photo-1742900280861-32bed068938b?auto=format&fit=crop&w=1200&q=82',
   carpenter: 'https://images.unsplash.com/photo-1575839127400-6b9e36bf97f8?auto=format&fit=crop&w=1200&q=82',
-  beauty: 'https://images.unsplash.com/photo-1722959833075-5b7e4e5f1c4d?auto=format&fit=crop&w=1200&q=82',
+  beauty: 'https://images.unsplash.com/photo-1722935408489-2bf93349c8cb?auto=format&fit=crop&w=1200&q=82',
   food: 'https://images.unsplash.com/photo-1776353744117-9e8595e8092c?auto=format&fit=crop&w=1200&q=82',
 } as const;
 
@@ -67,10 +67,7 @@ export const serviceImageFallback = (term: string, subtitle = '') => {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-/**
- * Returns a real professional photo from the curated web library. Consumers should attach
- * serviceImageFallback(...) to img.onerror; this keeps the UI intact if a remote CDN is unavailable.
- */
+/** Returns a real professional photo from the curated web library. */
 export const serviceImage = (term: string, _subtitle = '') => photoFor(term);
 
 export const materialFor = (category: string, item: string) => {
