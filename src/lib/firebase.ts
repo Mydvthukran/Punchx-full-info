@@ -1,106 +1,109 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 import rawConfig from '../../firebase-applet-config.json';
 
-try {
-  setLogLevel('error');
-} catch {
-  // Ignore logging configuration failures in restricted environments.
+/**
+ * Firebase client configuration.
+ *
+ * The Firebase web config is public by design. Vercel environment variables,
+ * when supplied, override only non-empty values from the checked-in config.
+ */
+const raw = rawConfig || {};
+
+const env = (key: string): string => {
+  const value = import.meta.env[key];
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const firebaseConfig = {
+  apiKey: env('VITE_FIREBASE_API_KEY') || raw.apiKey || '',
+  authDomain: env('VITE_FIREBASE_AUTH_DOMAIN') || raw.authDomain || '',
+  projectId: env('VITE_FIREBASE_PROJECT_ID') || raw.projectId || '',
+  storageBucket: env('VITE_FIREBASE_STORAGE_BUCKET') || raw.storageBucket || '',
+  messagingSenderId: env('VITE_FIREBASE_MESSAGING_SENDER_ID') || raw.messagingSenderId || '',
+  appId: env('VITE_FIREBASE_APP_ID') || raw.appId || '',
+  measurementId: env('VITE_FIREBASE_MEASUREMENT_ID') || raw.measurementId || '',
+};
+
+const configuredDatabaseId =
+  env('VITE_FIREBASE_DATABASE_ID') ||
+  raw.firestoreDatabaseId ||
+  '';
+
+const missingConfig = ['apiKey', 'authDomain', 'projectId', 'appId'].filter(
+  (key) => !firebaseConfig[key as keyof typeof firebaseConfig]
+);
+
+if (missingConfig.length) {
+  console.warn(`Firebase client configuration is incomplete: ${missingConfig.join(', ')}`);
 }
 
-const fallbackConfig = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || "",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "",
-  oAuthClientId: import.meta.env.VITE_FIREBASE_OAUTH_CLIENT_ID || ""
-};
-
-const envConfig: Record<string, string> = {};
-if (import.meta.env.VITE_FIREBASE_API_KEY) envConfig.apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-if (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) envConfig.authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
-if (import.meta.env.VITE_FIREBASE_PROJECT_ID) envConfig.projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-if (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) envConfig.storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET;
-if (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) envConfig.messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID;
-if (import.meta.env.VITE_FIREBASE_APP_ID) envConfig.appId = import.meta.env.VITE_FIREBASE_APP_ID;
-
-// Use the Firebase configuration generated for the project as the source of truth.
-// In particular, do not replace authDomain with the PunchX website domain: Firebase
-// Auth expects the registered Firebase auth domain unless a custom auth domain has
-// explicitly been configured in the Firebase Console.
-const firebaseConfig = {
-  ...fallbackConfig,
-  ...(rawConfig || {}),
-  ...envConfig,
-  authDomain:
-    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
-    rawConfig?.authDomain ||
-    fallbackConfig.authDomain,
-};
+try {
+  // Keep Firebase's own error logging quiet in production without hiding errors
+  // from application-level diagnostics.
+  const { setLogLevel } = require('firebase/firestore');
+  setLogLevel('error');
+} catch {
+  // Vite/browser environments may not expose CommonJS require; Firestore still works.
+}
 
 let app: FirebaseApp;
+
 try {
   app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-} catch (initErr) {
-  console.warn("Firebase initialization notice, retrying with environment fallback:", initErr);
-  try {
-    app = initializeApp(fallbackConfig);
-  } catch (err2) {
-    app = getApps()[0] || ({} as FirebaseApp);
-  }
+} catch (error) {
+  console.error('Firebase app initialization failed:', error);
+  throw new Error('PunchX Firebase configuration is invalid. Check the Vercel Firebase environment variables.');
 }
 
 let firestoreInstance: Firestore;
-try {
-  const dbSettings = {
-    localCache: memoryLocalCache(),
-    experimentalForceLongPolling: true,
-  };
-  firestoreInstance = firebaseConfig.firestoreDatabaseId
-    ? initializeFirestore(app, dbSettings, firebaseConfig.firestoreDatabaseId)
-    : initializeFirestore(app, dbSettings);
-} catch (e) {
-  console.warn("Firestore initializeFirestore fallback to getFirestore:", e);
-  try {
-    firestoreInstance = firebaseConfig.firestoreDatabaseId
-      ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-      : getFirestore(app);
-  } catch (err3) {
-    console.warn("Firestore fallback initialization notice:", err3);
-    firestoreInstance = getFirestore(app);
-  }
-}
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('unhandledrejection', (event) => {
-    const reason = event.reason?.message || String(event.reason || '');
-    if (
-      reason.includes('closing') ||
-      reason.includes('hidden') ||
-      reason.includes('IndexedDb') ||
-      reason.includes('database is closing') ||
-      reason.includes('Database is closing/hidden') ||
-      reason.includes('unavailable') ||
-      reason.includes('Could not reach Cloud Firestore backend') ||
-      reason.includes('offline mode')
-    ) {
-      event.preventDefault();
-      console.warn('Handled transient database/network lifecycle event:', reason);
-    }
-  });
+try {
+  // Prefer PunchX's configured named Firestore database. memoryLocalCache avoids
+  // IndexedDB lifecycle failures on mobile/private browsers.
+  firestoreInstance = configuredDatabaseId
+    ? initializeFirestore(app, { localCache: memoryLocalCache() }, configuredDatabaseId)
+    : initializeFirestore(app, { localCache: memoryLocalCache() });
+} catch (namedDatabaseError) {
+  console.warn('PunchX named Firestore initialization failed; falling back to the default database:', namedDatabaseError);
+
+  try {
+    // If a named database is unavailable/misconfigured, the public application
+    // should still boot against the project's default Firestore database.
+    firestoreInstance = getFirestore(app);
+  } catch (defaultDatabaseError) {
+    console.error('Firebase Firestore initialization failed:', defaultDatabaseError);
+    throw new Error('PunchX could not initialize Firestore. Check the Firebase project/database configuration.');
+  }
 }
 
 let authInstance: Auth;
 try {
   authInstance = getAuth(app);
-} catch (authErr) {
-  console.warn("Auth initialization notice:", authErr);
-  authInstance = {} as Auth;
+} catch (error) {
+  console.error('Firebase Auth initialization failed:', error);
+  throw new Error('PunchX could not initialize Firebase Authentication. Check the Firebase Auth configuration.');
+}
+
+// Transient browser/network Firestore errors must not become uncaught React
+// errors. Actual operation failures are handled at the call sites.
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason?.message || String(event.reason || '');
+    const normalized = reason.toLowerCase();
+
+    if (
+      normalized.includes('database is closing') ||
+      normalized.includes('indexeddb') ||
+      normalized.includes('offline') ||
+      normalized.includes('could not reach cloud firestore backend') ||
+      normalized.includes('unavailable')
+    ) {
+      event.preventDefault();
+      console.warn('Handled transient Firestore/network event:', reason);
+    }
+  });
 }
 
 export const db = firestoreInstance;
@@ -117,18 +120,21 @@ export enum OperationType {
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+
   console.warn(`Firestore Notice [${operationType} on ${path || 'unknown'}]:`, message);
+
   if (
-    message.includes('closing') ||
-    message.includes('IndexedDb') ||
-    message.includes('hidden') ||
-    message.includes('database is closing') ||
-    message.includes('unavailable') ||
-    message.includes('offline')
+    normalized.includes('closing') ||
+    normalized.includes('indexeddb') ||
+    normalized.includes('hidden') ||
+    normalized.includes('unavailable') ||
+    normalized.includes('offline')
   ) {
-    console.warn("Firestore connection transient notice: continuing with local cache");
+    console.warn('Firestore transient connection notice; continuing with application state.');
     return;
   }
+
   throw new Error(`Database operation failed (${operationType}). Please try again.`);
 }
 
@@ -139,5 +145,5 @@ interface AuthSession {
 
 export const authSession: AuthSession = {
   recaptchaVerifier: null,
-  confirmationResult: null
+  confirmationResult: null,
 };
