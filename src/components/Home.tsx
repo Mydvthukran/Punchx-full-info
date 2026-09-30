@@ -445,7 +445,7 @@ export default function HomeDashboard({
 
  const handleCategoryClick = (categoryName: string) => {
   onSelectCategory(categoryName);
-    onTransition('service-categories');
+    setIsCategoryModelOpen(open);
   };
  
   return (
