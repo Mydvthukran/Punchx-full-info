@@ -9,6 +9,7 @@ import PushNotificationBanner from './components/PushNotificationBanner';
 import NotificationCenterModal from './components/NotificationCenterModal';
 import WebsiteNavbar from './components/WebsiteNavbar';
 import WebsiteFooter from './components/WebsiteFooter';
+import CitizenProfileDrawer from './components/CitizenProfileDrawer';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
 // Admin access is gated by Firebase Authentication + Firestore role === 'admin'
@@ -114,16 +115,10 @@ function AppMain() {
   const [bookingTime, setBookingTime] = useState('11:30 AM');
   const [bookingDate, setBookingDate] = useState('12');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  // State for mobile QR modal trigger
   const [isMobileQrOpen, setIsMobileQrOpen] = useState(false);
-  // State for Push Notification Center Modal
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
-  // State for Global Profile & Orders Drawer
   const [isGlobalProfileOpen, setIsGlobalProfileOpen] = useState(false);
 
-  // Admin access is gated by Firebase Authentication + Firestore userProfile.role === 'admin'
-
-  // Sync authenticated profile from AuthContext
   useEffect(() => {
     if (isLoadingProfile && currentUser) {
       setCitizenName('Loading profile...');
@@ -141,15 +136,12 @@ function AppMain() {
     }
   }, [userProfile, isLoadingProfile, currentUser]);
 
-  // Step 4: Secure Routing Guard & Direct Dashboard Routing Post-Login
   useEffect(() => {
     const protectedScreens: AppScreen[] = ['home', 'customer-setup', 'worker-setup', 'worker-dashboard', 'admin-dashboard', 'tracking', 'booking', 'payment', 'providers', 'provider-details'];
     if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen)) {
-      showToast("🔒 Active session required. Redirecting to portal select...");
+      showToast('🔒 Active session required. Redirecting to portal select...');
       setCurrentScreen('panel-select');
     }
-
-    // After login, direct user to their respective dashboard instead of panel selection or auth screens
     if (!isLoadingProfile && currentUser) {
       if (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select') {
         const resolvedRole = userProfile?.role || activePanelRole || 'customer';
@@ -176,7 +168,7 @@ function AppMain() {
 
   const onClaimPromo = () => {
     if (hasClaimedBonus || hasUsedBonus) {
-      showToast("⚠️ 20% First Order Bonus coupon has already been claimed.");
+      showToast('⚠️ 20% First Order Bonus coupon has already been claimed.');
       return;
     }
     setPromoApplied(true);
@@ -185,9 +177,9 @@ function AppMain() {
       localStorage.setItem('punchx_first_order_coupon_claimed', 'true');
       localStorage.setItem('punchx_active_coupon_applied', 'true');
     } catch (e) {
-      console.warn("Storage error saving promo status:", e);
+      console.warn('Storage error saving promo status:', e);
     }
-    showToast("✓ 20% First Order Bonus claimed! Discount applied to checkout.");
+    showToast('✓ 20% First Order Bonus claimed! Discount applied to checkout.');
   };
 
   const handleApplyPromoCode = (code: string) => {
@@ -195,7 +187,7 @@ function AppMain() {
     const validCodes = ['ELITE20', 'PUNCHX20', 'FIRST20', 'WELCOME20', 'BONUS20', 'SAVE20', 'DISCOUNT20'];
     if (validCodes.includes(upper)) {
       if (hasUsedBonus) {
-        showToast("⚠️ First-order promo coupon has already been redeemed on an earlier order.");
+        showToast('⚠️ First-order promo coupon has already been redeemed on an earlier order.');
         return;
       }
       setPromoApplied(true);
@@ -204,7 +196,7 @@ function AppMain() {
         localStorage.setItem('punchx_first_order_coupon_claimed', 'true');
         localStorage.setItem('punchx_active_coupon_applied', 'true');
       } catch (e) {
-        console.warn("Storage error saving coupon status:", e);
+        console.warn('Storage error saving coupon status:', e);
       }
       showToast(`✓ Coupon '${upper}' applied! 20% discount added to order.`);
     } else {
@@ -215,13 +207,11 @@ function AppMain() {
   const handleTransition = (target: AppScreen) => {
     try {
       let resolvedTarget = target;
-
-      // BUG-03/04 fix: Show descriptive toast for protected nav items when not authenticated
       const protectedNavScreens: Record<string, string> = {
-        'tracking': '📍 Live Tracking',
-        'providers': '🔍 Find Specialists',
-        'booking': '📋 Booking',
-        'payment': '💳 Payment',
+        tracking: '📍 Live Tracking',
+        providers: '🔍 Find Specialists',
+        booking: '📋 Booking',
+        payment: '💳 Payment',
         'provider-details': '👤 Specialist Details',
       };
       if (!currentUser && protectedNavScreens[target]) {
@@ -229,17 +219,12 @@ function AppMain() {
         resolvedTarget = 'panel-select';
       } else if (target === 'panel-select' && currentUser) {
         const resolvedRole = userProfile?.role || activePanelRole || 'customer';
-        if (resolvedRole === 'worker') {
-          resolvedTarget = 'worker-dashboard';
-        } else if (resolvedRole === 'admin') {
-          resolvedTarget = 'admin-dashboard';
-        } else {
-          resolvedTarget = 'home';
-        }
+        if (resolvedRole === 'worker') resolvedTarget = 'worker-dashboard';
+        else if (resolvedRole === 'admin') resolvedTarget = 'admin-dashboard';
+        else resolvedTarget = 'home';
       } else if (target === 'home' && !currentUser) {
         resolvedTarget = 'panel-select';
       }
-
       if (resolvedTarget === 'privacy-policy') {
         window.history.pushState({}, '', '/privacy-policy');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -265,7 +250,6 @@ function AppMain() {
     }
   };
 
-  // Ensure valid clean order history
   useEffect(() => {
     try {
       const existing = localStorage.getItem('punchx_order_history');
@@ -277,13 +261,12 @@ function AppMain() {
         localStorage.setItem('punchx_order_history', '[]');
       }
     } catch (e) {
-      console.warn("Error reading order history:", e);
-      localStorage.setItem('punchx_order_history', '[]');
+      console.warn('Error reading order history:', e);
+      try { localStorage.setItem('punchx_order_history', '[]'); } catch {}
     }
   }, []);
 
-  const isCitizenExperience = ['home','providers','provider-details','booking','payment','tracking'].includes(currentScreen);
-
+  const isCitizenExperience = ['home', 'providers', 'provider-details', 'booking', 'payment', 'tracking'].includes(currentScreen);
   const [deviceTime, setDeviceTime] = useState('12:00');
 
   useEffect(() => {
@@ -300,31 +283,20 @@ function AppMain() {
 
   return (
     <div className="relative min-h-screen bg-[#07122a] text-[#e1e3e4] overflow-x-hidden antialiased selection:bg-[#c5a059]/30 flex flex-col">
-      {/* Immersive Background decorative particles glow effect */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[15%] right-[10%] w-[35%] h-[35%] bg-[#c5a059]/5 rounded-full blur-[160px] animate-pulse"></div>
         <div className="absolute bottom-[20%] left-[10%] w-[35%] h-[35%] bg-[#e9c176]/5 rounded-full blur-[160px] animate-[pulse_6s_ease-in-out_infinite]"></div>
-        {/* Subtle royal pattern grid lines */}
         <div className="hidden md:block absolute inset-0 opacity-[0.02] bg-[radial-gradient(#c5a059_1px,transparent_1px)] [background-size:16px_16px]" />
       </div>
 
-      {/* Global Prestige Notification Toast */}
       {toastMessage && (
         <div id="global-prestige-toast" className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-sm bg-[#0c0f10]/95 border border-[#c5a059] px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex items-center gap-2.5 backdrop-blur-lg">
           <div className="w-2.5 h-2.5 rounded-full bg-[#c5a059] animate-ping flex-shrink-0" />
-          <p className="text-[11px] text-zinc-150 font-sans tracking-wide leading-relaxed">
-            {toastMessage}
-          </p>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="text-[#c5a059] hover:text-white ml-auto text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer"
-          >
-            OK
-          </button>
+          <p className="text-[11px] text-zinc-150 font-sans tracking-wide leading-relaxed">{toastMessage}</p>
+          <button onClick={() => setToastMessage(null)} className="text-[#c5a059] hover:text-white ml-auto text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer">OK</button>
         </div>
       )}
 
-      {/* Top Global Website Navigation Bar (Shown on all pages except initial splash) */}
       {currentScreen !== 'splash' && (
         <WebsiteNavbar
           currentScreen={currentScreen}
@@ -334,246 +306,46 @@ function AppMain() {
           citizenName={citizenName}
           citizenAddress={citizenAddress}
           onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
-          onOpenProfile={() => {
-            handleTransition('home');
-            setIsGlobalProfileOpen(true);
-          }}
+          onOpenProfile={() => { handleTransition('home'); setIsGlobalProfileOpen(true); }}
           onSelectCategory={setSelectedCategory}
           showNotification={showToast}
-          hasActiveBooking={true}
+          hasActiveBooking={false}
         />
       )}
 
-      {/* Website Main Content Area */}
-      <main className={`relative z-10 w-full flex-grow flex flex-col ${isCitizenExperience ? "punchx-citizen-main" : "bg-[#07122a]"}`}>
-        <Suspense fallback={
-          <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
-            <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
-          </div>
-        }>
-
-        {currentScreen === 'auth-callback' && (
-          <AuthCallback onTransition={handleTransition} />
-        )}
-        {currentScreen === 'splash' && (
-          <Splash onTransition={handleTransition} />
-        )}
-        {currentScreen === 'panel-select' && (
-          <PanelSelect
-            onSelectPanel={(panel, action) => {
-              setActivePanelRole(panel);
-              if (panel === 'worker' && action === 'signup') {
-                setCurrentScreen('worker-signup');
-              } else {
-                setCurrentScreen('auth');
-              }
-            }}
-            showNotification={showToast}
-          />
-        )}
-        {currentScreen === 'worker-signup' && (
-          <WorkerSignup
-            onTransition={handleTransition}
-            showNotification={showToast}
-            setWorkerApplicationData={setWorkerApplication}
-          />
-        )}
-        {currentScreen === 'worker-otp-pass' && (
-          <WorkerOtpPass
-            onTransition={handleTransition}
-            showNotification={showToast}
-            workerApplication={workerApplication}
-            setWorkerApplicationData={setWorkerApplication}
-          />
-        )}
-        {currentScreen === 'worker-pending-approval' && (
-          <WorkerPendingApproval
-            onTransition={handleTransition}
-            showNotification={showToast}
-            workerApplication={workerApplication}
-            setWorkerApplicationData={setWorkerApplication}
-          />
-        )}
-        {currentScreen === 'auth' && (
-          <Auth
-            onTransition={handleTransition}
-            showNotification={showToast}
-            setAuthMethodDetail={(method, target) => {
-              setAuthMethod(method);
-              setAuthTarget(target);
-            }}
-            activePanelRole={activePanelRole}
-          />
-        )}
-        {currentScreen === 'otp' && (
-          <OtpVerify
-            onTransition={handleTransition}
-            otpCode={otpCode}
-            setOtpCode={setOtpCode}
-            authMethod={authMethod}
-            authTarget={authTarget}
-            activePanelRole={activePanelRole}
-          />
-        )}
-        {currentScreen === 'customer-setup' && (
-          <CustomerLocationSetup
-            onTransition={handleTransition}
-            citizenName={citizenName}
-            setCitizenName={setCitizenName}
-            citizenAddress={citizenAddress}
-            setCitizenAddress={setCitizenAddress}
-            showNotification={showToast}
-            authMethod={authMethod}
-            authTarget={authTarget}
-          />
-        )}
-        {currentScreen === 'worker-setup' && (
-          <WorkerLocationSetup
-            onTransition={handleTransition}
-            showNotification={showToast}
-            authMethod={authMethod}
-            authTarget={authTarget}
-            workerApplication={workerApplication}
-            setWorkerApplicationData={setWorkerApplication}
-          />
-        )}
-        {currentScreen === 'home' && (
-          <HomeDashboard
-            onTransition={handleTransition}
-            onSelectWorker={setSelectedWorker}
-            onSelectCategory={setSelectedCategory}
-            hasActiveBooking={true}
-            promoApplied={promoApplied}
-            hasClaimedBonus={hasClaimedBonus}
-            hasUsedBonus={hasUsedBonus}
-            onClaimPromo={onClaimPromo}
-            citizenName={citizenName}
-            setCitizenName={setCitizenName}
-            citizenAddress={citizenAddress}
-            setCitizenAddress={setCitizenAddress}
-            authMethod={authMethod}
-            authTarget={authTarget}
-            showNotification={showToast}
-            onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
-            isProfileDrawerOpen={isGlobalProfileOpen}
-            setIsProfileDrawerOpen={setIsGlobalProfileOpen}
-          />
-        )}
-        {currentScreen === 'providers' && (
-          <ProvidersList
-            onTransition={handleTransition}
-            selectedCategory={selectedCategory}
-            onSelectWorker={setSelectedWorker}
-            authMethod={authMethod}
-            authTarget={authTarget}
-            showNotification={showToast}
-            citizenName={citizenName}
-            setCitizenName={setCitizenName}
-            citizenAddress={citizenAddress}
-            setCitizenAddress={setCitizenAddress}
-          />
-        )}
-        {currentScreen === 'provider-details' && (
-          <ProviderDetails
-            onTransition={handleTransition}
-            selectedWorker={selectedWorker}
-            showNotification={showToast}
-          />
-        )}
-        {currentScreen === 'booking' && (
-          <ConfirmBooking
-            onTransition={handleTransition}
-            selectedCategory={selectedCategory}
-            selectedWorker={selectedWorker}
-            promoApplied={promoApplied}
-            issueDescription={issueDescription}
-            setIssueDescription={setIssueDescription}
-            bookingTime={bookingTime}
-            setBookingTime={setBookingTime}
-            bookingDate={bookingDate}
-            setBookingDate={setBookingDate}
-            citizenAddress={citizenAddress}
-            setCitizenAddress={setCitizenAddress}
-          />
-        )}
-        {currentScreen === 'payment' && (
-          <ChoosePayment
-            onTransition={handleTransition}
-            selectedWorker={selectedWorker}
-            promoApplied={promoApplied}
-            hasUsedBonus={hasUsedBonus}
-            onOrderFinalized={() => {
-              if (promoApplied) {
-                setHasUsedBonus(true);
-                setPromoApplied(false);
-                try {
-                  localStorage.setItem('punchx_first_order_coupon_used', 'true');
-                  localStorage.removeItem('punchx_active_coupon_applied');
-                } catch (e) {
-                  console.warn(e);
-                }
-              }
-            }}
-            onApplyPromo={handleApplyPromoCode}
-            showNotification={showToast}
-          />
-        )}
-        {currentScreen === 'tracking' && (
-          <LiveTracking
-            onTransition={handleTransition}
-            bookingTime={bookingTime}
-          />
-        )}
-        {currentScreen === 'worker-dashboard' && (
-          <WorkerDashboard
-            onTransition={handleTransition}
-            showNotification={showToast}
-          />
-        )}
-        {currentScreen === 'admin-dashboard' && (
-          <AdminDashboard
-            onTransition={handleTransition}
-            showNotification={showToast}
-          />
-        )}
-        {currentScreen === 'privacy-policy' && (
-          <PrivacyPolicy
-            onTransition={handleTransition}
-            showNotification={showToast}
-          />
-        )}
-        {currentScreen === 'terms-and-conditions' && (
-          <TermsAndConditions
-            onTransition={handleTransition}
-            showNotification={showToast}
-          />
-        )}
-        {currentScreen === 'founder' && (
-          <Founder
-            onTransition={handleTransition}
-            showNotification={showToast}
-          />
-        )}
+      <main className={`relative z-10 w-full flex-grow flex flex-col ${isCitizenExperience ? 'punchx-citizen-main' : 'bg-[#07122a]'}`}>
+        <Suspense fallback={<div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]"><div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin"></div></div>}>
+          {currentScreen === 'auth-callback' && <AuthCallback onTransition={handleTransition} />}
+          {currentScreen === 'splash' && <Splash onTransition={handleTransition} />}
+          {currentScreen === 'panel-select' && <PanelSelect onSelectPanel={(panel, action) => { setActivePanelRole(panel); if (panel === 'worker' && action === 'signup') setCurrentScreen('worker-signup'); else setCurrentScreen('auth'); }} showNotification={showToast} />}
+          {currentScreen === 'worker-signup' && <WorkerSignup onTransition={handleTransition} showNotification={showToast} setWorkerApplicationData={setWorkerApplication} />}
+          {currentScreen === 'worker-otp-pass' && <WorkerOtpPass onTransition={handleTransition} showNotification={showToast} workerApplication={workerApplication} setWorkerApplicationData={setWorkerApplication} />}
+          {currentScreen === 'worker-pending-approval' && <WorkerPendingApproval onTransition={handleTransition} showNotification={showToast} workerApplication={workerApplication} setWorkerApplicationData={setWorkerApplication} />}
+          {currentScreen === 'auth' && <Auth onTransition={handleTransition} showNotification={showToast} setAuthMethodDetail={(method, target) => { setAuthMethod(method); setAuthTarget(target); }} activePanelRole={activePanelRole} />}
+          {currentScreen === 'otp' && <OtpVerify onTransition={handleTransition} otpCode={otpCode} setOtpCode={setOtpCode} authMethod={authMethod} authTarget={authTarget} activePanelRole={activePanelRole} />}
+          {currentScreen === 'customer-setup' && <CustomerLocationSetup onTransition={handleTransition} citizenName={citizenName} setCitizenName={setCitizenName} citizenAddress={citizenAddress} setCitizenAddress={setCitizenAddress} showNotification={showToast} authMethod={authMethod} authTarget={authTarget} />}
+          {currentScreen === 'worker-setup' && <WorkerLocationSetup onTransition={handleTransition} showNotification={showToast} authMethod={authMethod} authTarget={authTarget} workerApplication={workerApplication} setWorkerApplicationData={setWorkerApplication} />}
+          {currentScreen === 'home' && <HomeDashboard onTransition={handleTransition} onSelectWorker={setSelectedWorker} onSelectCategory={setSelectedCategory} hasActiveBooking={false} promoApplied={promoApplied} hasClaimedBonus={hasClaimedBonus} hasUsedBonus={hasUsedBonus} onClaimPromo={onClaimPromo} citizenName={citizenName} setCitizenName={setCitizenName} citizenAddress={citizenAddress} setCitizenAddress={setCitizenAddress} authMethod={authMethod} authTarget={authTarget} showNotification={showToast} onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)} isProfileDrawerOpen={isGlobalProfileOpen} setIsProfileDrawerOpen={setIsGlobalProfileOpen} />}
+          {currentScreen === 'providers' && <ProvidersList onTransition={handleTransition} selectedCategory={selectedCategory} onSelectWorker={setSelectedWorker} authMethod={authMethod} authTarget={authTarget} showNotification={showToast} citizenName={citizenName} setCitizenName={setCitizenName} citizenAddress={citizenAddress} setCitizenAddress={setCitizenAddress} />}
+          {currentScreen === 'provider-details' && <ProviderDetails onTransition={handleTransition} selectedWorker={selectedWorker} showNotification={showToast} />}
+          {currentScreen === 'booking' && <ConfirmBooking onTransition={handleTransition} selectedCategory={selectedCategory} selectedWorker={selectedWorker} promoApplied={promoApplied} issueDescription={issueDescription} setIssueDescription={setIssueDescription} bookingTime={bookingTime} setBookingTime={setBookingTime} bookingDate={bookingDate} setBookingDate={setBookingDate} citizenAddress={citizenAddress} setCitizenAddress={setCitizenAddress} />}
+          {currentScreen === 'payment' && <ChoosePayment onTransition={handleTransition} selectedWorker={selectedWorker} promoApplied={promoApplied} hasUsedBonus={hasUsedBonus} onOrderFinalized={() => { if (promoApplied) { setHasUsedBonus(true); setPromoApplied(false); try { localStorage.setItem('punchx_first_order_coupon_used', 'true'); localStorage.removeItem('punchx_active_coupon_applied'); } catch (e) { console.warn(e); } } }} onApplyPromo={handleApplyPromoCode} showNotification={showToast} />}
+          {currentScreen === 'tracking' && <LiveTracking onTransition={handleTransition} bookingTime={bookingTime} />}
+          {currentScreen === 'worker-dashboard' && <WorkerDashboard onTransition={handleTransition} showNotification={showToast} />}
+          {currentScreen === 'admin-dashboard' && <AdminDashboard onTransition={handleTransition} showNotification={showToast} />}
+          {currentScreen === 'privacy-policy' && <PrivacyPolicy onTransition={handleTransition} showNotification={showToast} />}
+          {currentScreen === 'terms-and-conditions' && <TermsAndConditions onTransition={handleTransition} showNotification={showToast} />}
+          {currentScreen === 'founder' && <Founder onTransition={handleTransition} showNotification={showToast} />}
         </Suspense>
       </main>
 
-      {/* Global Website Footer (Shown on all pages except initial splash screen) */}
-      {currentScreen !== 'splash' && (
-        <WebsiteFooter
-          onTransition={handleTransition}
-          onSelectCategory={setSelectedCategory}
-          showNotification={showToast}
-        />
-      )}
+      {currentScreen !== 'splash' && <WebsiteFooter onTransition={handleTransition} onSelectCategory={setSelectedCategory} showNotification={showToast} />}
 
-      {/* Global Bot Companion DRAGO AI Assist */}
       <DragoAssistant
         currentScreen={currentScreen}
         onAutoFillOtp={(code) => setOtpCode(code)}
         onApplyPromo={(code) => setPromoApplied(true)}
-        onAutoFillBooking={() =>
-          setIssueDescription("AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.")
-        }
+        onAutoFillBooking={() => setIssueDescription('AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.')}
       />
 
       <CitizenProfileDrawer
@@ -585,17 +357,9 @@ function AppMain() {
         showNotification={showToast}
       />
 
-      {/* Global Interactive QR Code Modal */}
       <MobileQRModal isOpen={isMobileQrOpen} onClose={() => setIsMobileQrOpen(false)} />
-
-      {/* Global Push Notification Floating Alert Banner */}
       <PushNotificationBanner onOpenCenter={() => setIsNotificationCenterOpen(true)} />
-
-      {/* Global Push Notification Center & Simulator Controls Modal */}
-      <NotificationCenterModal
-        isOpen={isNotificationCenterOpen}
-        onClose={() => setIsNotificationCenterOpen(false)}
-      />
+      <NotificationCenterModal isOpen={isNotificationCenterOpen} onClose={() => setIsNotificationCenterOpen(false)} />
     </div>
   );
 }
