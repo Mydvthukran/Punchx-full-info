@@ -4,6 +4,7 @@ import { SERVICE_WORKS_2 } from './serviceCatalogWorks2';
 import { SERVICE_WORKS_3 } from './serviceCatalogWorks3';
 import { SERVICE_WORKS_4 } from './serviceCatalogWorks4';
 import { SERVICE_WORKS_5 } from './serviceCatalogWorks5';
+import { materialFor, serviceImage } from './serviceVisuals';
 
 export type ServiceUnit = 'job' | 'piece' | 'hour' | 'item' | 'sqft' | 'kg' | 'day' | 'visit';
 export type ServiceType = 'repair' | 'replacement' | 'installation' | 'cleaning' | 'inspection' | 'service' | 'rental';
@@ -50,11 +51,7 @@ const SERVICE_WORKS: Record<string, readonly WorkGroup[]> = {
   ...SERVICE_WORKS_5,
 };
 
-const imageFor = (term: string) =>
-  `https://source.unsplash.com/800x520/?${encodeURIComponent(term.replace(/&/g, ' '))}`;
-
-const slug = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const serviceTypeFor = (name: string): ServiceType => {
   const n = name.toLowerCase();
@@ -79,26 +76,27 @@ const buildCategory = (category: typeof PUNCHX_50_CATEGORIES[number]): ServiceCa
     id: category.id,
     name: category.name,
     description: category.shortDesc,
-    image: imageFor(category.name),
+    image: serviceImage(category.name, category.shortDesc),
     subcategories: groups.map(([name, itemNames], subIndex) => {
       const subId = `${category.id}-${slug(name)}`;
       return {
         id: subId,
         name,
         description: `${name} services for ${category.name}. Select the exact work below.`,
-        image: imageFor(`${category.name} ${name}`),
+        image: serviceImage(`${category.name} • ${name}`, 'Service group and required tools/materials'),
         items: itemNames.map((itemName, itemIndex) => {
           const multiplier = 1 + (subIndex * 0.12) + (itemIndex * 0.06);
           const price = Math.max(49, Math.round(Number(category.basePrice || 199) * multiplier / 10) * 10);
+          const material = materialFor(category.name, itemName);
           return {
             id: `${subId}-${slug(itemName)}`,
             name: itemName,
             description: `${itemName} at the residential visit location. Final price may vary for materials, quantity or additional work.`,
-            price,
-            image: imageFor(`${category.name} ${name}`),
+            image: serviceImage(`${category.name} • ${itemName}`, material),
             popular: subIndex === 0 && itemIndex === 0,
             unit: 'job' as ServiceUnit,
             serviceType: serviceTypeFor(itemName),
+            material,
             duration: durationFor(itemName),
             rating: 4.8,
             reviews: 100 + ((subIndex + 1) * 37) + itemIndex * 19,
@@ -114,12 +112,7 @@ export const SERVICE_CATEGORIES = serviceCategories;
 
 export const getCatalogCategory = (nameOrId: string) => {
   const target = nameOrId.trim().toLowerCase();
-  return serviceCategories.find((c) =>
-    c.id.toLowerCase() === target ||
-    c.name.toLowerCase() === target ||
-    c.name.toLowerCase().includes(target) ||
-    target.includes(c.name.toLowerCase())
-  );
+  return serviceCategories.find((c) => c.id.toLowerCase() === target || c.name.toLowerCase() === target || c.name.toLowerCase().includes(target) || target.includes(c.name.toLowerCase()));
 };
 
 export const getCatalogService = (serviceId: string) => {
