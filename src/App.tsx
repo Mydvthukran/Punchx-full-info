@@ -335,9 +335,7 @@ function AppMain() {
           citizenAddress={citizenAddress}
           onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
           onOpenProfile={() => {
-            if (currentScreen !== 'home') {
-              setCurrentScreen('home');
-            }
+            handleTransition('home');
             setIsGlobalProfileOpen(true);
           }}
           onSelectCategory={setSelectedCategory}
@@ -457,6 +455,8 @@ function AppMain() {
             authTarget={authTarget}
             showNotification={showToast}
             onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
+            isProfileDrawerOpen={isGlobalProfileOpen}
+            setIsProfileDrawerOpen={setIsGlobalProfileOpen}
           />
         )}
         {currentScreen === 'providers' && (
@@ -574,6 +574,15 @@ function AppMain() {
         onAutoFillBooking={() =>
           setIssueDescription("AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.")
         }
+      />
+
+      <CitizenProfileDrawer
+        isOpen={isGlobalProfileOpen}
+        onClose={() => setIsGlobalProfileOpen(false)}
+        onTransition={handleTransition}
+        citizenName={citizenName}
+        citizenAddress={citizenAddress}
+        showNotification={showToast}
       />
 
       {/* Global Interactive QR Code Modal */}
