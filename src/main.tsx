@@ -4,43 +4,50 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
-// Recover automatically when a deployment replaces an old Vite chunk while a
-// user's browser still has the previous HTML/JS manifest cached.
+// Production-safe recovery for Vite deployment/version skew. Vite documents that
+// an old HTML document can reference chunks removed by a newer deployment. A
+// plain reload can reuse that stale HTML, so recovery uses a one-time cache-busting
+// URL and the server sends no-cache headers for the HTML document.
 if (typeof window !== 'undefined') {
-  const reloadKey = 'punchx-vite-recovery-attempt';
+  const recoveryKey = 'punchx-vite-recovery-version';
 
-  const reloadOnce = () => {
+  const recoverFromStaleDeployment = () => {
     try {
-      if (sessionStorage.getItem(reloadKey) === '1') return;
-      sessionStorage.setItem(reloadKey, '1');
+      const currentVersion = sessionStorage.getItem(recoveryKey);
+      const recoveryVersion = String(Date.now());
+      // Allow one cache-busted recovery for each browser session/version incident.
+      if (currentVersion) return;
+      sessionStorage.setItem(recoveryKey, recoveryVersion);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('__punchx_refresh', recoveryVersion);
+      window.location.replace(url.toString());
     } catch {
-      // Continue with a normal reload if sessionStorage is unavailable.
+      window.location.reload();
     }
-    window.location.reload();
   };
 
   window.addEventListener('vite:preloadError', (event) => {
     event.preventDefault();
-    reloadOnce();
+    recoverFromStaleDeployment();
   });
 
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
     const msg = String(reason?.message || reason || '').toLowerCase();
 
-    // Vite dynamic-import failures commonly happen after a new deployment.
     if (
       msg.includes('failed to fetch dynamically imported module') ||
       msg.includes('importing a module script failed') ||
-      msg.includes('loading chunk')
+      msg.includes('loading chunk') ||
+      msg.includes('chunkloaderror')
     ) {
       event.preventDefault();
-      reloadOnce();
+      recoverFromStaleDeployment();
       return;
     }
 
-    // Ignore transient Vite dev-server websocket errors; they are not app crashes.
-    if (msg.includes('websocket') || msg.includes('vite') || msg.includes('ws')) {
+    if (msg.includes('websocket') && (msg.includes('vite') || msg.includes('ws'))) {
       event.preventDefault();
       event.stopImmediatePropagation();
     }
