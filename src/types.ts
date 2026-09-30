@@ -122,6 +122,10 @@ export interface OrderRecord {
   couponUsed?: string | null;
   visitingFee?: number;
   platformCommission?: number;
+  commissionRate?: number;
+  customerPlatformFee?: number;
+  professionalPayout?: number;
+  punchXGrossRevenue?: number;
   gstAmount?: number;
   totalAmountToPay?: number;
   date: string;
@@ -133,6 +137,8 @@ export interface OrderRecord {
   customerLocation?: { lat: number; lng: number };
   customerId?: string;
   workerId?: string;
+  workerPhone?: string;
+  workerIsDemo?: boolean;
   area?: string;
   sector?: string;
   otpCode?: string;
@@ -142,6 +148,7 @@ export interface OrderRecord {
   userRating?: number;
   userBehaviour?: string;
   paymentMethod?: string;
+  paymentStatus?: string;
   createdAt?: string;
   completedAt?: string;
   // 30-Day Guarantee
@@ -157,7 +164,6 @@ export interface OrderRecord {
   emergencyETA?: string;
   emergencySurcharge?: number;
   baseFee?: number;
-  workerPhone?: string;
   isRebooking?: boolean;
   createdTimestamp?: number;
   // Arrival Quality & Complaints
@@ -202,9 +208,9 @@ export interface WarrantyClaim {
   rebookingDate?: string;
   rebookingTime?: string;
   rebookingOrderId?: string;
-  workerPayoutFee?: number; // ₹59
-  servicePersonVisitingCharge?: number; // ₹59
-  customerCharge?: number; // ₹0
+  workerPayoutFee?: number;
+  servicePersonVisitingCharge?: number;
+  customerCharge?: number;
   createdAt: string;
   reviewedAt?: string;
   approvedAt?: string;
@@ -226,7 +232,7 @@ export interface ComplaintRecord {
   behaviourRating: 'good' | 'poor' | 'unprofessional' | 'EXCELLENT' | 'NEEDS_IMPROVEMENT' | 'UNACCEPTABLE';
   comment?: string;
   status: 'CRITICAL_PENDING_ADMIN' | 'UNDER_REVIEW' | 'RESOLVED';
-  discountAmount: number; // 10% of main service
+  discountAmount: number;
   paymentMethod?: string;
   refundType: 'COD_DISCOUNT' | 'PREPAID_REFUND' | 'CASH_DISCOUNT' | 'PREPAID_GATEWAY_REFUND';
   refundStatus?: 'DISCOUNT_APPLIED' | 'REFUND_QUEUED' | 'REFUND_COMPLETED';
@@ -253,8 +259,8 @@ export interface CustomerReview {
 }
 
 export interface BookingDetails {
-  date: string; // e.g., "MON 12"
-  time: string; // e.g., "11:30 AM"
+  date: string;
+  time: string;
   address: string;
   description: string;
   uploadedPhoto: string | null;
