@@ -14,10 +14,10 @@ if (typeof window !== 'undefined') {
 
   const recoverFromStaleDeployment = () => {
     try {
-      // Remove recovery flags from older builds so a stale browser session
-      // cannot block the current deployment from recovering once.
+      // Remove recovery flags from older builds, but preserve the current
+      // build's flag so one failed recovery cannot become an infinite reload loop.
       Object.keys(sessionStorage)
-        .filter((key) => key.startsWith('punchx-vite-recovery:'))
+        .filter((key) => key.startsWith('punchx-vite-recovery:') && key !== recoveryKey)
         .forEach((key) => sessionStorage.removeItem(key));
 
       if (sessionStorage.getItem(recoveryKey) === '1') {
