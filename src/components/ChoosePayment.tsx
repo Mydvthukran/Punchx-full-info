@@ -145,6 +145,7 @@ if (!firebaseUid) {
 const newOrder = {
   id: newOrderId,
   customerId: firebaseUid,
+  workerId: selectedWorker?.id || undefined,
   category: selectedWorker ? selectedWorker.category : 'AC Repair',
       workerName: selectedWorker ? selectedWorker.name : (dispatchMode === 'BROADCAST_15KM' ? 'Pending Broadcast (15km)' : 'Rajesh Kumar'),
       workerAvatar: selectedWorker ? selectedWorker.avatar : 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqGSkUfdfY3HcncTIY6PcfYdkpVlEw562C-in1-G55qC0H9bSKFW8cqmF3xtLQBiLByv5gRtdxWkYekhxeENWyFwDm8ul37KWcjYkERdCJIh3koj0rjMu5e_gD3YlqWbGhl-QHhYi6ut8VbLAlzAtiB0EsJQi8z-zzFZcQ7woGa9eEX8eNwTef7-3MnRen3OP5KenmJgDdlswqLaCtAAmMZ5DF5bLC6SCpZg_YiJm3UtNjd--OeKUw_xIodwne7y1Lg0eex3BtxJQ',
