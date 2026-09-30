@@ -282,6 +282,8 @@ function AppMain() {
     }
   }, []);
 
+  const isCitizenExperience = ['home','providers','provider-details','booking','payment','tracking'].includes(currentScreen);
+
   const [deviceTime, setDeviceTime] = useState('12:00');
 
   useEffect(() => {
@@ -333,9 +335,7 @@ function AppMain() {
           citizenAddress={citizenAddress}
           onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
           onOpenProfile={() => {
-            if (currentScreen !== 'home') {
-              setCurrentScreen('home');
-            }
+            handleTransition('home');
             setIsGlobalProfileOpen(true);
           }}
           onSelectCategory={setSelectedCategory}
@@ -345,7 +345,7 @@ function AppMain() {
       )}
 
       {/* Website Main Content Area */}
-      <main className="relative z-10 w-full flex-grow flex flex-col bg-[#07122a]">
+      <main className={`relative z-10 w-full flex-grow flex flex-col ${isCitizenExperience ? "punchx-citizen-main" : "bg-[#07122a]"}`}>
         <Suspense fallback={
           <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
             <div className="w-12 h-12 border-4 border-[#c5a059]/20 border-t-[#c5a059] rounded-full animate-spin shadow-[0_0_15px_rgba(197,160,89,0.5)]"></div>
@@ -455,6 +455,8 @@ function AppMain() {
             authTarget={authTarget}
             showNotification={showToast}
             onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
+            isProfileDrawerOpen={isGlobalProfileOpen}
+            setIsProfileDrawerOpen={setIsGlobalProfileOpen}
           />
         )}
         {currentScreen === 'providers' && (
@@ -572,6 +574,15 @@ function AppMain() {
         onAutoFillBooking={() =>
           setIssueDescription("AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.")
         }
+      />
+
+      <CitizenProfileDrawer
+        isOpen={isGlobalProfileOpen}
+        onClose={() => setIsGlobalProfileOpen(false)}
+        onTransition={handleTransition}
+        citizenName={citizenName}
+        citizenAddress={citizenAddress}
+        showNotification={showToast}
       />
 
       {/* Global Interactive QR Code Modal */}

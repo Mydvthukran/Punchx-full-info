@@ -6,7 +6,7 @@ import { CategoryProfileBadge } from './CategoryIcon';
 import { db } from '../lib/firebase';
 import { doc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../lib/authContext';
-import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress, getCoordinatesForAddressOrSector } from '../lib/location';
+import { requestAndAutoUpdateLocation, isSameAreaOrNearby, extractAreaFromAddress, getSectorFromAddress, getCoordinatesForAddressOrSector, getStoredCustomerCoordinates } from '../lib/location';
 import ServiceRadiusRadarModal from './ServiceRadiusRadarModal';
 import ServiceCategoryModal from './ServiceCategoryModal';
 import { isCategoryMatching } from '../data/categories';
@@ -23,6 +23,29 @@ interface ProvidersListProps {
   setCitizenName: (name: string) => void;
   citizenAddress: string;
   setCitizenAddress: (addr: string) => void;
+}
+
+
+const CATEGORY_IMAGES: Record<string, string> = {
+  electric: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=400&q=80',
+  plumber: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=400&q=80',
+  carpent: 'https://images.unsplash.com/photo-1601058268499-e52658b5b3e5?auto=format&fit=crop&w=400&q=80',
+  paint: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=400&q=80',
+  mason: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=400&q=80',
+  weld: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=400&q=80',
+  barber: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=400&q=80',
+  hair: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=400&q=80',
+  ac: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=400&q=80',
+  mechanic: 'https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=400&q=80',
+  default: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=400&q=80'
+};
+
+function getCategoryImage(category: string): string {
+  const key = category.toLowerCase();
+  for (const [match, url] of Object.entries(CATEGORY_IMAGES)) {
+    if (match !== 'default' && key.includes(match)) return url;
+  }
+  return CATEGORY_IMAGES.default;
 }
 
 export default function ProvidersList({
@@ -85,7 +108,7 @@ export default function ProvidersList({
             category: data.skill || 'General Repairs',
             rating: 5.0,
             reviewsCount: 12,
-            avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+            avatar: getCategoryImage(data.skill || 'General Repairs'),
             proBadge: 'AUTHORIZED',
             price: data.visitingFee || 199,
             visitingFee: data.visitingFee || 199,
@@ -93,7 +116,7 @@ export default function ProvidersList({
             address: wrkAddr,
             area: wrkArea,
             sector: wrkSector,
-            location: data.location || { lat: 12.9716, lng: 77.5946 },
+            location: data.location || getCoordinatesForAddressOrSector(wrkAddr, wrkArea, wrkSector),
             phone: data.phone || '+91 98765 43210'
           });
         }
@@ -145,8 +168,8 @@ export default function ProvidersList({
     return {
       ...expert,
       sector: workerSector,
-      sectorMatch: true,
-      isWithin15Km: true,
+      sectorMatch: proximity.isWithin15Km,
+      isWithin15Km: proximity.isWithin15Km,
       areaMatch: proximity.isMatch,
       distanceKm: distanceKm
     };
@@ -217,6 +240,8 @@ export default function ProvidersList({
     }
     showNotification("✓ Citizen profile metadata refreshed successfully.");
   };
+
+  const customerCoords = getStoredCustomerCoordinates(citizenAddress);
 
   return (
     <div id="providers-list-root" className="min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans pb-32">
@@ -616,8 +641,8 @@ export default function ProvidersList({
         onClose={() => setShowRadiusRadarModal(false)}
         mode="customer"
         centerLocation={{
-          lat: 12.9716,
-          lng: 77.5946,
+          lat: customerCoords.lat,
+          lng: customerCoords.lng,
           address: citizenAddress || 'Customer Residence',
           name: citizenName || 'Your Location'
         }}
