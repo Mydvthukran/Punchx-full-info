@@ -33,6 +33,7 @@ export default function Home(props: HomeProps) {
       citizenAddress={props.citizenAddress}
       showNotification={props.showNotification}
       onOpenNotificationCenter={props.onOpenNotificationCenter}
+      onOpenProfile={props.setIsProfileDrawerOpen ? () => props.setIsProfileDrawerOpen?.(true) : undefined}
     />
   );
 }
