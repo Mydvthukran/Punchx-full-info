@@ -1762,7 +1762,7 @@ const handleCategoryClick = (categoryName: string) => {
       {/* Centralized 50 Worker Categories Modal */}
       <ServiceCategoryModal
         isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
+        onClose={() => setIsCategoryModalOpen(true)}
         mode="citizen"
         onSelectCategory={(catName) => {
           handleCategoryClick(catName);
