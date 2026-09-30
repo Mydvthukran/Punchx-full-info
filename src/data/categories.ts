@@ -401,13 +401,28 @@ export const PUNCHX_50_CATEGORIES: ServiceCategoryItem[] = [
     keywords: ['dj', 'sound', 'sound technician', 'speakers', 'party dj', 'audio console', 'microphones', 'pa system']
   },
   {
-    id: 'tutor-home-teacher',
-    name: 'Tutor/Home Teacher',
-    shortDesc: 'Home tuition for school math, science, languages & competitive exam',
-    iconName: 'GraduationCap',
-    basePrice: 299,
-    keywords: ['tutor', 'teacher', 'home teacher', 'tuition', 'study', 'maths', 'science', 'english', 'coaching']
-  }
+  id: 'orchestra-team',
+  name: 'Orchestra Team',
+  shortDesc: 'Live orchestra, musical performances & event entertainment',
+  iconName: 'Music',
+  basePrice: 2999,
+  keywords: [
+    'orchestra',
+    'orchestra team',
+    'live music',
+    'musician',
+    'musicians',
+    'band',
+    'music band',
+    'live performance',
+    'event music',
+    'wedding music',
+    'party music',
+    'singer',
+    'instrumental',
+    'entertainment'
+  ]
+},
 ];
 
 export const SEARCH_CATEGORY_LIST = PUNCHX_50_CATEGORIES;
