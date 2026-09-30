@@ -84,6 +84,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   // GPS Location Auto Update State
   const [workerLocation, setWorkerLocation] = useState<LocationData | null>(null);
   const [isLocatingWorker, setIsLocatingWorker] = useState(false);
+  const workerWatchRef = useRef<number | null>(null);
+  const lastOrderGpsWriteRef = useRef(0);
   const [isAcademyOpen, setIsAcademyOpen] = useState(false);
   const [isSafetyStoreOpen, setIsSafetyStoreOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
@@ -203,6 +205,65 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   // Orders State
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
+
+  // Publish the professional's real GPS to every active order assigned to this worker.
+  useEffect(() => {
+    const uid = workerProfile.uid || currentUser?.uid;
+    if (!uid || !isOnline || typeof navigator === 'undefined' || !navigator.geolocation) return;
+
+    const activeOrders = orders.filter((o) =>
+      o.workerId === uid && (o.status === 'In-Progress' || (o.status as string) === 'Out for Service')
+    );
+    if (activeOrders.length === 0) {
+      if (workerWatchRef.current !== null) navigator.geolocation.clearWatch(workerWatchRef.current);
+      workerWatchRef.current = null;
+      return;
+    }
+
+    const publish = async (position: GeolocationPosition) => {
+      const next = { lat: position.coords.latitude, lng: position.coords.longitude };
+      setDistanceKm(0);
+      setEtaMinutes(0);
+      setWorkerLocation((prev) => ({ ...(prev || { address: '', area: '', city: '', sector: '' }), lat: next.lat, lng: next.lng } as LocationData));
+
+      const now = Date.now();
+      if (now - lastOrderGpsWriteRef.current < 7000) return;
+      lastOrderGpsWriteRef.current = now;
+
+      await Promise.all(activeOrders.map(async (order) => {
+        try {
+          await updateDoc(doc(db, 'orders', order.id), {
+            workerLocation: {
+              lat: next.lat,
+              lng: next.lng,
+              accuracy: position.coords.accuracy || null,
+              heading: position.coords.heading ?? null,
+              speed: position.coords.speed ?? null,
+              timestamp: new Date().toISOString()
+            },
+            updatedAt: new Date().toISOString()
+          });
+        } catch (err) {
+          console.warn('PunchX active-order GPS write failed:', err);
+        }
+      }));
+    };
+
+    const onError = (error: GeolocationPositionError) => {
+      console.warn('PunchX worker live GPS error:', error.message);
+    };
+
+    workerWatchRef.current = navigator.geolocation.watchPosition(publish, onError, {
+      enableHighAccuracy: true,
+      maximumAge: 2500,
+      timeout: 12000
+    });
+
+    return () => {
+      if (workerWatchRef.current !== null) navigator.geolocation.clearWatch(workerWatchRef.current);
+      workerWatchRef.current = null;
+    };
+  }, [orders, workerProfile.uid, currentUser?.uid, isOnline]);
   
   // Active workflow modal states
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -212,9 +273,9 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   const [showCongratulationsModal, setShowCongratulationsModal] = useState(false);
   const [completedPaymentSummary, setCompletedPaymentSummary] = useState<{ amount: number; method: string; orderId: string } | null>(null);
 
-  // Live Location Tracker Simulation State
-  const [etaMinutes, setEtaMinutes] = useState(6);
-  const [distanceKm, setDistanceKm] = useState(2.4);
+  // Live dispatch telemetry is derived from actual worker/customer coordinates.
+  const [etaMinutes, setEtaMinutes] = useState(0);
+  const [distanceKm, setDistanceKm] = useState(0);
 
   // Completion Form Inputs
   const [otpInput, setOtpInput] = useState('8842');
@@ -364,7 +425,18 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
     // FE-05: Require authenticated user before Firestore writes
     if (auth.currentUser?.uid) {
       try {
-        await updateDoc(doc(db, 'orders', selectedOrder.id), { status: 'In-Progress' });
+        await updateDoc(doc(db, 'orders', selectedOrder.id), {
+          status: 'In-Progress',
+          workerId: auth.currentUser.uid,
+          workerName: workerProfile.name,
+          workerAvatar: workerProfile.photoURL,
+          workerLocation: workerLocation?.lat && workerLocation?.lng ? {
+            lat: workerLocation.lat,
+            lng: workerLocation.lng,
+            timestamp: new Date().toISOString()
+          } : undefined,
+          updatedAt: new Date().toISOString()
+        });
       } catch (e) {
         console.error("Firestore accept order update failed:", e);
       }
