@@ -1,10 +1,12 @@
 # CI Tests Pipeline — Security, Performance & Quality Gates
-# Runs on every PR targeting main. All checks must pass before merge is allowed.
+# Runs on PRs and direct pushes to main. All checks must pass before merge is allowed.
 
 name: CI Tests — Security, Performance & Quality
 
 on:
   pull_request:
+    branches: ["main"]
+  push:
     branches: ["main"]
   workflow_dispatch:
 
