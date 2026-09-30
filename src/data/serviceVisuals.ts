@@ -32,8 +32,8 @@ const glyphFor = (term: string) => {
   return '●';
 };
 
-// Curated free-to-use Unsplash photographs. The URLs are used as premium visual references;
-// the catalogue still has a local SVG fallback so a remote image can never produce a broken-image card.
+// Curated free-to-use Unsplash photographs. They are wrapped inside a data-SVG so the card
+// always has a local visual fallback even if the external photo CDN is unavailable.
 const PHOTO_LIBRARY = {
   electrician: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1200&q=82',
   plumber: 'https://images.unsplash.com/photo-1749532125405-70950966b0e5?auto=format&fit=crop&w=1200&q=82',
@@ -57,7 +57,7 @@ const photoFor = (term: string) => {
   return PHOTO_LIBRARY.construction;
 };
 
-/** Local, dependency-free fallback. It is intentionally retained behind every remote photo. */
+/** Local, dependency-free fallback used inside the same image payload. */
 export const serviceImageFallback = (term: string, subtitle = '') => {
   const [bg, accent, dark] = paletteFor(term);
   const label = escapeXml(term.length > 30 ? `${term.slice(0, 29)}…` : term);
@@ -67,8 +67,19 @@ export const serviceImageFallback = (term: string, subtitle = '') => {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-/** Returns a real professional photo from the curated web library. */
-export const serviceImage = (term: string, _subtitle = '') => photoFor(term);
+/**
+ * Premium service visual: real web-sourced photo + a guaranteed local fallback layer.
+ * The image payload itself is a data URI, so the browser never renders a broken <img> icon.
+ */
+export const serviceImage = (term: string, subtitle = '') => {
+  const [bg, accent] = paletteFor(term);
+  const label = escapeXml(term.length > 34 ? `${term.slice(0, 33)}…` : term);
+  const sub = escapeXml(subtitle.length > 46 ? `${subtitle.slice(0, 45)}…` : subtitle);
+  const photo = escapeXml(photoFor(term));
+  const glyph = escapeXml(glyphFor(term));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520"><defs><linearGradient id="overlay" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#050816" stop-opacity=".06"/><stop offset="1" stop-color="#050816" stop-opacity=".78"/></linearGradient></defs><rect width="800" height="520" rx="36" fill="${bg}"/><image href="${photo}" x="0" y="0" width="800" height="520" preserveAspectRatio="xMidYMid slice"/><rect width="800" height="520" rx="36" fill="url(#overlay)"/><circle cx="710" cy="70" r="48" fill="${accent}" opacity=".85"/><text x="710" y="89" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" fill="#fff">${glyph}</text><rect x="48" y="360" width="704" height="112" rx="24" fill="#050816" opacity=".78"/><text x="76" y="405" font-family="Arial,sans-serif" font-size="29" font-weight="800" fill="#fff">${label}</text><text x="76" y="435" font-family="Arial,sans-serif" font-size="15" fill="#f5d889">PUNCHX • VERIFIED PROFESSIONAL SERVICE</text><text x="76" y="458" font-family="Arial,sans-serif" font-size="13" fill="#d9dde8">${sub}</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
 
 export const materialFor = (category: string, item: string) => {
   const t = `${category} ${item}`.toLowerCase();
