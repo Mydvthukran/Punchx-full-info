@@ -1,6 +1,12 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
+import {
+  getFirestore,
+  Firestore,
+  initializeFirestore,
+  memoryLocalCache,
+  setLogLevel,
+} from 'firebase/firestore';
 import rawConfig from '../../firebase-applet-config.json';
 
 /**
@@ -40,12 +46,9 @@ if (missingConfig.length) {
 }
 
 try {
-  // Keep Firebase's own error logging quiet in production without hiding errors
-  // from application-level diagnostics.
-  const { setLogLevel } = require('firebase/firestore');
   setLogLevel('error');
 } catch {
-  // Vite/browser environments may not expose CommonJS require; Firestore still works.
+  // Ignore logging configuration failures in restricted environments.
 }
 
 let app: FirebaseApp;
@@ -66,7 +69,10 @@ try {
     ? initializeFirestore(app, { localCache: memoryLocalCache() }, configuredDatabaseId)
     : initializeFirestore(app, { localCache: memoryLocalCache() });
 } catch (namedDatabaseError) {
-  console.warn('PunchX named Firestore initialization failed; falling back to the default database:', namedDatabaseError);
+  console.warn(
+    'PunchX named Firestore initialization failed; falling back to the default database:',
+    namedDatabaseError,
+  );
 
   try {
     // If a named database is unavailable/misconfigured, the public application
