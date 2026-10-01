@@ -1,0 +1,76 @@
+/* PUNCHX motion and media reliability layer. Kept separate from business logic. */
+
+@keyframes punchx-card-float {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(.15deg); }
+}
+@keyframes punchx-image-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+@keyframes punchx-cool-breeze {
+  0%,100% { transform:translateX(-4px) scale(1); opacity:.25; }
+  50% { transform:translateX(8px) scale(1.05); opacity:.7; }
+}
+
+/* Prevent the square JPG logo corners seen on small-screen splash/error states. */
+.punchx-splash img[alt="PUNCHX"],
+#punchx-error-fallback img[alt="PunchX"],
+img[alt="PunchX Logo"] {
+  border-radius:50% !important;
+  clip-path:circle(50% at 50% 50%);
+}
+
+/* Popular service cards: subtle motion, never an aggressive carousel. */
+.punchx-citizen-shell main > section:nth-of-type(2) button img,
+.punchx-citizen-shell main > section:nth-of-type(2) [role="button"] img {
+  animation:punchx-card-float 3.6s ease-in-out infinite;
+  will-change:transform;
+}
+.punchx-citizen-shell main > section:nth-of-type(2) button:nth-child(2n) img { animation-delay:-1.1s; }
+.punchx-citizen-shell main > section:nth-of-type(2) button:nth-child(3n) img { animation-delay:-2.2s; }
+
+/* Every category page gets lightweight image motion so all 50 services feel alive. */
+.punchx-service-page .punchx-category-hero-media img,
+.punchx-service-page section img {
+  transition:transform .45s cubic-bezier(.2,.8,.2,1),filter .45s ease;
+}
+.punchx-service-page section:hover img { transform:scale(1.025); }
+.punchx-service-page .punchx-category-hero-media::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  width:35%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
+  transform:translateX(-140%);
+  animation:punchx-image-shimmer 4.5s ease-in-out infinite;
+  pointer-events:none;
+}
+
+/* AC Technician gets the requested dedicated AC-style visual treatment. */
+.punchx-service-page.service-category-ac-technician .punchx-category-hero-media::before {
+  content:"";
+  position:absolute;
+  right:12px;
+  top:12px;
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  border:1px solid rgba(56,189,248,.65);
+  box-shadow:0 0 0 9px rgba(56,189,248,.08),0 0 28px rgba(56,189,248,.25);
+  animation:punchx-cool-breeze 2.8s ease-in-out infinite;
+  z-index:2;
+  pointer-events:none;
+}
+.punchx-service-page.service-category-ac-technician .punchx-category-hero-media::after {
+  background:linear-gradient(90deg,transparent,rgba(56,189,248,.48),transparent);
+  animation-duration:3.2s;
+}
+
+/* Keep motion accessible. */
+@media (prefers-reduced-motion:reduce) {
+  .punchx-citizen-shell main > section:nth-of-type(2) button img,
+  .punchx-service-page .punchx-category-hero-media::after,
+  .punchx-service-page.service-category-ac-technician .punchx-category-hero-media::before { animation:none !important; }
+  .punchx-service-page section:hover img { transform:none; }
+}
