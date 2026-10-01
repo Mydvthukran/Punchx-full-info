@@ -1,85 +1,128 @@
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
 
-const paletteFor = (term: string) => {
-  const t = term.toLowerCase();
-  if (t.includes('electric') || t.includes('fan') || t.includes('light') || t.includes('cctv')) return ['#ede9fe', '#6d28d9', '#312e81'];
-  if (t.includes('plumb') || t.includes('water') || t.includes('ro') || t.includes('bath')) return ['#e0f2fe', '#0369a1', '#0c4a6e'];
-  if (t.includes('carp') || t.includes('wood') || t.includes('furniture') || t.includes('door')) return ['#fef3c7', '#a16207', '#713f12'];
-  if (t.includes('paint') || t.includes('decor') || t.includes('beaut') || t.includes('hair')) return ['#fce7f3', '#be185d', '#831843'];
-  if (t.includes('clean') || t.includes('pest') || t.includes('garden')) return ['#dcfce7', '#15803d', '#14532d'];
-  if (t.includes('bike') || t.includes('car') || t.includes('driver') || t.includes('delivery') || t.includes('mechanic')) return ['#e0e7ff', '#4338ca', '#1e1b4b'];
-  if (t.includes('computer') || t.includes('mobile') || t.includes('electronic') || t.includes('technician')) return ['#e0f2fe', '#0f766e', '#134e4a'];
-  if (t.includes('food') || t.includes('cook') || t.includes('baker') || t.includes('cater')) return ['#ffedd5', '#c2410c', '#7c2d12'];
-  return ['#f3f4f6', '#4b5563', '#1f2937'];
-};
-
-const glyphFor = (term: string) => {
-  const t = term.toLowerCase();
-  if (t.includes('fan')) return '✣';
-  if (t.includes('light') || t.includes('bulb')) return '◉';
-  if (t.includes('water') || t.includes('plumb') || t.includes('tap')) return '💧';
-  if (t.includes('carp') || t.includes('wood') || t.includes('furniture')) return '⌂';
-  if (t.includes('clean')) return '✦';
-  if (t.includes('paint')) return '◒';
-  if (t.includes('camera') || t.includes('cctv')) return '◉';
-  if (t.includes('phone') || t.includes('mobile')) return '▣';
-  if (t.includes('computer') || t.includes('laptop')) return '▤';
-  if (t.includes('car') || t.includes('bike') || t.includes('vehicle')) return '▰';
-  if (t.includes('food') || t.includes('cook') || t.includes('baker')) return '◈';
-  if (t.includes('garden') || t.includes('plant')) return '✿';
-  if (t.includes('lock') || t.includes('key')) return '◆';
-  if (t.includes('paint') || t.includes('beaut')) return '✿';
-  return '●';
-};
-
-// Curated free-to-use Unsplash photographs. They are wrapped inside a data-SVG so the card
-// always has a local visual fallback even if the external photo CDN is unavailable.
+/**
+ * PUNCHX service imagery.
+ *
+ * These are direct image URLs rather than images embedded inside a data-SVG. That
+ * matters on production browsers because an external image nested inside a data
+ * URI can be blocked by CSP/origin rules and appear blurred or blank. Every
+ * category, subcategory and exact work therefore gets a real <img> source.
+ *
+ * The photographs are used as visual references for the service type; PUNCHX does
+ * not present them as photographs of a specific PUNCHX professional.
+ */
 const PHOTO_LIBRARY = {
-  electrician: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1200&q=82',
-  plumber: 'https://images.unsplash.com/photo-1749532125405-70950966b0e5?auto=format&fit=crop&w=1200&q=82',
-  construction: 'https://images.unsplash.com/photo-1653280668407-50b18ec4ef42?auto=format&fit=crop&w=1200&q=82',
-  painter: 'https://images.unsplash.com/photo-1742900280861-32bed068938b?auto=format&fit=crop&w=1200&q=82',
-  carpenter: 'https://images.unsplash.com/photo-1575839127400-6b9e36bf97f8?auto=format&fit=crop&w=1200&q=82',
-  beauty: 'https://images.unsplash.com/photo-1722935408489-2bf93349c8cb?auto=format&fit=crop&w=1200&q=82',
-  food: 'https://images.unsplash.com/photo-1776353744117-9e8595e8092c?auto=format&fit=crop&w=1200&q=82',
+  electrician: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=85',
+  plumber: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=1200&q=85',
+  carpenter: 'https://images.unsplash.com/photo-1601058268499-e52658b5b3e5?auto=format&fit=crop&w=1200&q=85',
+  painter: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=1200&q=85',
+  mason: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1200&q=85',
+  welder: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=1200&q=85',
+  barber: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1200&q=85',
+  beauty: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=1200&q=85',
+  tailor: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=1200&q=85',
+  mechanic: 'https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&w=1200&q=85',
+  bike: 'https://images.unsplash.com/photo-1530046339918-7e7c4ea7f4ad?auto=format&fit=crop&w=1200&q=85',
+  car: 'https://images.unsplash.com/photo-1625047509248-ec889cbff17f?auto=format&fit=crop&w=1200&q=85',
+  ac: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=1200&q=85',
+  refrigerator: 'https://images.unsplash.com/photo-1571175443880-49e1dca6f7e4?auto=format&fit=crop&w=1200&q=85',
+  washing: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?auto=format&fit=crop&w=1200&q=85',
+  mobile: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=85',
+  computer: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1200&q=85',
+  electronics: 'https://images.unsplash.com/photo-1517336714739-489689fd1ca8?auto=format&fit=crop&w=1200&q=85',
+  cctv: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=1200&q=85',
+  solar: 'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?auto=format&fit=crop&w=1200&q=85',
+  purifier: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&w=1200&q=85',
+  cleaning: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=85',
+  pest: 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?auto=format&fit=crop&w=1200&q=85',
+  garden: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=85',
+  cook: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=85',
+  baker: 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=1200&q=85',
+  caterer: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=1200&q=85',
+  tiffin: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1200&q=85',
+  laundry: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?auto=format&fit=crop&w=1200&q=85',
+  ironing: 'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?auto=format&fit=crop&w=1200&q=85',
+  movers: 'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?auto=format&fit=crop&w=1200&q=85',
+  delivery: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=1200&q=85',
+  security: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=1200&q=85',
+  ceiling: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85',
+  glass: 'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=85',
+  tile: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85',
+  waterproof: 'https://images.unsplash.com/photo-1628744448840-55bdb2497e1f?auto=format&fit=crop&w=1200&q=85',
+  upholstery: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=85',
+  interior: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4771?auto=format&fit=crop&w=1200&q=85',
+  event: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=85',
+  photographer: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1200&q=85',
+  videographer: 'https://images.unsplash.com/photo-1492724441997-5dc865305da7?auto=format&fit=crop&w=1200&q=85',
+  dj: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=85',
+  orchestra: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1200&q=85',
 } as const;
 
-const photoFor = (term: string) => {
+const photoFor = (term: string): string => {
   const t = term.toLowerCase();
-  if (t.includes('electric') || t.includes('fan') || t.includes('wiring') || t.includes('switch') || t.includes('mcb') || t.includes('cctv') || t.includes('solar')) return PHOTO_LIBRARY.electrician;
-  if (t.includes('plumb') || t.includes('water') || t.includes('tap') || t.includes('bath') || t.includes('drain') || t.includes('ro/')) return PHOTO_LIBRARY.plumber;
-  if (t.includes('paint') || t.includes('painter') || t.includes('wall') || t.includes('waterproof')) return PHOTO_LIBRARY.painter;
-  if (t.includes('carp') || t.includes('wood') || t.includes('furniture') || t.includes('door') || t.includes('glass') || t.includes('tile') || t.includes('mason') || t.includes('welder') || t.includes('fabricat') || t.includes('ceiling')) return PHOTO_LIBRARY.carpenter;
-  if (t.includes('beaut') || t.includes('hair') || t.includes('barber') || t.includes('tailor')) return PHOTO_LIBRARY.beauty;
-  if (t.includes('cook') || t.includes('baker') || t.includes('cater') || t.includes('tiffin') || t.includes('food') || t.includes('orchestra') || t.includes('event')) return PHOTO_LIBRARY.food;
-  if (t.includes('mechanic') || t.includes('bike') || t.includes('car ') || t.includes('vehicle') || t.includes('driver') || t.includes('delivery')) return PHOTO_LIBRARY.construction;
-  if (t.includes('clean') || t.includes('pest') || t.includes('garden') || t.includes('laundry') || t.includes('ironing')) return PHOTO_LIBRARY.construction;
-  return PHOTO_LIBRARY.construction;
+  // Exact appliance/service intent first, then broader trade intent.
+  if (t.includes('ac ') || t.startsWith('ac') || t.includes('air conditioner') || t.includes('hvac')) return PHOTO_LIBRARY.ac;
+  if (t.includes('refrigerator') || t.includes('fridge')) return PHOTO_LIBRARY.refrigerator;
+  if (t.includes('washing machine') || t.includes('washer') || t.includes('dryer')) return PHOTO_LIBRARY.washing;
+  if (t.includes('mobile') || t.includes('phone')) return PHOTO_LIBRARY.mobile;
+  if (t.includes('computer') || t.includes('laptop')) return PHOTO_LIBRARY.computer;
+  if (t.includes('electronic') || t.includes('tv') || t.includes('microwave') || t.includes('chimney')) return PHOTO_LIBRARY.electronics;
+  if (t.includes('cctv') || t.includes('camera') || t.includes('security system')) return PHOTO_LIBRARY.cctv;
+  if (t.includes('solar')) return PHOTO_LIBRARY.solar;
+  if (t.includes('ro') || t.includes('water purifier') || t.includes('purifier')) return PHOTO_LIBRARY.purifier;
+  if (t.includes('fan') || t.includes('electric') || t.includes('wiring') || t.includes('switch') || t.includes('socket') || t.includes('mcb') || t.includes('light') || t.includes('bulb')) return PHOTO_LIBRARY.electrician;
+  if (t.includes('plumb') || t.includes('water') || t.includes('tap') || t.includes('bath') || t.includes('drain') || t.includes('toilet') || t.includes('geyser')) return PHOTO_LIBRARY.plumber;
+  if (t.includes('carp') || t.includes('wood') || t.includes('furniture') || t.includes('door') || t.includes('cabinet')) return PHOTO_LIBRARY.carpenter;
+  if (t.includes('paint') || t.includes('wall') || t.includes('waterproof')) return t.includes('waterproof') ? PHOTO_LIBRARY.waterproof : PHOTO_LIBRARY.painter;
+  if (t.includes('mason') || t.includes('construction') || t.includes('civil')) return PHOTO_LIBRARY.mason;
+  if (t.includes('weld') || t.includes('fabricat') || t.includes('metal')) return PHOTO_LIBRARY.welder;
+  if (t.includes('barber')) return PHOTO_LIBRARY.barber;
+  if (t.includes('beaut') || t.includes('hair') || t.includes('salon') || t.includes('spa')) return PHOTO_LIBRARY.beauty;
+  if (t.includes('tailor') || t.includes('stitch') || t.includes('alteration')) return PHOTO_LIBRARY.tailor;
+  if (t.includes('bike')) return PHOTO_LIBRARY.bike;
+  if (t.includes('car ') || t.includes('automobile')) return PHOTO_LIBRARY.car;
+  if (t.includes('mechanic') || t.includes('vehicle')) return PHOTO_LIBRARY.mechanic;
+  if (t.includes('clean') || t.includes('housekeep') || t.includes('sofa')) return t.includes('sofa') ? PHOTO_LIBRARY.upholstery : PHOTO_LIBRARY.cleaning;
+  if (t.includes('pest')) return PHOTO_LIBRARY.pest;
+  if (t.includes('garden') || t.includes('plant') || t.includes('lawn')) return PHOTO_LIBRARY.garden;
+  if (t.includes('cook')) return PHOTO_LIBRARY.cook;
+  if (t.includes('baker') || t.includes('bakery')) return PHOTO_LIBRARY.baker;
+  if (t.includes('cater')) return PHOTO_LIBRARY.caterer;
+  if (t.includes('tiffin') || t.includes('home food')) return PHOTO_LIBRARY.tiffin;
+  if (t.includes('laundry') || t.includes('dry clean')) return PHOTO_LIBRARY.laundry;
+  if (t.includes('iron')) return PHOTO_LIBRARY.ironing;
+  if (t.includes('packer') || t.includes('mover')) return PHOTO_LIBRARY.movers;
+  if (t.includes('delivery') || t.includes('driver')) return PHOTO_LIBRARY.delivery;
+  if (t.includes('security guard')) return PHOTO_LIBRARY.security;
+  if (t.includes('ceiling') || t.includes('pop')) return PHOTO_LIBRARY.ceiling;
+  if (t.includes('glass') || t.includes('glazier')) return PHOTO_LIBRARY.glass;
+  if (t.includes('tile') || t.includes('marble')) return PHOTO_LIBRARY.tile;
+  if (t.includes('upholstery')) return PHOTO_LIBRARY.upholstery;
+  if (t.includes('interior') || t.includes('decor')) return PHOTO_LIBRARY.interior;
+  if (t.includes('event') || t.includes('wedding')) return PHOTO_LIBRARY.event;
+  if (t.includes('photograph')) return PHOTO_LIBRARY.photographer;
+  if (t.includes('videograph')) return PHOTO_LIBRARY.videographer;
+  if (t.includes('dj') || t.includes('sound')) return PHOTO_LIBRARY.dj;
+  if (t.includes('orchestra') || t.includes('music')) return PHOTO_LIBRARY.orchestra;
+  return PHOTO_LIBRARY.mason;
 };
 
-/** Local, dependency-free fallback used inside the same image payload. */
+const escapeSvgText = (value: string, max: number) => escapeXml(value.length > max ? `${value.slice(0, max - 1)}…` : value);
+
+/** Guaranteed local fallback for an image failure. */
 export const serviceImageFallback = (term: string, subtitle = '') => {
-  const [bg, accent, dark] = paletteFor(term);
-  const label = escapeXml(term.length > 30 ? `${term.slice(0, 29)}…` : term);
-  const sub = escapeXml(subtitle.length > 42 ? `${subtitle.slice(0, 41)}…` : subtitle);
-  const glyph = escapeXml(glyphFor(term));
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="${bg}"/><stop offset="1" stop-color="#ffffff"/></linearGradient></defs><rect width="800" height="520" rx="36" fill="url(#g)"/><circle cx="650" cy="110" r="90" fill="${accent}" opacity=".12"/><circle cx="150" cy="420" r="130" fill="${accent}" opacity=".08"/><rect x="72" y="78" width="150" height="150" rx="34" fill="white" opacity=".9"/><text x="147" y="184" text-anchor="middle" font-family="Arial,sans-serif" font-size="82" fill="${accent}">${glyph}</text><text x="72" y="300" font-family="Arial,sans-serif" font-size="36" font-weight="800" fill="${dark}">${label}</text><text x="72" y="345" font-family="Arial,sans-serif" font-size="19" fill="${accent}">PUNCHX • Verified service</text><text x="72" y="390" font-family="Arial,sans-serif" font-size="17" fill="${dark}" opacity=".72">${sub}</text><rect x="72" y="438" width="250" height="10" rx="5" fill="${accent}" opacity=".25"/><rect x="72" y="438" width="150" height="10" rx="5" fill="${accent}"/></svg>`;
+  const label = escapeSvgText(term, 34);
+  const sub = escapeSvgText(subtitle, 46);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8f1ff"/><stop offset="1" stop-color="#cfe0ff"/></linearGradient></defs><rect width="900" height="520" fill="url(#g)"/><circle cx="730" cy="100" r="110" fill="#2563eb" opacity=".12"/><rect x="60" y="70" width="170" height="170" rx="36" fill="#fff" opacity=".95"/><path d="M105 185h80M145 105v95" stroke="#2563eb" stroke-width="18" stroke-linecap="round"/><text x="60" y="330" font-family="Arial,sans-serif" font-size="38" font-weight="800" fill="#0f172a">${label}</text><text x="60" y="370" font-family="Arial,sans-serif" font-size="17" fill="#2563eb">PUNCHX • VERIFIED SERVICE</text><text x="60" y="404" font-family="Arial,sans-serif" font-size="15" fill="#475569">${sub}</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
 /**
- * Premium service visual: real web-sourced photo + a guaranteed local fallback layer.
- * The image payload itself is a data URI, so the browser never renders a broken <img> icon.
+ * Return a direct photograph URL for category, subcategory and exact-work cards.
+ * This is intentionally direct rather than wrapping the remote photo in a data
+ * URI, so the image remains crisp and visible in mobile production builds.
  */
-export const serviceImage = (term: string, subtitle = '') => {
-  const [bg, accent] = paletteFor(term);
-  const label = escapeXml(term.length > 34 ? `${term.slice(0, 33)}…` : term);
-  const sub = escapeXml(subtitle.length > 46 ? `${subtitle.slice(0, 45)}…` : subtitle);
-  const photo = escapeXml(photoFor(term));
-  const glyph = escapeXml(glyphFor(term));
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520"><defs><linearGradient id="overlay" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#050816" stop-opacity=".06"/><stop offset="1" stop-color="#050816" stop-opacity=".78"/></linearGradient></defs><rect width="800" height="520" rx="36" fill="${bg}"/><image href="${photo}" x="0" y="0" width="800" height="520" preserveAspectRatio="xMidYMid slice"/><rect width="800" height="520" rx="36" fill="url(#overlay)"/><circle cx="710" cy="70" r="48" fill="${accent}" opacity=".85"/><text x="710" y="89" text-anchor="middle" font-family="Arial,sans-serif" font-size="36" fill="#fff">${glyph}</text><rect x="48" y="360" width="704" height="112" rx="24" fill="#050816" opacity=".78"/><text x="76" y="405" font-family="Arial,sans-serif" font-size="29" font-weight="800" fill="#fff">${label}</text><text x="76" y="435" font-family="Arial,sans-serif" font-size="15" fill="#f5d889">PUNCHX • VERIFIED PROFESSIONAL SERVICE</text><text x="76" y="458" font-family="Arial,sans-serif" font-size="13" fill="#d9dde8">${sub}</text></svg>`;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-};
+export const serviceImage = (term: string, _subtitle = '') => photoFor(term);
 
 export const materialFor = (category: string, item: string) => {
   const t = `${category} ${item}`.toLowerCase();
