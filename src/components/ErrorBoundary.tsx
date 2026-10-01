@@ -5,48 +5,77 @@ import PUNCHX_LOGO from '../assets/logo';
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; error: Error | null; errorInfo: ErrorInfo | null; }
 
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = { hasError:false, error:null, errorInfo:null };
+const RECOVERY_KEY = 'punchx-runtime-recovery-v3';
 
-  public static getDerivedStateFromError(error: Error): State { return { hasError:true, error, errorInfo:null }; }
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = { hasError: false, error: null, errorInfo: null };
+
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error, errorInfo: null };
+  }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('PunchX Runtime Error Boundary caught:', error, errorInfo);
     this.setState({ errorInfo });
 
-    // A single automatic recovery handles transient stale bundles/runtime hydration failures.
-    // The session guard prevents infinite reload loops for a genuine code error.
-    try {
-      const key = 'punchx-runtime-recovery-v2';
-      if (sessionStorage.getItem(key) !== '1') {
-        sessionStorage.setItem(key, '1');
-        window.setTimeout(() => window.location.replace(`${window.location.pathname}?__punchx_recover=${Date.now()}`), 250);
+    const message = error?.message || '';
+    const isChunkError = /failed to fetch dynamically imported module|importing a module script failed|loading chunk|chunkloaderror|dynamically imported module/i.test(message);
+
+    // Chunk/version errors are recoverable without deleting account data.
+    // Use a versioned key so an older deploy cannot permanently consume the retry.
+    if (isChunkError) {
+      try {
+        if (sessionStorage.getItem(RECOVERY_KEY) !== '1') {
+          sessionStorage.setItem(RECOVERY_KEY, '1');
+          Object.keys(sessionStorage)
+            .filter((key) => key.startsWith('punchx-vite-recovery:') && !key.includes('runtime-recovery'))
+            .forEach((key) => sessionStorage.removeItem(key));
+          const url = new URL(window.location.href);
+          url.searchParams.set('__punchx_runtime_refresh', `${Date.now()}`);
+          window.setTimeout(() => window.location.replace(url.toString()), 150);
+        }
+      } catch {
+        window.setTimeout(() => window.location.reload(), 150);
       }
-    } catch { /* Ignore storage restrictions. */ }
+    }
   }
 
   private handleReload = () => {
-    try { sessionStorage.removeItem('punchx-runtime-recovery-v2'); } catch { /* Ignore. */ }
-    window.location.reload();
+    try {
+      sessionStorage.removeItem(RECOVERY_KEY);
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith('punchx-vite-recovery:'))
+        .forEach((key) => sessionStorage.removeItem(key));
+    } catch { /* Ignore storage restrictions. */ }
+    const url = new URL(window.location.href);
+    url.searchParams.set('__punchx_manual_refresh', `${Date.now()}`);
+    window.location.replace(url.toString());
   };
 
   private handleResetAndReload = () => {
     try {
-      Object.keys(localStorage).filter((key) => key.startsWith('punchx_')).forEach((key) => localStorage.removeItem(key));
-      sessionStorage.removeItem('punchx-runtime-recovery-v2');
-    } catch (error) { console.warn('PunchX storage reset notice:', error); }
-    window.location.replace('/');
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith('punchx_'))
+        .forEach((key) => localStorage.removeItem(key));
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith('punchx-'))
+        .forEach((key) => sessionStorage.removeItem(key));
+    } catch (error) {
+      console.warn('PunchX storage reset notice:', error);
+    }
+    window.location.replace(`/?__punchx_reset=${Date.now()}`);
   };
 
   private handleHome = () => {
-    try { sessionStorage.removeItem('punchx-runtime-recovery-v2'); } catch { /* Ignore. */ }
-    window.location.replace('/');
+    try { sessionStorage.removeItem(RECOVERY_KEY); } catch { /* Ignore. */ }
+    window.location.replace(`/?__punchx_home=${Date.now()}`);
   };
 
   public render() {
     if (!this.state.hasError) return this.props.children;
+
     const errorMessage = this.state.error?.message?.trim() || 'Unknown application error';
-    const isChunkError = /failed to fetch dynamically imported module|importing a module script failed|loading chunk|chunkloaderror/i.test(errorMessage);
+    const isChunkError = /failed to fetch dynamically imported module|importing a module script failed|loading chunk|chunkloaderror|dynamically imported module/i.test(errorMessage);
 
     return (
       <main id="punchx-error-fallback" className="min-h-screen w-full bg-[#f7faff] text-[#0f172a] flex items-center justify-center p-5 font-sans">
@@ -56,7 +85,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           <div className="mb-4 flex justify-center"><span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700"><AlertTriangle className="h-3.5 w-3.5" />{isChunkError ? 'Refreshing PunchX' : 'Temporary application error'}</span></div>
           <h1 className="text-center text-2xl font-black tracking-tight sm:text-3xl">{isChunkError ? 'PunchX needs a fresh version' : 'PunchX could not load this screen'}</h1>
-          <p className="mt-3 text-center text-sm leading-6 text-[#64748b]">{isChunkError ? 'A newer application asset is available. PunchX is refreshing safely without deleting your account data.' : 'The screen hit a temporary runtime problem. PunchX will try one automatic recovery; your account data is not deleted.'}</p>
+          <p className="mt-3 text-center text-sm leading-6 text-[#64748b]">{isChunkError ? 'A newer application asset is available. PunchX is refreshing safely without deleting your account data.' : 'The screen hit a temporary runtime problem. PunchX will keep your account data and provide a safe recovery path.'}</p>
           <div className="mt-6 flex flex-col gap-3">
             <button id="btn-error-reload" type="button" onClick={this.handleReload} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563eb] px-4 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-[#1d4ed8] active:translate-y-0"><RefreshCw className="h-4 w-4" /> Refresh PunchX</button>
             <button type="button" onClick={this.handleHome} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[#dbeafe] bg-[#f8fbff] px-4 py-3 text-sm font-bold text-[#2563eb] transition hover:bg-[#eef6ff]"><Home className="h-4 w-4" /> Open PunchX Home</button>
