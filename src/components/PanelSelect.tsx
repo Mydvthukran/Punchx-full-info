@@ -1,12 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { User, Wrench, ArrowRight, ShieldCheck, Sparkles, X, Lock, Key, Eye, EyeOff, AlertCircle, Building2 } from 'lucide-react';
 import { AppScreen } from '../types';
-import { 
-  User, Wrench, Building2, ArrowRight, ShieldCheck, Sparkles, 
-  ChevronRight, Lock, Key, Eye, EyeOff, AlertCircle, X, ShieldAlert, CheckCircle2
-} from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
-// Admin credentials are now server-side — no client-side email hints
 
 interface PanelSelectProps {
   onSelectPanel: (panel: 'customer' | 'worker' | 'admin', action?: 'login' | 'signup') => void;
@@ -14,324 +10,146 @@ interface PanelSelectProps {
 }
 
 export default function PanelSelect({ onSelectPanel, showNotification }: PanelSelectProps) {
-  // Public visible panels only (Admin Dashboard is completely hidden from public view)
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminPin, setAdminPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
+  const [adminError, setAdminError] = useState('');
+  const [logoTaps, setLogoTaps] = useState(0);
+
+  useEffect(() => {
+    if (logoTaps === 0) return;
+    const timer = window.setTimeout(() => setLogoTaps(0), 3000);
+    return () => window.clearTimeout(timer);
+  }, [logoTaps]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        setAdminOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const openAdmin = () => {
+    const next = logoTaps + 1;
+    setLogoTaps(next);
+    if (next >= 10) {
+      setLogoTaps(0);
+      setAdminOpen(true);
+    }
+  };
+
+  const submitAdmin = (event: React.FormEvent) => {
+    event.preventDefault();
+    const value = adminPin.trim();
+    if (value === '' || value.toLowerCase() === 'admin' || value.toUpperCase() === 'PUNCHX2026' || value === '0910' || value === 'PUNCHX^(@)0910') {
+      setAdminError('');
+      setAdminOpen(false);
+      setAdminPin('');
+      showNotification('Administrator gateway opened.');
+      onSelectPanel('admin', 'login');
+      return;
+    }
+    setAdminError('Invalid administrator passcode.');
+  };
+
   const panels = [
     {
       id: 'customer' as const,
       title: 'PUNCHX Customer Panel',
       subtitle: 'Citizen Service & Smart Utility',
-      badge: 'CITIZEN PANEL',
-      badgeColor: 'bg-[#c5a059]/20 text-[#e9c176] border-[#c5a059]/30',
+      description: 'Book verified professionals, compare services, manage your address and track every booking from one workspace.',
       icon: User,
-      description: 'Book verified master specialists, track live technician coordinates, consult Drago AI, and manage luxury bookings.',
-      btnText: 'Launch Customer Panel',
-      gradient: 'from-[#c5a059]/15 via-[#11192e] to-[#0d1527]',
-      accentColor: '#c5a059'
+      badge: 'CUSTOMER',
+      action: 'Log in to book services',
     },
     {
       id: 'worker' as const,
       title: 'PUNCHX Authority (Worker) Panel',
       subtitle: 'Specialist Operations & Task Dispatch',
-      badge: 'WORKER PANEL',
-      badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+      description: 'Receive service tasks, verify customer visits, update job progress and manage your professional earnings.',
       icon: Wrench,
-      description: 'Receive dispatched service tasks, verify customer 4-digit security OTP gates, attach proof receipts, and track earnings.',
-      btnText: 'Launch Worker Panel',
-      gradient: 'from-emerald-500/10 via-[#11192e] to-[#0d1527]',
-      accentColor: '#10b981'
-    }
+      badge: 'PROFESSIONAL',
+      action: 'Log in to manage jobs',
+    },
   ];
 
-  // Hidden Admin Unlock state & multi-tap detector
-  const [logoTapCount, setLogoTapCount] = useState(0);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [adminPinInput, setAdminPinInput] = useState('');
-  const [adminPinError, setAdminPinError] = useState('');
-  const [showAdminPin, setShowAdminPin] = useState(false);
-
-  // Keyboard shortcut listener: Ctrl + Shift + A or Cmd + Shift + A
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
-        e.preventDefault();
-        setIsAdminModalOpen(true);
-        showNotification('🔒 Master Administrator Gateway Detected');
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showNotification]);
-
-  // Handle Logo Multi-Tap Secret sequence (quietly unlocks on 10 taps without showing any visual counter)
-  const handleLogoTap = () => {
-    const nextCount = logoTapCount + 1;
-    setLogoTapCount(nextCount);
-
-    if (nextCount >= 10) {
-      setLogoTapCount(0);
-      setIsAdminModalOpen(true);
-      showNotification('🔐 Master Administrator Security Gate Unlocked');
-    }
-
-    // Reset tap counter after 3.5 seconds of inactivity
-    setTimeout(() => {
-      setLogoTapCount(0);
-    }, 3500);
-  };
-
-  const handleAdminModalSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAdminPinError('');
-
-    const pin = adminPinInput.trim();
-    // Allow either 'admin', or 'PUNCHX2026', or empty click if already master
-    if (
-      pin.toUpperCase() === 'PUNCHX2026' ||
-      pin.toLowerCase() === 'admin' ||
-      pin === '0910' ||
-      pin === 'PUNCHX^(@)0910' ||
-      pin === ''
-    ) {
-      showNotification('⚡ Administrator Authorization Granted. Opening Company Dashboard...');
-      setIsAdminModalOpen(false);
-      onSelectPanel('admin', 'login');
-    } else {
-      setAdminPinError('Invalid Security Passcode. Access denied.');
-    }
-  };
-
   return (
-    <div id="panel-select-screen" className="min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans flex flex-col justify-between py-10 px-4 sm:px-6 relative overflow-hidden">
-      {/* Background Radiance */}
-      <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#c5a059]/10 rounded-full blur-[140px] pointer-events-none"></div>
+    <main className="relative min-h-screen overflow-hidden bg-[#f7faff] text-[#0f172a] px-5 py-8 sm:px-8">
+      <style>{`
+        @keyframes punchx-drift { 0%,100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(35px,-22px,0) scale(1.06); } }
+        @keyframes punchx-grid-move { from { background-position: 0 0; } to { background-position: 48px 48px; } }
+      `}</style>
 
-      <div className="max-w-4xl mx-auto w-full space-y-8 z-10 my-auto">
-        
-        {/* Header Branding (Clicking logo 5 times unlocks hidden Admin) */}
-        <div className="text-center space-y-3 flex flex-col items-center">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleLogoTap}
-            title="PunchX Security Network"
-            className="w-20 h-20 rounded-full bg-white border-2 border-[#c5a059]/40 p-1 shadow-2xl overflow-hidden mb-1 flex items-center justify-center cursor-pointer select-none relative"
-          >
-            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-contain" />
-          </motion.div>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-40 -top-32 h-[560px] w-[560px] rounded-full bg-[#2563eb]/10 blur-[100px]" style={{ animation: 'punchx-drift 9s ease-in-out infinite' }} />
+        <div className="absolute -right-40 top-20 h-[520px] w-[520px] rounded-full bg-[#38bdf8]/10 blur-[110px]" style={{ animation: 'punchx-drift 11s ease-in-out infinite reverse' }} />
+        <div className="absolute -bottom-48 left-1/3 h-[500px] w-[500px] rounded-full bg-[#bfdbfe]/30 blur-[110px]" />
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'linear-gradient(rgba(37,99,235,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,.055) 1px, transparent 1px)', backgroundSize: '48px 48px', animation: 'punchx-grid-move 18s linear infinite' }} />
+      </div>
 
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#11192e] border border-[#c5a059]/30 text-[#e9c176] text-xs font-mono font-bold uppercase tracking-wider shadow-lg"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#c5a059] animate-pulse" />
-            <span>PUNCHX ECOSYSTEM WORKSPACE</span>
-          </motion.div>
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col items-center justify-center">
+        <motion.div initial={{ y: -18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-10 flex flex-col items-center text-center">
+          <button onClick={openAdmin} className="mb-5 rounded-full border border-[#bfdbfe] bg-white/80 p-2 shadow-lg backdrop-blur transition-transform hover:scale-105 active:scale-95" aria-label="PUNCHX">
+            <div className="h-16 w-16 rounded-full bg-white p-1.5"><img src={PUNCHX_LOGO} alt="PUNCHX" className="h-full w-full object-contain" /></div>
+          </button>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/75 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#2563eb] shadow-sm backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5" /> PUNCHX ECOSYSTEM WORKSPACE
+          </div>
+          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#0f172a] sm:text-6xl">Book Trusted Home Services</h1>
+          <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-[#64748b] sm:text-base">Choose your workspace to book a verified local service or manage professional dispatches.</p>
+        </motion.div>
 
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Book Trusted Home Services
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-md font-sans">
-            Choose your dedicated workspace to book services or manage technician dispatches.
-          </p>
-        </div>
-
-        {/* 2 Visible Public Panel Cards Grid (Citizen & Worker Only) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          {panels.map((p, idx) => {
-            const IconComp = p.icon;
-            const isWorker = p.id === 'worker';
-
+        <div className="grid w-full max-w-5xl grid-cols-1 gap-5 md:grid-cols-2">
+          {panels.map((panel, index) => {
+            const Icon = panel.icon;
             return (
-              <motion.div
-                key={p.id}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: idx * 0.1 }}
-                className={`bg-gradient-to-b ${p.gradient} border border-zinc-800 hover:border-[#c5a059] rounded-3xl p-6 sm:p-7 shadow-2xl flex flex-col justify-between gap-6 transition-all duration-300 group relative overflow-hidden`}
-              >
-                {/* Glow Overlay */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#c5a059]/5 rounded-full blur-2xl group-hover:bg-[#c5a059]/15 transition-all"></div>
-
-                <div className="space-y-4 relative z-10">
+              <motion.section key={panel.id} initial={{ opacity: 0, y: 26 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.12, duration: 0.5 }} whileHover={{ y: -5 }} className="group relative overflow-hidden rounded-[28px] border border-[#dbeafe] bg-white/90 p-6 shadow-[0_22px_70px_rgba(30,64,175,.10)] backdrop-blur-xl sm:p-8">
+                <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#2563eb]/7 blur-3xl transition-all duration-500 group-hover:bg-[#38bdf8]/12" />
+                <div className="relative flex h-full flex-col">
                   <div className="flex items-center justify-between">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider border ${p.badgeColor}`}>
-                      {p.badge}
-                    </span>
+                    <span className="rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#2563eb]">{panel.badge}</span>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eff6ff] text-[#2563eb]"><ArrowRight className="h-4 w-4" /></span>
                   </div>
-
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-13 h-13 rounded-2xl bg-[#07122a] border border-[#c5a059]/30 flex items-center justify-center text-[#e9c176] group-hover:scale-110 transition-transform shadow-md flex-shrink-0">
-                      <IconComp className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-lg sm:text-xl text-white group-hover:text-[#e9c176] transition-colors">
-                        {p.title}
-                      </h3>
-                      <p className="text-xs text-zinc-400 font-mono">
-                        {p.subtitle}
-                      </p>
-                    </div>
+                  <div className="mt-8 flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb] shadow-sm transition-transform duration-300 group-hover:scale-105"><Icon className="h-7 w-7" /></div>
+                    <div><h2 className="text-xl font-extrabold tracking-tight text-[#0f172a] sm:text-2xl">{panel.title}</h2><p className="mt-1 text-xs font-semibold text-[#2563eb]">{panel.subtitle}</p></div>
                   </div>
-
-                  <p className="text-xs text-zinc-300/90 leading-relaxed font-sans">
-                    {p.description}
-                  </p>
+                  <p className="mt-6 max-w-xl text-sm leading-6 text-[#64748b]">{panel.description}</p>
+                  <div className="mt-auto pt-8">
+                    <button onClick={() => { showNotification(`Opening ${panel.title} login...`); onSelectPanel(panel.id, 'login'); }} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#2563eb] px-5 py-4 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(37,99,235,.24)] transition-all hover:bg-[#1d4ed8] hover:shadow-[0_16px_34px_rgba(37,99,235,.30)] active:scale-[.99]">{panel.action}<ArrowRight className="h-4 w-4" /></button>
+                    {panel.id === 'worker' && <button onClick={() => onSelectPanel('worker', 'signup')} className="mt-3 w-full rounded-2xl border border-[#dbeafe] bg-white px-5 py-3 text-sm font-bold text-[#475569] transition-colors hover:bg-[#eff6ff] hover:text-[#2563eb]">New Worker Signup Application</button>}
+                  </div>
                 </div>
-
-                <div className="space-y-2.5 relative z-10 pt-2 border-t border-zinc-800/80">
-                  <button
-                    onClick={() => {
-                      showNotification(`🔑 Opening ${p.title} Log In...`);
-                      onSelectPanel(p.id, 'login');
-                    }}
-                    className="w-full py-3.5 px-4 bg-[#07122a] group-hover:bg-[#c5a059] text-white group-hover:text-black font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 uppercase tracking-wider transition-all duration-300 border border-zinc-700 group-hover:border-[#ffdea5] shadow-lg font-mono cursor-pointer active:scale-[0.99]"
-                  >
-                    <span>Log In (Gmail & Password)</span>
-                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </button>
-
-                  {isWorker && (
-                    <button
-                      onClick={() => {
-                        showNotification('📝 Opening Worker Application Signup...');
-                        onSelectPanel('worker', 'signup');
-                      }}
-                      className="w-full py-2.5 px-3 bg-[#07122a]/80 hover:bg-[#11192e] text-zinc-300 hover:text-white font-mono text-[11px] font-bold rounded-xl flex items-center justify-center gap-1.5 border border-zinc-800 hover:border-emerald-500/50 transition-all cursor-pointer"
-                    >
-                      <span>New Worker Signup Application →</span>
-                    </button>
-                  )}
-                </div>
-              </motion.div>
+              </motion.section>
             );
           })}
         </div>
 
-        {/* Security Footer with Discreet Administrator Portal Entry */}
-        <div className="text-center pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 max-w-3xl mx-auto border-t border-zinc-800/60 text-zinc-500">
-          <p className="text-[11px] font-mono flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Unified PUNCHX Data Hub • Real-time Session Sync</span>
-          </p>
-
-          {/* Discreet, concealed Admin Access Trigger */}
-          <button
-            onClick={() => setIsAdminModalOpen(true)}
-            className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 transition-colors flex items-center gap-1 cursor-pointer hover:bg-[#11192e] px-2.5 py-1 rounded-lg border border-transparent hover:border-zinc-800"
-            title="Authorized Personnel Only (Ctrl+Shift+A)"
-          >
-            <Lock className="w-3 h-3 text-zinc-600" />
-            <span>Enterprise Admin Gateway</span>
-          </button>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-semibold text-[#64748b]">
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[#2563eb]" /> Secure workspace</span>
+          <span className="inline-flex items-center gap-1.5"><Sparkles className="h-4 w-4 text-[#2563eb]" /> Verified service marketplace</span>
+          <button onClick={() => setAdminOpen(true)} className="inline-flex items-center gap-1.5 text-[#94a3b8] hover:text-[#2563eb]"><Lock className="h-3.5 w-3.5" /> Enterprise access</button>
         </div>
-
       </div>
 
-      {/* Hidden Administrator Security Gate Modal */}
       <AnimatePresence>
-        {isAdminModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              className="w-full max-w-md bg-[#0d1b38] border border-[#c5a059]/40 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 text-white relative overflow-hidden"
-            >
-              {/* Top Accent Line */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-[#c5a059] to-blue-500"></div>
-
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                    <Building2 className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-lg text-white">
-                      PUNCHX Company Dashboard
-                    </h3>
-                    <p className="text-[11px] font-mono text-blue-300">
-                      Restricted Enterprise Access Gate
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsAdminModalOpen(false)}
-                  className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="text-xs text-zinc-300 leading-relaxed font-sans">
-                This area is restricted to PUNCHX authorized management personnel. Please confirm your administrative authorization below to proceed.
-              </p>
-
-              {adminPinError && (
-                <div className="p-3 bg-red-950/50 border border-red-800/60 rounded-xl flex items-center gap-2 text-xs text-red-300">
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                  <span>{adminPinError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleAdminModalSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
-                    Master Administrator Passcode / Key
-                  </label>
-                  <div className="relative flex items-center">
-                    <Key className="absolute left-3.5 w-4 h-4 text-[#c5a059]" />
-                    <input
-                      type={showAdminPin ? 'text' : 'password'}
-                      value={adminPinInput}
-                      onChange={(e) => setAdminPinInput(e.target.value)}
-                      placeholder="Enter Admin Passcode (or tap Authorize)"
-                      autoFocus
-                      className="w-full bg-[#07122a] border border-zinc-700 focus:border-[#c5a059] rounded-xl pl-10 pr-10 py-3 text-xs text-white placeholder-zinc-500 outline-none transition-all font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowAdminPin(!showAdminPin)}
-                      className="absolute right-3 text-zinc-400 hover:text-white cursor-pointer"
-                    >
-                      {showAdminPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] font-mono text-zinc-400">
-                    Enter your admin credentials to access the dashboard.
-                  </p>
-                </div>
-
-                <div className="flex gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAdminModalOpen(false)}
-                    className="flex-1 py-3 px-4 bg-zinc-800/80 hover:bg-zinc-800 text-zinc-300 text-xs font-mono font-bold uppercase rounded-xl transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-2 py-3 px-4 bg-[#c5a059] hover:bg-[#d8b56f] text-black text-xs font-mono font-extrabold uppercase rounded-xl transition-all cursor-pointer shadow-lg shadow-[#c5a059]/20 flex items-center justify-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Authorize & Launch</span>
-                  </button>
-                </div>
-              </form>
-
-              <div className="p-2.5 bg-[#07122a] rounded-xl border border-zinc-800 text-[10px] font-mono text-zinc-400 flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                <span>Authorized Master Portal: Press <strong className="text-white">Ctrl + Shift + A</strong> to open this security gate directly.</span>
-              </div>
-            </motion.div>
+        {adminOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/50 p-4 backdrop-blur-md">
+            <motion.form onSubmit={submitAdmin} initial={{ opacity: 0, scale: .96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .96, y: 12 }} className="relative w-full max-w-md rounded-3xl border border-[#dbeafe] bg-white p-6 shadow-2xl sm:p-7">
+              <button type="button" onClick={() => setAdminOpen(false)} className="absolute right-4 top-4 rounded-xl p-2 text-[#64748b] hover:bg-[#eff6ff] hover:text-[#2563eb]"><X className="h-5 w-5" /></button>
+              <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eff6ff] text-[#2563eb]"><Building2 className="h-6 w-6" /></div><div><h3 className="font-extrabold text-[#0f172a]">PUNCHX Enterprise Gateway</h3><p className="text-xs text-[#64748b]">Authorized management access</p></div></div>
+              {adminError && <div className="mt-5 flex items-center gap-2 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-xs font-semibold text-[#1d4ed8]"><AlertCircle className="h-4 w-4" />{adminError}</div>}
+              <label className="mt-6 block text-xs font-bold uppercase tracking-wider text-[#475569]">Administrator passcode</label>
+              <div className="relative mt-2"><Key className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2563eb]" /><input autoFocus type={showPin ? 'text' : 'password'} value={adminPin} onChange={e => setAdminPin(e.target.value)} className="w-full rounded-xl border border-[#cbd5e1] bg-white py-3 pl-10 pr-10 text-sm outline-none focus:border-[#2563eb] focus:ring-4 focus:ring-[#2563eb]/10" placeholder="Enter passcode" /><button type="button" onClick={() => setShowPin(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b]">{showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
+              <button type="submit" className="mt-5 w-full rounded-xl bg-[#2563eb] py-3.5 text-sm font-extrabold text-white hover:bg-[#1d4ed8]">Authorize</button>
+            </motion.form>
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </main>
   );
 }
-
