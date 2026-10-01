@@ -1,12 +1,48 @@
-import React from 'react';
-import LiveTrackingV2 from './LiveTrackingV2';
+import React, { useEffect, useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, MapPin, Navigation, Phone, ShieldCheck, UserRound, X } from 'lucide-react';
 import { AppScreen } from '../types';
+import { db } from '../lib/firebase';
 
-interface LiveTrackingProps {
-  onTransition: (target: AppScreen) => void;
-  bookingTime?: string;
-}
+interface LiveTrackingProps { onTransition:(target:AppScreen)=>void; bookingTime?:string; }
+type Order={id?:string;serviceName?:string;category?:string;customerAddress?:string;address?:string;date?:string;time?:string;status?:string;paymentMethod?:string;paymentStatus?:string;workerId?:string|null;workerName?:string|null;workerPhone?:string|null;customerReferenceId?:string;customerPermanentOtp?:string;liveTrackingEnabled?:boolean;workerOutForWork?:boolean;workerLocation?:{lat:number;lng:number;updatedAt?:string};};
 
-export default function LiveTracking(props: LiveTrackingProps) {
-  return <LiveTrackingV2 onTransition={props.onTransition} bookingTime={props.bookingTime} />;
+const readOrder=():Order=>{try{return JSON.parse(localStorage.getItem('punchx_active_order')||'{}');}catch{return{};}};
+
+export default function LiveTracking({onTransition}:LiveTrackingProps){
+  const [order,setOrder]=useState<Order>(readOrder);
+  const [cancelOpen,setCancelOpen]=useState(false);
+  const [cancelled,setCancelled]=useState(false);
+  const [workerLocation,setWorkerLocation]=useState<Order['workerLocation']>(order.workerLocation);
+
+  useEffect(()=>{
+    const refresh=()=>{const next=readOrder();setOrder(next);setWorkerLocation(next.workerLocation);};
+    refresh();const timer=window.setInterval(refresh,5000);return()=>window.clearInterval(timer);
+  },[]);
+
+  const cancel=async()=>{
+    const next={...order,status:'Cancelled',cancelledAt:new Date().toISOString()};setOrder(next);setCancelled(true);localStorage.setItem('punchx_active_order',JSON.stringify(next));
+    try{if(order.id)await updateDoc(doc(db,'orders',order.id),{status:'Cancelled',cancelledAt:new Date().toISOString()});}catch(error){console.warn('PUNCHX cancellation sync failed:',error);}
+  };
+
+  const live=Boolean(order.workerOutForWork||order.liveTrackingEnabled);
+  const stages=['BOOKED','PROFESSIONAL MATCH','ARRIVAL','WORK STARTED','COMPLETION'];
+  const status=String(order.status||'Pending');
+
+  return <div className="min-h-screen bg-[#f7faff] pb-10 text-[#0f172a]">
+    <header className="sticky top-0 z-40 border-b border-[#dbeafe] bg-white/95 px-3 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-3xl items-center gap-3"><button onClick={()=>onTransition('home')} className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dbeafe]"><ArrowLeft className="h-5 w-5"/></button><div className="min-w-0 flex-1"><div className="text-[10px] font-black uppercase tracking-wider text-[#2563eb]">PUNCHX TRACKING</div><h1 className="truncate text-lg font-black">Your booking</h1></div><span className={`rounded-full px-3 py-1 text-[10px] font-black ${status==='Cancelled'?'bg-[#fff1f2] text-[#dc2626]':'bg-[#eaf3ff] text-[#2563eb]'}`}>{status}</span></div></header>
+    <main className="mx-auto max-w-3xl space-y-4 px-3 py-5 sm:px-6">
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#2563eb]">Booking ID</div><div className="mt-1 text-sm font-black break-all">{order.id||'Not available'}</div><h2 className="mt-3 text-2xl font-black">{order.serviceName||'PUNCHX service'}</h2><div className="mt-2 text-xs text-[#64748b]">{order.date} · {order.time}</div></div><CheckCircle2 className="h-7 w-7 text-[#2563eb]"/></div><div className="mt-4 rounded-2xl bg-[#f8fbff] p-3 text-xs"><MapPin className="mr-1 inline h-4 w-4 text-[#2563eb]"/>{order.customerAddress||order.address||'Residential address not available'}</div></section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#2563eb]"/><h2 className="font-black">Customer verification</h2></div><div className="mt-3 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-[#eef6ff] p-3"><div className="text-[9px] font-black uppercase text-[#64748b]">Customer ID</div><div className="mt-1 text-sm font-black text-[#2563eb]">{order.customerReferenceId||localStorage.getItem('punchx_customer_id')||'—'}</div></div><div className="rounded-2xl bg-[#eef6ff] p-3"><div className="text-[9px] font-black uppercase text-[#64748b]">Permanent OTP</div><div className="mt-1 text-sm font-black text-[#2563eb]">{order.customerPermanentOtp||localStorage.getItem('punchx_customer_permanent_otp')||'—'}</div></div></div><p className="mt-2 text-[10px] text-[#64748b]">Use this customer verification code for the PUNCHX service visit. Keep it private.</p></section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><h2 className="font-black">Booking progress</h2><div className="mt-4 space-y-3">{stages.map((stage,index)=>{const current=index===0&&!live||index===1&&!order.workerName||index>=2&&live;return <div key={stage} className="flex items-center gap-3"><div className={`flex h-8 w-8 items-center justify-center rounded-full ${current?'bg-[#2563eb] text-white':'bg-[#eef6ff] text-[#64748b]'}`}>{current?<CheckCircle2 className="h-4 w-4"/>:<span className="text-xs font-black">{index+1}</span>}</div><div className="flex-1"><div className="text-xs font-black">{stage}</div><div className="text-[10px] text-[#64748b]">{index===0?'Booking received':index===1?(order.workerName||'PUNCHX is matching a professional'):(live?'Live service status available':'Waiting for professional status')}</div></div></div>;})}</div></section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-wider text-[#64748b]">Professional</div><div className="mt-1 text-lg font-black">{order.workerName||'Being assigned by PUNCHX'}</div></div><UserRound className="h-7 w-7 text-[#2563eb]"/></div>{order.workerPhone&&<a href={`tel:${order.workerPhone}`} className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#eef6ff] py-3 text-xs font-black text-[#2563eb]"><Phone className="h-4 w-4"/> Call professional</a>}</section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Navigation className="h-5 w-5 text-[#2563eb]"/><h2 className="font-black">Live tracking</h2></div>{live?<div className="mt-3 rounded-2xl bg-[#0f2b55] p-5 text-white"><div className="flex items-center gap-2 text-sm font-black"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#38bdf8]"/> Professional is out for work</div><div className="mt-3 text-xs text-white/75">Live location is active and refreshes automatically.</div>{workerLocation&&<div className="mt-4 rounded-xl bg-white/10 p-3 text-[10px]">Latitude: {workerLocation.lat.toFixed(5)}<br/>Longitude: {workerLocation.lng.toFixed(5)}<br/>Updated: {workerLocation.updatedAt?new Date(workerLocation.updatedAt).toLocaleTimeString(): 'now'}</div>}</div>:<div className="mt-3 rounded-2xl bg-[#f8fbff] p-4 text-xs leading-5 text-[#64748b]"><Clock3 className="mr-1 inline h-4 w-4 text-[#2563eb]"/> Live tracking will automatically become active when the assigned professional is marked <strong>Out for Work</strong>. It is not shown as live before that state.</div>}</section>
+
+      {status!=='Cancelled'&&<section className="rounded-3xl border border-[#fecaca] bg-white p-5 shadow-sm"><div className="flex items-center gap-2 text-[#b91c1c]"><AlertTriangle className="h-5 w-5"/><h2 className="font-black">Cancel order</h2></div>{cancelOpen?<div className="mt-3"><p className="text-xs text-[#64748b]">Are you sure you want to cancel this booking?</p><div className="mt-3 flex gap-2"><button onClick={()=>setCancelOpen(false)} className="flex-1 rounded-xl border border-[#dbeafe] py-3 text-xs font-black">Keep booking</button><button onClick={cancel} className="flex-1 rounded-xl bg-[#dc2626] py-3 text-xs font-black text-white">Cancel order</button></div></div>:<button onClick={()=>setCancelOpen(true)} className="mt-3 w-full rounded-xl border border-[#fecaca] py-3 text-xs font-black text-[#dc2626]">Cancel order</button>}{cancelled&&<div className="mt-3 rounded-xl bg-[#fff1f2] p-3 text-xs font-bold text-[#b91c1c]">Cancellation requested and saved.</div>}</section>}
+    </main>
+  </div>;
 }
