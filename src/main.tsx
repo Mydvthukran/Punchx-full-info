@@ -5,10 +5,11 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 import './punchx-marketplace.css';
 import './punchx-blue-theme.css';
+import './punchx-motion-fixes.css';
 
 // Production-safe recovery for Vite deployment/version skew.
 if (typeof window !== 'undefined') {
-  const BUILD_MARKER = '2026-10-01-blue-theme-v1';
+  const BUILD_MARKER = '2026-10-01-blue-theme-v2';
   const recoveryKey = `punchx-vite-recovery:${BUILD_MARKER}`;
   const recoverFromStaleDeployment = () => {
     try {
