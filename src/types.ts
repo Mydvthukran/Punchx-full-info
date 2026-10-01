@@ -1,5 +1,6 @@
 export type AppScreen = 
-  | 'splash' 
+  | 'splash'
+  | 'landing'
   | 'panel-select'
   | 'auth' 
   | 'auth-callback'
