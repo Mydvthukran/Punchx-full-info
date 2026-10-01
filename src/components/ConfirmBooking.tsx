@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Clock3, MapPin, ShieldCheck } from 'lucide-react';
-import { calculatePunchXPricing, formatINR } from '../config/punchxCommerce';
+import React, { useEffect, useMemo, useState } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Clock3, Home, MapPin, Plus, ShieldCheck, ShoppingBag, Trash2, UserRound, Wallet, X } from 'lucide-react';
 import { AppScreen, Worker } from '../types';
+import { calculatePunchXPricing, formatINR } from '../config/punchxCommerce';
+import { DEMO_PROFESSIONALS } from '../data/demoProfessionals';
+import { db } from '../lib/firebase';
 
 interface ConfirmBookingProps {
   onTransition: (target: AppScreen) => void;
@@ -18,53 +21,72 @@ interface ConfirmBookingProps {
   setCitizenAddress: (val: string) => void;
 }
 
-type PendingBooking = {
-  serviceName?: string;
-  category?: string;
-  price?: number | null;
-  address?: string;
-  date?: string;
-  time?: string;
-  description?: string;
-  workerId?: string | null;
-  workerName?: string | null;
-  workerIsDemo?: boolean;
-};
+type CartItem = { id:string; serviceId?:string; serviceName:string; category:string; subcategory?:string; description?:string; price:number; duration?:string; image?:string };
+type Address = { house:string; street:string; landmark:string; villageArea:string; city:string; district:string; state:string; pinCode:string };
+const EMPTY:Address={house:'',street:'',landmark:'',villageArea:'',city:'',district:'',state:'',pinCode:''};
+const DEMO_ENABLED = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEMO_PROFESSIONALS === 'true';
 
-export default function ConfirmBooking({ onTransition, selectedCategory, selectedWorker, bookingTime, setBookingTime, bookingDate, setBookingDate, citizenAddress, setCitizenAddress }: ConfirmBookingProps) {
-  const [pending] = useState<PendingBooking>(() => {
-    try { return JSON.parse(localStorage.getItem('punchx_pending_booking') || '{}'); } catch { return {}; }
-  });
-  const [address, setAddress] = useState(pending.address || citizenAddress || '');
-  const [date, setDate] = useState(pending.date || bookingDate || '');
-  const [time, setTime] = useState(pending.time || bookingTime || '');
-  const [submitting, setSubmitting] = useState(false);
+const loadJSON = <T,>(key:string, fallback:T):T => { try { const v=JSON.parse(localStorage.getItem(key)||'null'); return v ?? fallback; } catch { return fallback; } };
+const saveJSON = (key:string, value:unknown) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
 
-  const serviceName = pending.serviceName || selectedCategory || 'Selected service';
-  const price = typeof pending.price === 'number' ? pending.price : null;
-  const pricing = price === null ? null : calculatePunchXPricing(price);
-  const valid = Boolean(address.trim() && date && time);
-  const providerText = selectedWorker ? selectedWorker.name : 'Finding a professional after confirmation';
+export default function ConfirmBooking({ onTransition, selectedWorker, bookingTime, setBookingTime, bookingDate, setBookingDate, citizenAddress, setCitizenAddress }:ConfirmBookingProps){
+  const [cart,setCart]=useState<CartItem[]>(() => loadJSON<CartItem[]>('punchx_cart',[]));
+  const [address,setAddress]=useState<Address>(() => ({...EMPTY,...loadJSON<Partial<Address>>('punchx_residential_address',{})}));
+  const [date,setDate]=useState(bookingDate || '');
+  const [time,setTime]=useState(bookingTime || '');
+  const [workers,setWorkers]=useState<Worker[]>([]);
+  const [customWorker,setCustomWorker]=useState<Worker|null>(() => loadJSON<Worker|null>('punchx_cart_selected_worker',null));
+  const [chooseWorker,setChooseWorker]=useState(false);
+  const [warranty,setWarranty]=useState(false);
+  const [note,setNote]=useState('');
 
-  const summary = useMemo(() => ({ serviceName, address, date, time, price, workerId: selectedWorker?.id || pending.workerId || null, workerName: selectedWorker?.name || pending.workerName || null, workerIsDemo: Boolean(selectedWorker?.id?.startsWith('demo-') || pending.workerIsDemo) }), [serviceName, address, date, time, price, selectedWorker, pending.workerId, pending.workerName, pending.workerIsDemo]);
+  useEffect(()=>{
+    const pending=loadJSON<any>('punchx_pending_booking',null);
+    if(!cart.length && pending?.serviceName){
+      setCart([{id:`pending-${pending.serviceName}`,serviceId:pending.serviceId,serviceName:pending.serviceName,category:pending.category||'Service',description:pending.description,price:Number(pending.price||0),duration:pending.duration}]);
+    }
+    const unsub=onSnapshot(collection(db,'workerApplications'),snap=>{
+      const approved=snap.docs.filter(d=>String(d.data().status||'').toUpperCase()==='APPROVED').map(d=>{const x=d.data();return {id:d.id,name:String(x.legalName||'Verified Professional'),category:String(x.skill||x.category||'Professional'),categories:Array.isArray(x.categories)?x.categories.map(String):undefined,rating:Number(x.rating||4.8),reviewsCount:Number(x.reviewsCount||0),avatar:String(x.photoURL||x.avatar||''),proBadge:'AUTHORIZED',price:Number(x.price||x.visitingFee||0),visitingFee:Number(x.visitingFee||0),available:x.available!==false,phone:String(x.phone||''),address:String(x.address||''),area:String(x.area||''),sector:String(x.sector||'')} as Worker;});
+      setWorkers(DEMO_ENABLED?[...DEMO_PROFESSIONALS,...approved]:approved);
+    },()=>setWorkers(DEMO_ENABLED?DEMO_PROFESSIONALS:[]));
+    return ()=>unsub();
+  },[cart.length]);
 
-  const confirm = () => {
-    if (!valid) return;
-    setSubmitting(true);
-    setCitizenAddress(address.trim());
-    setBookingDate(date);
-    setBookingTime(time);
-    try { localStorage.setItem('punchx_pending_booking', JSON.stringify({ ...pending, ...summary, category: selectedCategory })); } catch {}
-    window.setTimeout(() => onTransition('payment'), 250);
+  const serviceValue=useMemo(()=>cart.reduce((sum,item)=>sum+Number(item.price||0),0),[cart]);
+  const pricing=useMemo(()=>calculatePunchXPricing(serviceValue),[serviceValue]);
+  const warrantyFee=warranty?9:0;
+  const total=pricing.customerTotal+warrantyFee;
+  const addressText=[address.house,address.street,address.landmark,address.villageArea,address.city,address.district,address.state,address.pinCode].filter(Boolean).join(', ');
+  const validAddress=Object.values(address).every(v=>String(v).trim().length>0);
+  const valid=cart.length>0&&validAddress&&date&&time;
+
+  const removeItem=(id:string)=>{const next=cart.filter(item=>item.id!==id);setCart(next);saveJSON('punchx_cart',next);};
+  const saveAndPay=()=>{
+    if(!valid)return;
+    setCitizenAddress(addressText);setBookingDate(date);setBookingTime(time);
+    saveJSON('punchx_residential_address',address);localStorage.setItem('punchx_residential_address_label',addressText);
+    const selected=customWorker||selectedWorker;
+    saveJSON('punchx_pending_booking',{cart,serviceId:cart[0]?.serviceId||null,serviceName:cart.length===1?cart[0].serviceName:`${cart.length} PUNCHX services`,category:cart[0]?.category||'Home Services',description:cart.map(x=>x.serviceName).join(', '),price:serviceValue,address:addressText,residentialAddress:address,date,time,workerId:selected?.id||null,workerName:selected?.name||null,workerIsDemo:Boolean(selected?.id?.startsWith('demo-')),isPersonalSelection:Boolean(selected),hasWarrantyGuarantee:warranty,warrantyFee,customerTotal:total,note});
+    onTransition('payment');
   };
 
-  return <div className="min-h-screen bg-[#f7f8fa] pb-24 text-[#17191d]">
-    <header className="sticky top-0 z-40 border-b border-black/5 bg-white/95 px-4 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-2xl items-center gap-3"><button onClick={() => onTransition('providers')} className="rounded-xl bg-[#f4f5f7] p-2"><ArrowLeft className="h-5 w-5" /></button><div><div className="text-[10px] font-bold uppercase tracking-wider text-[#8b9098]">PUNCHX</div><h1 className="text-lg font-black">Booking summary</h1></div></div></header>
-    <main className="mx-auto max-w-2xl space-y-4 px-4 py-5 sm:px-6 sm:py-8">
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5"><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#7358d7]"><ShieldCheck className="h-4 w-4" /> Review before confirming</div><h2 className="mt-3 text-2xl font-black">{serviceName}</h2><p className="mt-2 text-sm leading-6 text-[#6f747d]">{pending.description || 'Your selected service will be handled through the PUNCHX booking workflow.'}</p>{pending.workerIsDemo && <div className="mt-4 inline-flex rounded-full bg-[#fff7df] px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#8a6b16]">Demo professional test booking</div>}</section>
-      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5"><div className="space-y-4 text-sm"><div className="flex items-start justify-between gap-4"><span className="text-[#777c85]">Professional</span><span className="text-right font-bold">{providerText}</span></div><div className="flex items-start justify-between gap-4"><span className="flex items-center gap-2 text-[#777c85]"><MapPin className="h-4 w-4" /> Address</span><textarea value={address} onChange={e => setAddress(e.target.value)} className="min-h-20 w-[60%] resize-none rounded-xl bg-[#f6f7f9] p-3 text-right font-semibold outline-none" placeholder="Enter service address" /></div><div className="flex items-center justify-between gap-4"><span className="flex items-center gap-2 text-[#777c85]"><Clock3 className="h-4 w-4" /> Date</span><input type="date" value={date} onChange={e => setDate(e.target.value)} className="rounded-xl bg-[#f6f7f9] p-3 text-sm font-bold outline-none" /></div><div className="flex items-center justify-between gap-4"><span className="text-[#777c85]">Time</span><input type="time" value={time} onChange={e => setTime(e.target.value)} className="rounded-xl bg-[#f6f7f9] p-3 text-sm font-bold outline-none" /></div><div className="border-t border-black/5 pt-4">{pricing ? <div className="space-y-2"><div className="flex justify-between"><span className="text-[#777c85]">Service value</span><span className="font-bold">{formatINR(pricing.serviceValue)}</span></div><div className="flex justify-between"><span className="text-[#777c85]">PunchX platform/protection fee</span><span className="font-bold">{formatINR(pricing.customerPlatformFee)}</span></div><div className="flex justify-between pt-2"><span className="font-black">Customer total</span><span className="font-black">{formatINR(pricing.customerTotal)}</span></div><p className="pt-1 text-xs leading-5 text-[#777c85]">Professional commission is handled separately and is not added to the citizen bill.</p></div> : <div className="flex items-center justify-between"><span className="font-black">Applicable price</span><span className="font-black">Calculated by backend</span></div>}</div></div></section>
-      <section className="rounded-2xl bg-[#f0ecff] p-4 text-xs leading-5 text-[#5f5873]">After confirmation, the booking is handed to the PUNCHX backend. Assignment, ETA, live location, payment amount and status must come from real production data.</section>
-      <button onClick={confirm} disabled={!valid || submitting} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#7358d7] px-5 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{submitting ? <><CheckCircle2 className="h-5 w-5 animate-pulse" /> Confirming…</> : 'Confirm booking'}</button>
+  return <div className="min-h-screen bg-[#f7faff] pb-28 text-[#0f172a]">
+    <header className="sticky top-0 z-50 border-b border-[#dbeafe] bg-white/95 px-3 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-3xl items-center gap-3"><button onClick={()=>onTransition('providers')} className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dbeafe]"><ArrowLeft className="h-5 w-5"/></button><div><div className="text-[10px] font-black uppercase tracking-wider text-[#2563eb]">PUNCHX CART</div><h1 className="text-lg font-black">Review your bookings</h1></div></div></header>
+    <main className="mx-auto max-w-3xl space-y-4 px-3 py-4 sm:px-6 sm:py-7">
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><div><div className="text-[10px] font-black uppercase tracking-[.16em] text-[#2563eb]">Cart</div><h2 className="mt-1 text-xl font-black">{cart.length} service{cart.length===1?'':'s'} added</h2></div><ShoppingBag className="h-6 w-6 text-[#2563eb]"/></div>{cart.length===0?<div className="mt-4 rounded-2xl bg-[#f8fbff] p-5 text-center text-sm font-bold text-[#64748b]">Your cart is empty. Add an available exact service first.</div>:<div className="mt-4 space-y-3">{cart.map(item=><div key={item.id} className="flex gap-3 rounded-2xl border border-[#e5eefb] p-3"><img src={item.image||'/placeholder.svg'} alt="" className="h-16 w-16 rounded-xl object-cover bg-[#eef6ff]"/><div className="min-w-0 flex-1"><div className="font-black">{item.serviceName}</div><div className="mt-1 text-[10px] text-[#64748b]">{item.category}{item.subcategory?` · ${item.subcategory}`:''}</div><div className="mt-1 text-sm font-black">{formatINR(item.price)}</div></div><button onClick={()=>removeItem(item.id)} aria-label="Remove service" className="h-9 w-9 rounded-xl bg-[#fff1f2] text-[#dc2626]"><Trash2 className="mx-auto h-4 w-4"/></button></div>)}</div>}</section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-4 shadow-sm"><div className="flex items-center gap-2"><CalendarDays className="h-5 w-5 text-[#2563eb]"/><h2 className="font-black">Choose date & time</h2></div><div className="mt-3 grid grid-cols-2 gap-3"><label className="text-xs font-bold text-[#64748b]">Date<input type="date" value={date} onChange={e=>setDate(e.target.value)} min={new Date().toISOString().slice(0,10)} className="mt-1 w-full rounded-xl border border-[#dbeafe] p-3 text-sm font-bold outline-none"/></label><label className="text-xs font-bold text-[#64748b]">Time<input type="time" value={time} onChange={e=>setTime(e.target.value)} className="mt-1 w-full rounded-xl border border-[#dbeafe] p-3 text-sm font-bold outline-none"/></label></div></section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-4 shadow-sm"><div className="flex items-center gap-2"><Home className="h-5 w-5 text-[#2563eb]"/><div><h2 className="font-black">Confirm residential address</h2><p className="text-[10px] text-[#64748b]">This is the address the professional will visit. It is separate from device geofencing.</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{([['house','House / Flat / Building'],['street','Street / Road'],['landmark','Landmark'],['villageArea','Village / Area'],['city','City'],['district','District'],['state','State'],['pinCode','PIN code']] as const).map(([key,label])=><label key={key} className="text-[10px] font-black text-[#64748b]">{label}<input value={address[key]} onChange={e=>setAddress({...address,[key]:e.target.value})} placeholder={label} className="mt-1 w-full rounded-xl border border-[#dbeafe] p-3 text-sm font-semibold outline-none"/></label>)}</div>{addressText&&<div className="mt-3 rounded-xl bg-[#eef6ff] p-3 text-xs font-semibold text-[#1e3a5f]"><MapPin className="mr-1 inline h-3.5 w-3.5 text-[#2563eb]"/>{addressText}</div>}</section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-4 shadow-sm"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><UserRound className="h-5 w-5 text-[#2563eb]"/><div><h2 className="font-black">Custom professional</h2><p className="text-[10px] text-[#64748b]">Optional. Choose a specific available worker.</p></div></div><button onClick={()=>setChooseWorker(v=>!v)} className={`rounded-xl px-3 py-2 text-[10px] font-black ${chooseWorker?'bg-[#2563eb] text-white':'bg-[#eef6ff] text-[#2563eb]'}`}>{chooseWorker?'Hide':'Choose'}</button></div>{customWorker&&<div className="mt-3 flex items-center gap-3 rounded-2xl border border-[#bfdbfe] bg-[#f8fbff] p-3"><img src={customWorker.avatar||'/placeholder.svg'} alt="" className="h-10 w-10 rounded-full object-cover"/><div className="flex-1"><div className="text-sm font-black">{customWorker.name}</div><div className="text-[10px] text-[#64748b]">★ {customWorker.rating.toFixed(1)} · Verified professional</div></div><button onClick={()=>{setCustomWorker(null);localStorage.removeItem('punchx_cart_selected_worker')}}><X className="h-4 w-4"/></button></div>}{chooseWorker&&<div className="mt-3 grid gap-2 sm:grid-cols-2">{workers.length?workers.map(worker=><button key={worker.id} onClick={()=>{setCustomWorker(worker);saveJSON('punchx_cart_selected_worker',worker);setChooseWorker(false)}} className="flex items-center gap-3 rounded-2xl border border-[#dbeafe] p-3 text-left hover:bg-[#f8fbff]"><img src={worker.avatar||'/placeholder.svg'} alt="" className="h-10 w-10 rounded-full object-cover bg-[#eef6ff]"/><div className="min-w-0"><div className="truncate text-sm font-black">{worker.name}</div><div className="text-[10px] text-[#64748b]">★ {worker.rating.toFixed(1)} · Available</div></div><ChevronRight className="ml-auto h-4 w-4 text-[#2563eb]"/></button>):<div className="rounded-xl bg-[#fff7ed] p-3 text-xs font-bold text-[#c2410c]">No verified professional is currently available for custom selection.</div>}</div>}</section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-4 shadow-sm"><button onClick={()=>setWarranty(v=>!v)} className="flex w-full items-center gap-3 text-left"><div className={`flex h-11 w-11 items-center justify-center rounded-xl ${warranty?'bg-[#2563eb] text-white':'bg-[#eef6ff] text-[#2563eb]'}`}>{warranty?<Check className="h-5 w-5"/>:<Plus className="h-5 w-5"/>}</div><div className="flex-1"><div className="font-black">Extended warranty · 1 extra month</div><div className="text-[10px] text-[#64748b]">Optional protection for ₹9 after the completed service.</div></div><span className="text-sm font-black">₹9</span></button></section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-4 shadow-sm"><label className="text-xs font-black">Special instructions <span className="font-normal text-[#64748b]">(optional)</span><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Tell the professional anything useful about the visit…" className="mt-2 min-h-20 w-full rounded-xl border border-[#dbeafe] p-3 text-sm outline-none"/></label></section>
+
+      <section className="rounded-3xl border border-[#dbeafe] bg-white p-4 shadow-sm"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-[#2563eb]"/><h2 className="font-black">Price summary</h2></div><div className="mt-4 space-y-2 text-sm"><div className="flex justify-between"><span className="text-[#64748b]">Services</span><span className="font-bold">{formatINR(pricing.serviceValue)}</span></div><div className="flex justify-between"><span className="text-[#64748b]">PUNCHX platform/protection fee</span><span className="font-bold">{formatINR(pricing.customerPlatformFee)}</span></div>{warranty&&<div className="flex justify-between"><span className="text-[#64748b]">Extended warranty</span><span className="font-bold">₹9</span></div>}<div className="flex justify-between border-t border-[#e5eefb] pt-3 text-base"><span className="font-black">Total</span><span className="font-black text-[#2563eb]">{formatINR(total)}</span></div></div></section>
     </main>
+    <div className="fixed bottom-0 left-0 right-0 z-[100] border-t border-[#dbeafe] bg-white/95 p-3 shadow-[0_-8px_30px_rgba(37,99,235,.12)] backdrop-blur-xl"><div className="mx-auto flex max-w-3xl items-center gap-3"><div className="min-w-0 flex-1"><div className="text-[10px] font-black uppercase tracking-wider text-[#64748b]">Total to pay</div><div className="text-lg font-black">{formatINR(total)}</div></div><button onClick={saveAndPay} disabled={!valid} className="rounded-2xl bg-[#2563eb] px-6 py-3.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">Payment <ArrowRight className="ml-1 inline h-4 w-4"/></button></div></div>
   </div>;
 }
