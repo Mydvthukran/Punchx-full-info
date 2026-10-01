@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
+import { Compass, MapPin, ShieldCheck, Sparkles, ArrowLeft, RefreshCw } from 'lucide-react';
 import { AppScreen } from '../types';
-import { Compass, MapPin } from 'lucide-react';
 import PUNCHX_LOGO from '../assets/logo';
-import { SignIn } from "@namoidhq/react";
+import { SignIn } from '@namoidhq/react';
 import { requestAndAutoUpdateLocation, LocationData } from '../lib/location';
 
 interface AuthProps {
@@ -13,7 +13,7 @@ interface AuthProps {
   activePanelRole?: 'customer' | 'worker' | 'admin';
 }
 
-export default function Auth({ onTransition, showNotification, activePanelRole = 'customer' }: AuthProps) {
+export default function Auth({ onTransition, showNotification, setAuthMethodDetail, activePanelRole = 'customer' }: AuthProps) {
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -23,7 +23,6 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
         if (loc) setLocationData(loc);
       });
     }
-
   }, [activePanelRole]);
 
   const handleRequestLocation = async () => {
@@ -32,113 +31,75 @@ export default function Auth({ onTransition, showNotification, activePanelRole =
     setIsLocating(false);
     if (loc) {
       setLocationData(loc);
-      showNotification(`📍 Location auto-updated: ${loc.area || loc.address.split(',')[0]}`);
+      showNotification(`Location updated: ${loc.area || loc.address.split(',')[0]}`);
     } else {
-      showNotification("⚠️ Location access denied or unavailable. Please enable device location.");
+      showNotification('Location access is unavailable. You can continue and update it later.');
     }
   };
 
   const roleLabels = {
-    customer: 'Customer Sign In',
-    worker: 'Specialist Sign In',
-    admin: 'Admin Secure Login'
+    customer: { title: 'Customer Sign In', sub: 'Book verified home services with a secure PUNCHX account.' },
+    worker: { title: 'Professional Sign In', sub: 'Access your PUNCHX jobs, dispatches and earnings.' },
+    admin: { title: 'Admin Secure Login', sub: 'Access the protected PUNCHX management workspace.' },
   };
+  const role = roleLabels[activePanelRole];
 
   return (
-    <main className="min-h-screen bg-[#07122a] text-[#e1e3e4] font-sans flex flex-col justify-between py-10 px-6 overflow-y-auto">
-      <div className="absolute top-[10%] left-[20%] w-72 h-72 bg-[#c5a059]/5 rounded-full blur-[100px] pointer-events-none"></div>
-
-      <div className="w-full max-w-md mx-auto flex flex-col items-center">
-        <button
-          onClick={() => onTransition('panel-select')}
-          className="self-start text-[11px] font-mono text-[#e9c176] hover:underline flex items-center gap-1 mb-2 bg-[#11192e] px-3 py-1.5 rounded-lg border border-zinc-800 cursor-pointer"
-        >
-          ← Choose Different Panel
-        </button>
-
-        <div className="flex flex-col items-center text-center mt-4 mb-8">
-          <motion.div
-            className="w-20 h-20 rounded-full bg-white p-1 flex items-center justify-center mb-4 shadow-[0_8px_25px_rgba(197,160,89,0.25)] border-2 border-[#c5a059]/40 overflow-hidden"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            <img src={PUNCHX_LOGO} alt="PunchX Logo" className="w-full h-full object-contain" />
-          </motion.div>
-          <h1 className="font-sans font-extrabold text-2xl tracking-tight text-white mb-1">
-            {roleLabels[activePanelRole]}
-          </h1>
-          <p className="text-sm text-zinc-300 max-w-[320px] leading-relaxed mt-2">
-            Securely authenticate to access your {activePanelRole} dashboard using NamoID.
-          </p>
-        </div>
-
-        <div className="w-full bg-[#11192e] border border-zinc-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden space-y-6">
-          <div className="bg-[#0b1731] border border-[#c5a059]/30 p-3 rounded-xl flex items-center justify-between gap-3 text-left">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="p-2 rounded-lg bg-[#c5a059]/15 text-[#e9c176] flex-shrink-0">
-                <Compass className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-[#e9c176]" />
-                  {locationData ? locationData.area : 'Location Permission Required'}
-                </p>
-                <p className="text-[10px] text-zinc-400 truncate">
-                  {locationData ? locationData.address : 'Auto-syncs profile address & matches local specialists'}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleRequestLocation}
-              className="px-2.5 py-1.5 bg-[#c5a059]/20 hover:bg-[#c5a059] text-[#e9c176] hover:text-black rounded-lg text-[10px] font-bold uppercase transition-all whitespace-nowrap border border-[#c5a059]/40 flex-shrink-0 cursor-pointer"
-            >
-              {locationData ? 'Re-Sync' : 'Allow GPS'}
-            </button>
-          </div>
-
-          <div className="flex justify-center mt-6">
-            <SignIn 
-              redirectUri={
-                typeof window !== 'undefined'
-                  ? `${window.location.origin}/auth/callback`
-                  : import.meta.env.VITE_NAMOID_REDIRECT_URI || 'https://www.punchxapp.co.in/auth/callback'
-              } 
-            />
-          </div>
-
-          <div className="text-center pt-4 border-t border-zinc-800 text-xs text-zinc-400">
-            By signing in, you agree to our{' '}
-            <a
-              href="/privacy-policy"
-              onClick={(e) => {
-                e.preventDefault();
-                onTransition('privacy-policy');
-              }}
-              className="text-[#e9c176] underline hover:text-[#ffdea5] cursor-pointer"
-            >
-              Privacy Policy
-            </a>{' '}
-            and{' '}
-            <a
-              href="/terms-and-conditions"
-              onClick={(e) => {
-                e.preventDefault();
-                onTransition('terms-and-conditions');
-              }}
-              className="text-[#e9c176] underline hover:text-[#ffdea5] cursor-pointer"
-            >
-              Terms & Conditions
-            </a>.
-          </div>
-        </div>
+    <main className="relative min-h-screen overflow-hidden bg-[#f7faff] text-[#0f172a] px-5 py-7 sm:px-8">
+      <style>{`
+        @keyframes punchx-auth-drift { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(28px,-20px,0); } }
+        @keyframes punchx-auth-grid { from { background-position: 0 0; } to { background-position: 44px 44px; } }
+      `}</style>
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-44 -top-36 h-[540px] w-[540px] rounded-full bg-[#2563eb]/10 blur-[110px]" style={{ animation: 'punchx-auth-drift 9s ease-in-out infinite' }} />
+        <div className="absolute -right-40 top-1/3 h-[500px] w-[500px] rounded-full bg-[#38bdf8]/10 blur-[110px]" style={{ animation: 'punchx-auth-drift 12s ease-in-out infinite reverse' }} />
+        <div className="absolute inset-0 opacity-35" style={{ backgroundImage: 'linear-gradient(rgba(37,99,235,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,.055) 1px, transparent 1px)', backgroundSize: '44px 44px', animation: 'punchx-auth-grid 18s linear infinite' }} />
       </div>
 
-      <div className="w-full max-w-xs mx-auto text-center mt-6">
-        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest leading-relaxed">
-          SECURE NAMOID LOG IN • PUNCHX
-        </p>
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl flex-col items-center justify-center">
+        <button onClick={() => onTransition('panel-select')} className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/80 px-4 py-2 text-xs font-bold text-[#2563eb] shadow-sm backdrop-blur transition-all hover:bg-white hover:shadow-md">
+          <ArrowLeft className="h-4 w-4" /> Choose Different Panel
+        </button>
+
+        <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} className="mb-7 flex flex-col items-center text-center">
+          <div className="mb-4 h-20 w-20 rounded-full border border-[#bfdbfe] bg-white p-1.5 shadow-[0_16px_45px_rgba(37,99,235,.18)]">
+            <img src={PUNCHX_LOGO} alt="PUNCHX" className="h-full w-full object-contain" />
+          </div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/75 px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#2563eb] shadow-sm backdrop-blur"><Sparkles className="h-3.5 w-3.5" /> Secure PUNCHX Gateway</div>
+          <h1 className="text-3xl font-black tracking-tight text-[#0f172a] sm:text-4xl">{role.title}</h1>
+          <p className="mt-2 max-w-md text-sm leading-6 text-[#64748b]">{role.sub}</p>
+        </motion.div>
+
+        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .08 }} className="w-full max-w-2xl rounded-[30px] border border-[#dbeafe] bg-white/90 p-4 shadow-[0_30px_90px_rgba(30,64,175,.12)] backdrop-blur-xl sm:p-6">
+          <div className="rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] p-3.5 sm:p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#2563eb] shadow-sm"><Compass className={`h-5 w-5 ${isLocating ? 'animate-spin' : ''}`} /></div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-[#1e40af]"><MapPin className="h-3.5 w-3.5" /> {locationData?.area || 'Service area detection'}</div>
+                <p className="mt-0.5 truncate text-[11px] text-[#64748b]">{locationData?.address || 'Your device location helps PUNCHX match local professionals.'}</p>
+              </div>
+              <button type="button" onClick={handleRequestLocation} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#2563eb] px-3 py-2 text-[10px] font-extrabold uppercase text-white shadow-sm hover:bg-[#1d4ed8]">{locationData ? <RefreshCw className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}{locationData ? 'Re-sync' : 'Allow GPS'}</button>
+            </div>
+          </div>
+
+          <div className="my-6 flex justify-center">
+            <div className="w-full overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white p-1 shadow-sm">
+              <SignIn redirectUri={typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : import.meta.env.VITE_NAMOID_REDIRECT_URI || 'https://www.punchxapp.co.in/auth/callback'} />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 border-t border-[#e2e8f0] pt-5 text-center text-[11px] font-medium text-[#64748b]">
+            <ShieldCheck className="h-4 w-4 text-[#2563eb]" />
+            Secure authentication powered by NamoID
+          </div>
+          <p className="mt-3 text-center text-[11px] leading-5 text-[#64748b]">
+            By signing in, you agree to our{' '}
+            <button onClick={() => onTransition('privacy-policy')} className="font-bold text-[#2563eb] underline underline-offset-2">Privacy Policy</button>{' '}and{' '}
+            <button onClick={() => onTransition('terms-and-conditions')} className="font-bold text-[#2563eb] underline underline-offset-2">Terms & Conditions</button>.
+          </p>
+        </motion.section>
+
+        <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.2em] text-[#94a3b8]">PUNCHX • Secure Local Service Marketplace</p>
       </div>
     </main>
   );
