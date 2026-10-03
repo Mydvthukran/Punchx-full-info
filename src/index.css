@@ -122,8 +122,19 @@ body:has(.punchx-citizen-shell), body:has(#providers-list-root), body:has(#provi
 .punchx-citizen-shell .text-\[\#7358d7\] { color:#7358d7 !important; }
 
 /* Smooth route entrance. App screens remain functionally unchanged. */
-@keyframes punchx-page-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes punchx-page-in { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 #panel-select-screen,.punchx-citizen-shell,#providers-list-root,#provider-details-root,#booking-container,#payment-screen-container { animation:punchx-page-in .35s ease-out both; }
+
+/* Stagger entrance for inner sections to create a cascading effect across the app */
+.punchx-citizen-main section, .punchx-citizen-shell section, main > section, main > article {
+  animation: punchx-page-in 0.4s ease-out both;
+}
+.punchx-citizen-main section:nth-child(1), .punchx-citizen-shell section:nth-child(1) { animation-delay: 0.05s; }
+.punchx-citizen-main section:nth-child(2), .punchx-citizen-shell section:nth-child(2) { animation-delay: 0.10s; }
+.punchx-citizen-main section:nth-child(3), .punchx-citizen-shell section:nth-child(3) { animation-delay: 0.15s; }
+.punchx-citizen-main section:nth-child(4), .punchx-citizen-shell section:nth-child(4) { animation-delay: 0.20s; }
+.punchx-citizen-main section:nth-child(5), .punchx-citizen-shell section:nth-child(5) { animation-delay: 0.25s; }
+.punchx-citizen-main section:nth-child(n+6), .punchx-citizen-shell section:nth-child(n+6) { animation-delay: 0.30s; }
 
 /* Responsive breakpoints: mobile / tablet / desktop. */
 @media (max-width:767px) {
