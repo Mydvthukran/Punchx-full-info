@@ -1,16 +1,31 @@
-/* PUNCHX motion and media reliability layer. Kept separate from business logic. */
+/* PUNCHX motion and media reliability layer. Customer-facing motion stays subtle and purposeful. */
 
 @keyframes punchx-card-float {
   0%,100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-4px) rotate(.15deg); }
+  50% { transform: translateY(-3px) rotate(.08deg); }
 }
 @keyframes punchx-image-shimmer {
   0% { transform: translateX(-120%); }
   100% { transform: translateX(120%); }
 }
 @keyframes punchx-cool-breeze {
-  0%,100% { transform:translateX(-4px) scale(1); opacity:.25; }
-  50% { transform:translateX(8px) scale(1.05); opacity:.7; }
+  0%,100% { transform:translateX(-3px) scale(1); opacity:.25; }
+  50% { transform:translateX(6px) scale(1.03); opacity:.55; }
+}
+@keyframes punchx-toast-in {
+  0% { opacity:0; transform:translate(-50%,-10px) scale(.97); }
+  70% { opacity:1; transform:translate(-50%,2px) scale(1.01); }
+  100% { opacity:1; transform:translate(-50%,0) scale(1); }
+}
+@keyframes punchx-success-pop {
+  0% { opacity:0; transform:translateY(5px) scale(.985); }
+  70% { opacity:1; transform:translateY(0) scale(1.01); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes punchx-check-pop {
+  0% { transform:scale(.75); opacity:.4; }
+  65% { transform:scale(1.12); opacity:1; }
+  100% { transform:scale(1); opacity:1; }
 }
 
 /* Prevent the square JPG logo corners seen on small-screen splash/error states. */
@@ -24,11 +39,39 @@ img[alt="PunchX Logo"] {
 /* Popular service cards: subtle motion, never an aggressive carousel. */
 .punchx-citizen-shell main > section:nth-of-type(2) button img,
 .punchx-citizen-shell main > section:nth-of-type(2) [role="button"] img {
-  animation:punchx-card-float 3.6s ease-in-out infinite;
+  animation:punchx-card-float 4s ease-in-out infinite;
   will-change:transform;
 }
 .punchx-citizen-shell main > section:nth-of-type(2) button:nth-child(2n) img { animation-delay:-1.1s; }
 .punchx-citizen-shell main > section:nth-of-type(2) button:nth-child(3n) img { animation-delay:-2.2s; }
+
+/* Service catalogue interactions. */
+#providers-list-root article,
+#providers-list-root section,
+#providers-list-root button {
+  transition:box-shadow .2s ease,border-color .2s ease,transform .2s ease,background-color .2s ease;
+}
+#providers-list-root article:hover {
+  box-shadow:0 10px 26px rgba(15,23,42,.08);
+}
+#providers-list-root article > div + div {
+  animation:punchx-success-pop .3s ease-out both;
+}
+#providers-list-root button:active {
+  transform:scale(.97);
+}
+
+/* A successful add-to-cart already triggers the existing global toast. Make its entrance feel deliberate. */
+#global-prestige-toast {
+  animation:punchx-toast-in .35s cubic-bezier(.2,.8,.2,1) both !important;
+}
+
+/* Make check/success icons feel responsive without creating continuous motion. */
+#providers-list-root svg.text-\\[\\#0f7a4a\\],
+#providers-list-root svg[class*="text-green-"],
+#providers-list-root svg[class*="text-emerald-"] {
+  animation:punchx-check-pop .28s ease-out both;
+}
 
 /* Every category page gets lightweight image motion so all 50 services feel alive. */
 .punchx-service-page .punchx-category-hero-media img,
@@ -41,7 +84,7 @@ img[alt="PunchX Logo"] {
   position:absolute;
   inset:0;
   width:35%;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);
   transform:translateX(-140%);
   animation:punchx-image-shimmer 4.5s ease-in-out infinite;
   pointer-events:none;
@@ -63,7 +106,7 @@ img[alt="PunchX Logo"] {
   pointer-events:none;
 }
 .punchx-service-page.service-category-ac-technician .punchx-category-hero-media::after {
-  background:linear-gradient(90deg,transparent,rgba(56,189,248,.48),transparent);
+  background:linear-gradient(90deg,transparent,rgba(56,189,248,.38),transparent);
   animation-duration:3.2s;
 }
 
@@ -71,6 +114,11 @@ img[alt="PunchX Logo"] {
 @media (prefers-reduced-motion:reduce) {
   .punchx-citizen-shell main > section:nth-of-type(2) button img,
   .punchx-service-page .punchx-category-hero-media::after,
-  .punchx-service-page.service-category-ac-technician .punchx-category-hero-media::before { animation:none !important; }
+  .punchx-service-page.service-category-ac-technician .punchx-category-hero-media::before,
+  #global-prestige-toast,
+  #providers-list-root article > div + div,
+  #providers-list-root svg.text-\\[\\#0f7a4a\\],
+  #providers-list-root svg[class*="text-green-"],
+  #providers-list-root svg[class*="text-emerald-"] { animation:none !important; }
   .punchx-service-page section:hover img { transform:none; }
 }
