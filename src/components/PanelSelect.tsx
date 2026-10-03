@@ -56,27 +56,6 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
     setAdminError('Invalid administrator passcode.');
   };
 
-  const panels = [
-    {
-      id: 'customer' as const,
-      title: 'PUNCHX Customer Panel',
-      subtitle: 'Citizen Service & Smart Utility',
-      description: 'Book verified professionals, compare services, manage your address and track every booking from one workspace.',
-      icon: User,
-      badge: 'CUSTOMER',
-      action: 'Log in to book services',
-    },
-    {
-      id: 'worker' as const,
-      title: 'PUNCHX Authority (Worker) Panel',
-      subtitle: 'Specialist Operations & Task Dispatch',
-      description: 'Receive service tasks, verify customer visits, update job progress and manage your professional earnings.',
-      icon: Wrench,
-      badge: 'PROFESSIONAL',
-      action: 'Log in to manage jobs',
-    },
-  ];
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f7faff] text-[#0f172a] px-5 py-8 sm:px-8">
       <style>{`
@@ -91,48 +70,34 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
         <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'linear-gradient(rgba(37,99,235,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,.055) 1px, transparent 1px)', backgroundSize: '48px 48px', animation: 'punchx-grid-move 18s linear infinite' }} />
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col items-center justify-center">
-        <motion.div initial={{ y: -18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-10 flex flex-col items-center text-center">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-xl flex-col items-center justify-center">
+        <motion.div initial={{ y: -18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8 flex flex-col items-center text-center">
           <button onClick={openAdmin} className="mb-5 rounded-full border border-[#bfdbfe] bg-white/80 p-2 shadow-lg backdrop-blur transition-transform hover:scale-105 active:scale-95" aria-label="PUNCHX">
             <div className="h-16 w-16 rounded-full bg-white p-1.5"><img src={PUNCHX_LOGO} alt="PUNCHX" className="h-full w-full object-contain" /></div>
           </button>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/75 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#2563eb] shadow-sm backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" /> PUNCHX ECOSYSTEM WORKSPACE
+            <Sparkles className="h-3.5 w-3.5" /> PUNCHX CUSTOMER WORKSPACE
           </div>
-          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#0f172a] sm:text-6xl">Book Trusted Home Services</h1>
-          <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-[#64748b] sm:text-base">Choose your workspace to book a verified local service or manage professional dispatches.</p>
+          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#0f172a] sm:text-5xl">Book Verified Professionals for Your Everyday Needs</h1>
+          <p className="mt-4 max-w-md text-sm font-medium leading-6 text-[#64748b] sm:text-base">Book verified professionals, compare services, and track your dispatches from one place.</p>
         </motion.div>
 
-        <div className="grid w-full max-w-5xl grid-cols-1 gap-5 md:grid-cols-2">
-          {panels.map((panel, index) => {
-            const Icon = panel.icon;
-            return (
-              <motion.section key={panel.id} initial={{ opacity: 0, y: 26 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.12, duration: 0.5 }} whileHover={{ y: -5 }} className="group relative overflow-hidden rounded-[28px] border border-[#dbeafe] bg-white/90 p-6 shadow-[0_22px_70px_rgba(30,64,175,.10)] backdrop-blur-xl sm:p-8">
-                <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#2563eb]/7 blur-3xl transition-all duration-500 group-hover:bg-[#38bdf8]/12" />
-                <div className="relative flex h-full flex-col">
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#2563eb]">{panel.badge}</span>
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eff6ff] text-[#2563eb]"><ArrowRight className="h-4 w-4" /></span>
-                  </div>
-                  <div className="mt-8 flex items-start gap-4">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb] shadow-sm transition-transform duration-300 group-hover:scale-105"><Icon className="h-7 w-7" /></div>
-                    <div><h2 className="text-xl font-extrabold tracking-tight text-[#0f172a] sm:text-2xl">{panel.title}</h2><p className="mt-1 text-xs font-semibold text-[#2563eb]">{panel.subtitle}</p></div>
-                  </div>
-                  <p className="mt-6 max-w-xl text-sm leading-6 text-[#64748b]">{panel.description}</p>
-                  <div className="mt-auto pt-8">
-                    <button onClick={() => { showNotification(`Opening ${panel.title} login...`); onSelectPanel(panel.id, 'login'); }} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#2563eb] px-5 py-4 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(37,99,235,.24)] transition-all hover:bg-[#1d4ed8] hover:shadow-[0_16px_34px_rgba(37,99,235,.30)] active:scale-[.99]">{panel.action}<ArrowRight className="h-4 w-4" /></button>
-                    {panel.id === 'worker' && <button onClick={() => onSelectPanel('worker', 'signup')} className="mt-3 w-full rounded-2xl border border-[#dbeafe] bg-white px-5 py-3 text-sm font-bold text-[#475569] transition-colors hover:bg-[#eff6ff] hover:text-[#2563eb]">New Worker Signup Application</button>}
-                  </div>
-                </div>
-              </motion.section>
-            );
-          })}
-        </div>
+        <motion.section initial={{ opacity: 0, y: 26 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.5 }} className="group relative w-full overflow-hidden rounded-[28px] border border-[#dbeafe] bg-white/90 p-6 shadow-[0_22px_70px_rgba(30,64,175,.10)] backdrop-blur-xl sm:p-10">
+          <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#2563eb]/7 blur-3xl transition-all duration-500 group-hover:bg-[#38bdf8]/12" />
+          <div className="relative flex flex-col items-center text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb] shadow-sm mb-5 transition-transform duration-300 group-hover:scale-105"><User className="h-8 w-8" /></div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-[#0f172a]">Welcome to PunchX</h2>
+            <p className="mt-2 text-sm text-[#64748b] mb-8">Sign in or create an account to get started.</p>
+            <button onClick={() => { showNotification(`Opening Customer login...`); onSelectPanel('customer', 'login'); }} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#2563eb] px-5 py-4 text-base font-extrabold text-white shadow-[0_12px_30px_rgba(37,99,235,.24)] transition-all hover:bg-[#1d4ed8] hover:shadow-[0_16px_34px_rgba(37,99,235,.30)] active:scale-[.99]">Log in to book services <ArrowRight className="h-5 w-5" /></button>
+          </div>
+        </motion.section>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] font-semibold text-[#64748b]">
-          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[#2563eb]" /> Secure workspace</span>
-          <span className="inline-flex items-center gap-1.5"><Sparkles className="h-4 w-4 text-[#2563eb]" /> Verified service marketplace</span>
-          <button onClick={() => setAdminOpen(true)} className="inline-flex items-center gap-1.5 text-[#94a3b8] hover:text-[#2563eb]"><Lock className="h-3.5 w-3.5" /> Enterprise access</button>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[11px] font-semibold text-[#64748b]">
+          <button onClick={() => onSelectPanel('worker', 'login')} className="inline-flex items-center gap-1.5 hover:text-[#2563eb] transition-colors"><Wrench className="h-3.5 w-3.5" /> Professional Login</button>
+          <span className="w-1 h-1 rounded-full bg-[#cbd5e1] hidden sm:block"></span>
+          <button onClick={() => onSelectPanel('worker', 'signup')} className="inline-flex items-center gap-1.5 hover:text-[#2563eb] transition-colors">Apply as Professional</button>
+          <span className="w-1 h-1 rounded-full bg-[#cbd5e1] hidden sm:block"></span>
+          <button onClick={() => setAdminOpen(true)} className="inline-flex items-center gap-1.5 hover:text-[#2563eb] transition-colors"><Lock className="h-3.5 w-3.5" /> Enterprise</button>
         </div>
       </div>
 

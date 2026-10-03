@@ -60,6 +60,23 @@ export const namoidFetcher: typeof fetch = async (input: RequestInfo | URL, init
     });
   }
 
+  // 2.5. Intercept auth config to bypass CORS from api.namoid.in
+  if (url.includes("/v1/auth/config")) {
+    const configUrl = url.replace("https://api.namoid.in", "https://punch-x-747dd7.id.namoid.in");
+    try {
+      const configRes = await fetch(configUrl, init);
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        return new Response(JSON.stringify(configData), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to fetch config from tenant URL", e);
+    }
+  }
+
   // 3. Token exchange handling
   if (url.includes("/v1/oauth/token") || url.includes("/oauth/token")) {
     const backendBase = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "";

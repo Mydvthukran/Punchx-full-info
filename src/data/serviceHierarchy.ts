@@ -106,7 +106,7 @@ function genericHierarchy(category: ServiceCategoryItem): Array<[string, LeafSee
       Math.max(49, category.basePrice + (actionIndex * 50) + (genericGroups.indexOf(genericGroups.find(item => item[0] === group)!) * 25)),
       actionIndex === 1 ? '60 mins' : '30 mins',
       `At-home ${category.name.toLowerCase()} ${action.toLowerCase()} service by a verified PUNCHX professional.`
-    ])
+    ] as LeafSeed)
   ]);
 }
 

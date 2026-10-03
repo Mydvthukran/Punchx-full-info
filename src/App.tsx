@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import DragoAssistant from './components/DragoAssistant';
@@ -200,8 +201,17 @@ function AppMain() {
       {showWebsiteShell && <WebsiteNavbar currentScreen={currentScreen} onTransition={handleTransition} activePanelRole={activePanelRole} setActivePanelRole={setActivePanelRole} citizenName={citizenName} citizenAddress={citizenAddress} onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)} onOpenProfile={() => { handleTransition('home'); setIsGlobalProfileOpen(true); }} onSelectCategory={setSelectedCategory} showNotification={showToast} hasActiveBooking={false} />}
 
       <main className={`relative z-10 w-full flex-grow flex flex-col ${isCitizenExperience ? 'punchx-citizen-main' : 'bg-[#07122a]'}`}>
-        <Suspense fallback={<div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] bg-white"><div className="w-12 h-12 border-4 border-[#bfdbfe] border-t-[#2563eb] rounded-full animate-spin" /><p className="mt-4 text-sm font-semibold text-[#64748b]">Loading PunchX…</p></div>}>
-          {currentScreen === 'auth-callback' && <NamoIDAuthShell>{authContent}</NamoIDAuthShell>}
+        <Suspense fallback={<div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] bg-transparent"><div className="w-12 h-12 border-4 border-[#bfdbfe] border-t-[#2563eb] rounded-full animate-spin" /><p className="mt-4 text-sm font-semibold text-[#64748b]">Loading PunchX…</p></div>}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentScreen}
+              initial={{ opacity: 0, y: 15, scale: 0.98, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -15, scale: 0.98, filter: 'blur(4px)' }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="flex-grow flex flex-col w-full h-full"
+            >
+              {currentScreen === 'auth-callback' && <NamoIDAuthShell>{authContent}</NamoIDAuthShell>}
           {currentScreen === 'splash' && <Splash onTransition={handleTransition} />}
           {currentScreen === 'panel-select' && <PanelSelect onSelectPanel={(panel, action) => { setActivePanelRole(panel); if (panel === 'worker' && action === 'signup') setCurrentScreen('worker-signup'); else setCurrentScreen('auth'); }} showNotification={showToast} />}
           {currentScreen === 'worker-signup' && <WorkerSignup onTransition={handleTransition} showNotification={showToast} setWorkerApplicationData={setWorkerApplication} />}
@@ -221,7 +231,9 @@ function AppMain() {
           {currentScreen === 'admin-dashboard' && <AdminDashboard onTransition={handleTransition} showNotification={showToast} />}
           {currentScreen === 'privacy-policy' && <PrivacyPolicy onTransition={handleTransition} showNotification={showToast} />}
           {currentScreen === 'terms-and-conditions' && <TermsAndConditions onTransition={handleTransition} showNotification={showToast} />}
-          {currentScreen === 'founder' && <Founder onTransition={handleTransition} showNotification={showToast} />}
+              {currentScreen === 'founder' && <Founder onTransition={handleTransition} showNotification={showToast} />}
+            </motion.div>
+          </AnimatePresence>
         </Suspense>
       </main>
 
