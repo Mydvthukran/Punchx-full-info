@@ -17,6 +17,7 @@
   --px-success-soft:#f0fdf4;
   --px-shadow:0 8px 24px rgba(15,23,42,.07);
 }
+
 html,body,#root{background:var(--px-bg)!important;color:var(--px-text)!important}
 body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
 
@@ -26,7 +27,7 @@ body,.bg-\\[\\#0d121f\\],.bg-\\[\\#07122a\\],.bg-\\[\\#111415\\],.bg-\\[\\#11192
 .gold-glow{box-shadow:0 0 24px rgba(37,99,235,.14)!important}
 .gold-gradient-text{background:linear-gradient(135deg,var(--px-blue),var(--px-sky))!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
 [class*="text-[#c5a059]"],[class*="text-[#e9c176]"],[class*="text-[#b8860b]"],[class*="text-[#7358d7]"],[class*="text-[#5b45c7]"]{color:var(--px-blue)!important}
-[class*="bg-[#c5a059]"],[class*="bg-[#7358d7]"],[class*="bg-[#8d7be4]"],[class*="bg-[#8f7be6"]"]{background-color:var(--px-blue)!important}
+[class*="bg-[#c5a059]"],[class*="bg-[#7358d7]"],[class*="bg-[#8d7be4]"],[class*="bg-[#8f7be6]"]{background-color:var(--px-blue)!important}
 [class*="from-[#c5a059]"],[class*="from-[#7358d7]"],[class*="from-[#8f7be6]"]{--tw-gradient-from:var(--px-blue) var(--tw-gradient-from-position)!important}
 [class*="to-[#b8860b]"],[class*="to-[#8d7be4]"],[class*="to-[#5b45c7]"]{--tw-gradient-to:var(--px-sky) var(--tw-gradient-to-position)!important}
 [class*="border-[#c5a059]"],[class*="border-[#7358d7]"]{border-color:var(--px-border)!important}
