@@ -48,11 +48,10 @@ export default function WarrantyClaimsManager({
         price: 0, // ₹0 Free for customer under 30-day guarantee
         baseFee: 0,
         warrantyFee: 0,
-        personalSelectFee: 0,
+        personalSelectionFee: 0,
         emergencySurcharge: 0,
         status: 'In Progress',
         paymentMethod: '30-Day Guarantee Free Rebooking',
-        isEmergency: false,
         dispatchMode: 'RANDOM_15KM',
         date: claim.preferredDate || claim.rebookingDate || 'Today',
         time: claim.preferredTimeSlot || claim.rebookingTime || '11:00 AM',

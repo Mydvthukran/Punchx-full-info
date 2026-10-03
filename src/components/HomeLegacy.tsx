@@ -219,6 +219,7 @@ export default function HomeDashboard(props: HomeProps) {
         isOpen={isCategoryModalOpen}
         onClose={handleCloseCategories}
         onSelectCategory={handleCategoryClick}
+        mode="citizen"
       />
     </div>
   );

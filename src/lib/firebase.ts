@@ -15,7 +15,7 @@ import rawConfig from '../../firebase-applet-config.json';
  * The Firebase web config is public by design. Vercel environment variables,
  * when supplied, override only non-empty values from the checked-in config.
  */
-const raw = rawConfig || {};
+const raw: any = rawConfig || {};
 
 const env = (key: string): string => {
   const value = import.meta.env[key];
