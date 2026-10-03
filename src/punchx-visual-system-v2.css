@@ -1,0 +1,177 @@
+/* PunchX Visual System v2
+   Final override layer: loaded after every existing UI stylesheet so the
+   customer-facing palette is deterministic even where legacy Tailwind classes
+   still contain the previous dark/gold/purple design.
+*/
+:root {
+  --px-v2-blue: #2563eb;
+  --px-v2-blue-dark: #1d4ed8;
+  --px-v2-sky: #60a5fa;
+  --px-v2-bg: #f8fafc;
+  --px-v2-surface: #ffffff;
+  --px-v2-text: #0f172a;
+  --px-v2-muted: #64748b;
+  --px-v2-border: #dbeafe;
+  --px-v2-success: #16a34a;
+  --px-v2-success-soft: #f0fdf4;
+  --px-v2-shadow: 0 8px 24px rgba(15, 23, 42, .07);
+}
+
+/* Legacy exact-color classes that were not covered by the first theme pass. */
+[class*="bg-[#07122a]"],
+[class*="bg-[#081226]"],
+[class*="bg-[#0c1020]"],
+[class*="bg-[#0c0f10]"],
+[class*="bg-[#0e1b38]"],
+[class*="bg-[#101525]"],
+[class*="bg-[#111415]"],
+[class*="bg-[#11192e]"],
+[class*="bg-[#151f37]"],
+[class*="bg-[#0a152e]"],
+[class*="bg-[#0d121f]"] {
+  background-color: var(--px-v2-surface) !important;
+  background-image: none !important;
+}
+
+[class*="bg-[#c5a059]"],
+[class*="bg-[#7358d7]"],
+[class*="bg-[#8d7be4]"],
+[class*="bg-[#8f7be6]"],
+[class*="bg-[#5b45c7]"] {
+  background-color: var(--px-v2-blue) !important;
+}
+
+[class*="text-[#e9c176]"],
+[class*="text-[#b9adff]"],
+[class*="text-[#c5a059]"],
+[class*="text-[#7358d7]"],
+[class*="text-[#8d7be4]"],
+[class*="text-[#5b45c7]"] {
+  color: var(--px-v2-blue) !important;
+}
+
+[class*="border-[#c5a059]"],
+[class*="border-[#e9c176]"],
+[class*="border-[#7358d7]"],
+[class*="border-[#8d7be4]"],
+[class*="border-[#5b45c7]"] {
+  border-color: var(--px-v2-border) !important;
+}
+
+[class*="from-[#c5a059]"],
+[class*="from-[#7358d7]"],
+[class*="from-[#8f7be6]"],
+[class*="from-[#5b45c7]"] {
+  --tw-gradient-from: var(--px-v2-blue) var(--tw-gradient-from-position) !important;
+}
+
+[class*="to-[#b8860b]"],
+[class*="to-[#8d7be4]"],
+[class*="to-[#5b45c7]"] {
+  --tw-gradient-to: var(--px-v2-sky) var(--tw-gradient-to-position) !important;
+}
+
+/* Website footer: replace the old dark/purple treatment with the same
+   customer-facing blue/white system used by checkout and service cards. */
+#punchx-website-footer {
+  background: var(--px-v2-surface) !important;
+  color: var(--px-v2-text) !important;
+  border-top: 1px solid var(--px-v2-border) !important;
+}
+#punchx-website-footer [class*="bg-white/[0.045]"],
+#punchx-website-footer [class*="bg-white/[0.04]"],
+#punchx-website-footer [class*="bg-[#101525]"] {
+  background: var(--px-v2-surface) !important;
+}
+#punchx-website-footer [class*="border-white/"] {
+  border-color: var(--px-v2-border) !important;
+}
+#punchx-website-footer [class*="text-white/"],
+#punchx-website-footer [class="text-white"],
+#punchx-website-footer .text-white {
+  color: var(--px-v2-text) !important;
+}
+#punchx-website-footer [class*="text-[#b9adff]"],
+#punchx-website-footer [class*="text-[#7358d7]"] {
+  color: var(--px-v2-blue) !important;
+}
+#punchx-website-footer [class*="bg-[#7358d7]"] {
+  background: var(--px-v2-blue) !important;
+}
+#punchx-website-footer [class*="hover:bg-white/"]:hover {
+  background: var(--px-v2-bg) !important;
+}
+#punchx-website-footer [class*="bg-white"] {
+  background: var(--px-v2-surface) !important;
+}
+#punchx-website-footer .punchx-footer-glow {
+  background: rgba(37, 99, 235, .08) !important;
+}
+
+/* Price estimator and FAQ legacy dark panels. */
+#pricing-estimator-section,
+#website-faq-section {
+  background: var(--px-v2-surface) !important;
+  color: var(--px-v2-text) !important;
+  border-color: var(--px-v2-border) !important;
+  box-shadow: var(--px-v2-shadow) !important;
+}
+#pricing-estimator-section [class*="text-white"],
+#website-faq-section [class*="text-white"] {
+  color: var(--px-v2-text) !important;
+}
+#pricing-estimator-section [class*="text-zinc-"],
+#website-faq-section [class*="text-zinc-"] {
+  color: var(--px-v2-muted) !important;
+}
+#pricing-estimator-section [class*="bg-[#0e1b38]"],
+#pricing-estimator-section [class*="bg-[#081226]"],
+#website-faq-section [class*="bg-[#0e1b38]"],
+#website-faq-section [class*="bg-[#081226]"] {
+  background: var(--px-v2-bg) !important;
+  color: var(--px-v2-text) !important;
+}
+#pricing-estimator-section [class*="border-zinc-"],
+#website-faq-section [class*="border-zinc-"] {
+  border-color: var(--px-v2-border) !important;
+}
+#pricing-estimator-section button[class*="bg-[#c5a059]"],
+#pricing-estimator-section button[class*="bg-[#7358d7]"] {
+  background: var(--px-v2-blue) !important;
+  color: #fff !important;
+  border-color: var(--px-v2-blue) !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, .18) !important;
+}
+
+/* The floating AI assistant should be an accent, not a competing glow. */
+#drago-assistant-button,
+#drago-assistant-button button {
+  background: var(--px-v2-blue) !important;
+  color: #fff !important;
+}
+
+/* Consistent customer controls. */
+#providers-list-root button,
+#booking-container button,
+#payment-screen-container button {
+  transition: transform .2s ease, background-color .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+#providers-list-root button:active,
+#booking-container button:active,
+#payment-screen-container button:active {
+  transform: scale(.97);
+}
+
+/* Do not let old full-page gradients reintroduce the previous palette. */
+#pricing-estimator-section[class*="bg-gradient"],
+#website-faq-section[class*="bg-gradient"] {
+  background-image: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #providers-list-root button,
+  #booking-container button,
+  #payment-screen-container button {
+    transition: none !important;
+  }
+}
