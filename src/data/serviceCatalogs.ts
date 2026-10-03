@@ -92,6 +92,7 @@ const buildCategory = (category: typeof PUNCHX_50_CATEGORIES[number]): ServiceCa
             id: `${subId}-${slug(itemName)}`,
             name: itemName,
             description: `${itemName} at the residential visit location. Final price may vary for materials, quantity or additional work.`,
+            price,
             image: serviceImage(`${category.name} • ${itemName}`, material),
             popular: subIndex === 0 && itemIndex === 0,
             unit: 'job' as ServiceUnit,
