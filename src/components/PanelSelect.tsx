@@ -78,7 +78,7 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/75 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#2563eb] shadow-sm backdrop-blur">
             <Sparkles className="h-3.5 w-3.5" /> PUNCHX CUSTOMER WORKSPACE
           </div>
-          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#0f172a] sm:text-5xl">Book Trusted Home Services</h1>
+          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#0f172a] sm:text-5xl">Book Verified Professionals for Your Everyday Needs</h1>
           <p className="mt-4 max-w-md text-sm font-medium leading-6 text-[#64748b] sm:text-base">Book verified professionals, compare services, and track your dispatches from one place.</p>
         </motion.div>
 
