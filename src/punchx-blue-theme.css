@@ -1,28 +1,103 @@
-/* PUNCHX — Unified Blue Marketplace Theme
-   Palette from supplied references: navy, blue, sky-blue, pale-blue, white, slate. */
-:root{--px-navy:#213145;--px-navy-deep:#0f172a;--px-blue:#2563eb;--px-sky:#38bdf8;--px-pale:#e5eeff;--px-bg:#f8f9ff;--px-white:#fff;--px-text:#213145;--px-muted:#64748b;--px-border:#cbdaf2;--px-soft:#eef4ff;--px-shadow:0 10px 30px rgba(33,49,69,.08)}
-html,body,#root{background:var(--px-bg)!important;color:var(--px-text)!important}body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
-/* Legacy dark/gold/purple visual language -> reference blue palette. */
-body,.bg-\[\#0d121f\],.bg-\[\#07122a\],.bg-\[\#111415\],.bg-\[\#11192e\],.bg-\[\#151f37\],.bg-\[\#0a152e\],.bg-black{background-color:var(--px-bg)!important}
-.text-white{color:var(--px-white)!important}.text-\[\#dbdee3\],.text-\[\#e1e3e4\],.text-\[\#17191d\],.text-\[\#1f2937\]{color:var(--px-text)!important}
-.gold-glow{box-shadow:0 0 24px rgba(37,99,235,.14)!important}.gold-gradient-text{background:linear-gradient(135deg,var(--px-blue),var(--px-sky))!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
+/* PUNCHX — Unified customer marketplace visual system */
+:root{
+  --px-navy:#0f172a;
+  --px-navy-deep:#0b1220;
+  --px-blue:#2563eb;
+  --px-blue-dark:#1d4ed8;
+  --px-sky:#60a5fa;
+  --px-pale:#eff6ff;
+  --px-bg:#f8fafc;
+  --px-white:#fff;
+  --px-text:#0f172a;
+  --px-muted:#64748b;
+  --px-border:#dbeafe;
+  --px-border-neutral:#e2e8f0;
+  --px-soft:#f1f5f9;
+  --px-success:#16a34a;
+  --px-success-soft:#f0fdf4;
+  --px-shadow:0 8px 24px rgba(15,23,42,.07);
+}
+html,body,#root{background:var(--px-bg)!important;color:var(--px-text)!important}
+body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+
+/* Legacy dark/gold/purple visual language -> clean PunchX blue palette. */
+body,.bg-\\[\\#0d121f\\],.bg-\\[\\#07122a\\],.bg-\\[\\#111415\\],.bg-\\[\\#11192e\\],.bg-\\[\\#151f37\\],.bg-\\[\\#0a152e\\],.bg-black{background-color:var(--px-bg)!important}
+.text-\\[\\#dbdee3\\],.text-\\[\\#e1e3e4\\],.text-\\[\\#17191d\\],.text-\\[\\#1f2937\\]{color:var(--px-text)!important}
+.gold-glow{box-shadow:0 0 24px rgba(37,99,235,.14)!important}
+.gold-gradient-text{background:linear-gradient(135deg,var(--px-blue),var(--px-sky))!important;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important}
 [class*="text-[#c5a059]"],[class*="text-[#e9c176]"],[class*="text-[#b8860b]"],[class*="text-[#7358d7]"],[class*="text-[#5b45c7]"]{color:var(--px-blue)!important}
-[class*="bg-[#c5a059]"],[class*="bg-[#7358d7]"],[class*="bg-[#8d7be4]"],[class*="bg-[#8f7be6]"]{background-color:var(--px-blue)!important}
+[class*="bg-[#c5a059]"],[class*="bg-[#7358d7]"],[class*="bg-[#8d7be4]"],[class*="bg-[#8f7be6"]"]{background-color:var(--px-blue)!important}
 [class*="from-[#c5a059]"],[class*="from-[#7358d7]"],[class*="from-[#8f7be6]"]{--tw-gradient-from:var(--px-blue) var(--tw-gradient-from-position)!important}
 [class*="to-[#b8860b]"],[class*="to-[#8d7be4]"],[class*="to-[#5b45c7]"]{--tw-gradient-to:var(--px-sky) var(--tw-gradient-to-position)!important}
 [class*="border-[#c5a059]"],[class*="border-[#7358d7]"]{border-color:var(--px-border)!important}
-[class*="text-emerald-"],[class*="text-green-"],[class*="text-[#087f5b]"],[class*="text-[#0f9d75]"]{color:var(--px-blue)!important}
-[class*="bg-emerald-"],[class*="bg-green-"],[class*="bg-[#087f5b]"],[class*="bg-[#0f9d75]"]{background-color:var(--px-blue)!important}
-[class*="border-emerald-"],[class*="border-green-"]{border-color:var(--px-border)!important}
-.bg-white{background-color:var(--px-white)!important}[class*="border-black/"],[class*="border-white/"]{border-color:var(--px-border)!important}
-button,a,input,textarea,select{-webkit-tap-highlight-color:transparent}button{font-family:inherit}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid rgba(37,99,235,.24)!important;outline-offset:2px}
+
+/* Preserve green as a semantic SUCCESS color. */
+[class*="text-emerald-"],[class*="text-green-"],[class*="text-[#087f5b]"],[class*="text-[#0f9d75]"]{color:var(--px-success)!important}
+[class*="bg-emerald-"],[class*="bg-green-"]{background-color:var(--px-success)!important}
+[class*="bg-[#087f5b]"],[class*="bg-[#0f9d75]"]{background-color:var(--px-success-soft)!important}
+[class*="border-emerald-"],[class*="border-green-"]{border-color:#bbf7d0!important}
+
+.bg-white{background-color:var(--px-white)!important}
+[class*="border-black/"],[class*="border-white/"]{border-color:var(--px-border)!important}
+button,a,input,textarea,select{-webkit-tap-highlight-color:transparent}
+button{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid rgba(37,99,235,.24)!important;outline-offset:2px}
 button[class*="bg-blue-"],button[class*="bg-[#2563eb]"],button[class*="bg-[#7358d7]"],button[class*="bg-[#5b45c7]"],button[class*="bg-[#c5a059]"],button[class*="from-blue-"]{background:var(--px-blue)!important;color:#fff!important;border-color:var(--px-blue)!important}
-header,nav{border-color:var(--px-border)!important}input,textarea,select{background:var(--px-white)!important;color:var(--px-text)!important;border-color:var(--px-border)!important}input::placeholder,textarea::placeholder{color:var(--px-muted)!important}
+header,nav{border-color:var(--px-border)!important}
+input,textarea,select{background:var(--px-white)!important;color:var(--px-text)!important;border-color:var(--px-border-neutral)!important}
+input::placeholder,textarea::placeholder{color:var(--px-muted)!important}
+
 .punchx-citizen-main,.punchx-citizen-shell,#providers-list-root,#provider-details-root,#booking-container,#payment-screen-container{background:var(--px-bg)!important;color:var(--px-text)!important}
-#providers-list-root header,#provider-details-root header,#booking-topbar,#payment-topbar{background:rgba(255,255,255,.96)!important;color:var(--px-text)!important;border-color:var(--px-border)!important;box-shadow:var(--px-shadow)!important}
-#providers-list-root [class*="bg-[#07122a]"],#providers-list-root [class*="bg-[#111415]"],#providers-list-root [class*="bg-[#11192e]"],#providers-list-root [class*="bg-[#151f37]"],#providers-list-root [class*="bg-[#0a152e]"],#provider-details-root [class*="bg-[#07122a]"],#provider-details-root [class*="bg-[#111415]"],#provider-details-root [class*="bg-[#11192e]"],#provider-details-root [class*="bg-[#151f37]"],#provider-details-root [class*="bg-[#0a152e]"],#booking-container [class*="bg-[#07122a]"],#booking-container [class*="bg-[#111415]"],#booking-container [class*="bg-[#11192e]"],#booking-container [class*="bg-[#151f37]"],#booking-container [class*="bg-[#0a152e]"],#payment-screen-container [class*="bg-[#07122a]"],#payment-screen-container [class*="bg-[#111415]"],#payment-screen-container [class*="bg-[#11192e]"],#payment-screen-container [class*="bg-[#151f37]"],#payment-screen-container [class*="bg-[#0a152e]"]{background-color:var(--px-white)!important}
-#providers-list-root [class*="text-white"],#provider-details-root [class*="text-white"],#booking-container [class*="text-white"],#payment-screen-container [class*="text-white"]{color:var(--px-text)!important}
-img{max-width:100%}.punchx-blue-pill{background:var(--px-pale)!important;color:var(--px-blue)!important;border:1px solid var(--px-border)!important}.punchx-blue-card{background:var(--px-white)!important;border:1px solid var(--px-border)!important;box-shadow:var(--px-shadow)!important}.punchx-blue-hero{background:linear-gradient(135deg,var(--px-navy),#294b70)!important;color:#fff!important}
-[class*="bg-gradient-to"],[class*="bg-gradient-"]{background-image:linear-gradient(135deg,var(--px-navy),var(--px-blue))!important}
-@keyframes punchx-blue-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.punchx-citizen-main,.punchx-citizen-shell,#providers-list-root,#provider-details-root,#booking-container,#payment-screen-container{animation:punchx-blue-enter .28s ease-out both}
+#providers-list-root header,#provider-details-root header,#booking-topbar,#payment-topbar{background:rgba(255,255,255,.97)!important;color:var(--px-text)!important;border-color:var(--px-border)!important;box-shadow:var(--px-shadow)!important}
+
+/* Customer service catalogue */
+#providers-list-root .punchx-citizen-main{background:transparent!important}
+#providers-list-root article,
+#providers-list-root section,
+#providers-list-root .punchx-service-card{
+  border-color:var(--px-border)!important;
+  box-shadow:var(--px-shadow);
+}
+#providers-list-root button[class*="bg-[#2563eb]"],
+#providers-list-root button[class*="bg-blue-"]{
+  background:var(--px-blue)!important;
+  color:#fff!important;
+  transition:transform .2s ease,background-color .2s ease,box-shadow .2s ease;
+  box-shadow:0 5px 14px rgba(37,99,235,.16);
+}
+#providers-list-root button[class*="bg-[#2563eb]"]:hover,
+#providers-list-root button[class*="bg-blue-"]:hover{background:var(--px-blue-dark)!important;transform:translateY(-1px);box-shadow:0 7px 18px rgba(37,99,235,.22)}
+#providers-list-root button[class*="bg-[#2563eb]"]:active,
+#providers-list-root button[class*="bg-blue-"]:active{transform:scale(.97)}
+
+/* Payment / checkout surface */
+#payment-screen-container{padding-bottom:0!important}
+#payment-screen-container section,
+#payment-screen-container [class*="rounded-3xl"]{
+  border-color:var(--px-border)!important;
+  box-shadow:var(--px-shadow)!important;
+}
+#payment-screen-container button{transition:transform .2s ease,background-color .2s ease,box-shadow .2s ease}
+#payment-screen-container button[class*="bg-[#2563eb]"],
+#payment-screen-container button[class*="bg-blue-"]{background:var(--px-blue)!important;color:#fff!important;box-shadow:0 6px 16px rgba(37,99,235,.2)!important}
+#payment-screen-container button[class*="bg-[#2563eb]"]:hover,
+#payment-screen-container button[class*="bg-blue-"]:hover{background:var(--px-blue-dark)!important;transform:translateY(-1px)}
+#payment-screen-container button[class*="bg-[#2563eb]"]:active,
+#payment-screen-container button[class*="bg-blue-"]:active{transform:scale(.97)}
+#payment-screen-container [class*="text-[#2563eb]"]{color:var(--px-blue)!important}
+
+/* Avoid bright-blue-on-blue and keep readable disabled controls. */
+button:disabled{cursor:not-allowed!important;box-shadow:none!important}
+
+img{max-width:100%}
+.punchx-blue-pill{background:var(--px-pale)!important;color:var(--px-blue)!important;border:1px solid var(--px-border)!important}
+.punchx-blue-card{background:var(--px-white)!important;border:1px solid var(--px-border)!important;box-shadow:var(--px-shadow)!important}
+.punchx-blue-hero{background:linear-gradient(135deg,var(--px-navy),var(--px-blue-dark))!important;color:#fff!important}
+
+/* Keep gradients intentional rather than allowing unrelated legacy gradients. */
+[class*="bg-gradient-to"],[class*="bg-gradient-"]{background-image:linear-gradient(135deg,var(--px-navy),var(--px-blue-dark))!important}
+
+@keyframes punchx-blue-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.punchx-citizen-main,.punchx-citizen-shell,#providers-list-root,#provider-details-root,#booking-container,#payment-screen-container{animation:punchx-blue-enter .28s ease-out both}
+
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
