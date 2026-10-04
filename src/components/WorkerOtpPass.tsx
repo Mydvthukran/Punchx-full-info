@@ -19,8 +19,11 @@ export default function WorkerOtpPass({
   workerApplication,
   setWorkerApplicationData
 }: WorkerOtpPassProps) {
-  const [phoneOtp, setPhoneOtp] = useState('8842');
-  const [emailOtp, setEmailOtp] = useState('9921');
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [challengeId, setChallengeId] = useState('');
+  const [debugPhoneCode, setDebugPhoneCode] = useState('');
+  const [debugEmailCode, setDebugEmailCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -28,16 +31,47 @@ export default function WorkerOtpPass({
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleVerifyAndSubmit = (e: React.FormEvent) => {
+  // Request dynamic dual OTP challenge from server on mount
+  React.useEffect(() => {
+    async function requestChallenge() {
+      try {
+        const phone = workerApplication?.phone || '9876543210';
+        const email = workerApplication?.email || 'applicant@punchx.in';
+        const res = await fetch('/api/auth/worker-signup-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'generate', phone, email }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.challengeId) {
+            setChallengeId(data.challengeId);
+            if (data.debugCodes) {
+              setDebugPhoneCode(data.debugCodes.phoneCode);
+              setDebugEmailCode(data.debugCodes.emailCode);
+              // In dev mode, auto-fill for frictionless specialist onboarding
+              setPhoneOtp(data.debugCodes.phoneCode);
+              setEmailOtp(data.debugCodes.emailCode);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Dynamic OTP challenge error, using fallback:', err);
+      }
+    }
+    requestChallenge();
+  }, [workerApplication]);
+
+  const handleVerifyAndSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
     if (!phoneOtp.trim() || phoneOtp.trim().length < 4) {
-      setErrorMsg('Please enter the 4-digit Phone OTP sent to your mobile.');
+      setErrorMsg('Please enter the Phone OTP sent to your mobile.');
       return;
     }
     if (!emailOtp.trim() || emailOtp.trim().length < 4) {
-      setErrorMsg('Please enter the 4-digit Gmail OTP sent to your inbox.');
+      setErrorMsg('Please enter the Gmail OTP sent to your inbox.');
       return;
     }
     if (!password.trim() || password.length < 6) {
@@ -51,8 +85,25 @@ export default function WorkerOtpPass({
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      if (challengeId) {
+        const verifyRes = await fetch('/api/auth/worker-signup-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'verify',
+            challengeId,
+            phoneOtp,
+            emailOtp,
+          }),
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyRes.ok || !verifyData.success) {
+          setErrorMsg(verifyData.error || 'OTP verification failed. Please check the codes.');
+          setLoading(false);
+          return;
+        }
+      }
 
       if (workerApplication) {
         const updatedApp: WorkerApplication = {
@@ -79,7 +130,11 @@ export default function WorkerOtpPass({
 
       showNotification('✓ Dual OTP verified & password set successfully! Proceed to set your Service Hub Location.');
       onTransition('worker-setup');
-    }, 1200);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Verification failed. Please retry.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -146,7 +201,13 @@ export default function WorkerOtpPass({
                 placeholder="Enter Mobile OTP"
                 className="w-full bg-[#07122a] border border-[#c5a059]/40 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm font-mono font-bold text-white text-center outline-none"
               />
-              <p className="text-[10px] text-zinc-500 text-center">Verification Code: <span className="text-[#e9c176] font-bold">8842</span></p>
+              <p className="text-[10px] text-zinc-500 text-center">
+                {debugPhoneCode ? (
+                  <>Verification Code: <span className="text-[#e9c176] font-bold">{debugPhoneCode}</span></>
+                ) : (
+                  <span>Dynamic security code sent to mobile</span>
+                )}
+              </p>
             </div>
 
             {/* Gmail OTP */}
@@ -162,7 +223,13 @@ export default function WorkerOtpPass({
                 placeholder="Enter Gmail OTP"
                 className="w-full bg-[#07122a] border border-[#c5a059]/40 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm font-mono font-bold text-white text-center outline-none"
               />
-              <p className="text-[10px] text-zinc-500 text-center">Verification Code: <span className="text-[#e9c176] font-bold">9921</span></p>
+              <p className="text-[10px] text-zinc-500 text-center">
+                {debugEmailCode ? (
+                  <>Verification Code: <span className="text-[#e9c176] font-bold">{debugEmailCode}</span></>
+                ) : (
+                  <span>Dynamic security code sent to Gmail inbox</span>
+                )}
+              </p>
             </div>
 
           </div>

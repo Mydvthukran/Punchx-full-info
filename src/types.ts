@@ -64,6 +64,8 @@ export interface UserProfile {
   workerExperience?: string;
   workerRating?: number;
   workerCompletedJobs?: number;
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+  applicationId?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -109,6 +111,24 @@ export type ServiceCategory = {
   emergencySurcharge?: number;
 };
 
+export type OrderStatus =
+  | 'DRAFT'
+  | 'PENDING_PAYMENT'
+  | 'PAID'
+  | 'DISPATCHING'
+  | 'ACCEPTED'
+  | 'EN_ROUTE'
+  | 'ARRIVED'
+  | 'IN_SERVICE'
+  | 'COMPLETION_PENDING'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'Pending'
+  | 'In Progress'
+  | 'In-Progress'
+  | 'Done'
+  | 'Cancelled';
+
 export interface OrderRecord {
   id: string;
   category: string;
@@ -134,7 +154,7 @@ export interface OrderRecord {
   isPersonalSelection?: boolean;
   date: string;
   time?: string;
-  status: 'Pending' | 'In Progress' | 'In-Progress' | 'Done' | 'Cancelled';
+  status: OrderStatus;
   customerName?: string;
   customerAddress?: string;
   customerPhone?: string;
@@ -197,6 +217,40 @@ export interface OrderRecord {
     completionNotes?: string;
     completionOtpVerified?: boolean;
   };
+  startOtpHash?: string;
+  startOtpSalt?: string;
+  startOtpExpiresAt?: string;
+  startOtpAttempts?: number;
+  completionOtpHash?: string;
+  completionOtpSalt?: string;
+  completionOtpExpiresAt?: string;
+  completionOtpAttempts?: number;
+  workerLocation?: {
+    lat: number;
+    lng: number;
+    updatedAt?: string;
+    heading?: number;
+    accuracy?: number;
+    speed?: number;
+  };
+  paymentDetails?: {
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    signature?: string;
+    method?: string;
+    paidAt?: string;
+    amount?: number;
+    currency?: string;
+    status?: string;
+  };
+  stateHistory?: Array<{
+    from: string;
+    to: string;
+    timestamp: string;
+    actorUid: string;
+    actorRole: string;
+    reason?: string;
+  }>;
 }
 
 export interface WarrantyClaim {

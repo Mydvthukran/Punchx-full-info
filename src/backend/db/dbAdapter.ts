@@ -10,8 +10,11 @@ export interface IDatabaseAdapter {
 
   // Worker Application Operations
   createWorkerApplication(app: WorkerApplication): Promise<WorkerApplication>;
+  getWorkerApplication(id: string): Promise<WorkerApplication | null>;
+  getWorkerApplicationByUid(uid: string): Promise<WorkerApplication | null>;
+  getWorkerApplicationByContact(contact: { phone?: string; email?: string }): Promise<WorkerApplication | null>;
   listWorkerApplications(status?: string): Promise<WorkerApplication[]>;
-  updateWorkerApplicationStatus(id: string, status: 'APPROVED' | 'REJECTED'): Promise<WorkerApplication | null>;
+  updateWorkerApplicationStatus(id: string, status: 'APPROVED' | 'REJECTED', notes?: string): Promise<WorkerApplication | null>;
 
   // Order Operations
   createOrder(order: OrderRecord): Promise<OrderRecord>;

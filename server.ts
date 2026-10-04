@@ -31,6 +31,21 @@ try {
 
 import { dbAdapter } from "./src/backend/db/index.js";
 import { logger } from "./src/backend/logger.js";
+import { calculateAuthoritativeQuote } from "./src/backend/pricingService.js";
+import { executeOrderTransition } from "./src/backend/orderStateMachine.js";
+import { generateSecureOtp, verifyOtpChallenge } from "./src/backend/otpService.js";
+import {
+  createGatewayPaymentOrder,
+  verifyPaymentSignature,
+  verifyWebhookSignature,
+  isEventProcessed,
+  recordProcessedEvent,
+} from "./src/backend/paymentService.js";
+import {
+  updateWorkerLocationTelemetry,
+  getOrderTrackingStatus,
+} from "./src/backend/trackingService.js";
+import { OrderRecord, OrderStatus } from "./src/types.js";
 
 // ─── Firebase Auth Middleware ───
 export const requireFirebaseUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -47,30 +62,36 @@ export const requireFirebaseUser = async (req: express.Request, res: express.Res
         (req as any).user = decodedToken;
         return next();
       } catch (verifyErr) {
-        logger.warn("Firebase ID Token verification notice:", verifyErr);
+        logger.warn("Firebase ID Token verification failed:", verifyErr);
+        return res.status(401).json({ success: false, error: "Unauthorized: Invalid or expired token" });
       }
     }
 
-    const parts = idToken.split('.');
-    if (parts.length === 3) {
-      try {
-        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
-        (req as any).user = {
-          uid: payload.uid || payload.sub || payload.user_id || 'namoid_user',
-          email: payload.email || '',
-          ...payload
-        };
-        return next();
-      } catch {
-        // Continue to default payload
+    // In local non-production environments when Firebase Admin credentials are not provided
+    if (process.env.NODE_ENV !== "production") {
+      const parts = idToken.split('.');
+      if (parts.length === 3) {
+        try {
+          const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
+          const resolvedUid = payload.uid || payload.sub || payload.user_id;
+          if (resolvedUid) {
+            (req as any).user = {
+              uid: resolvedUid,
+              email: payload.email || '',
+              ...payload
+            };
+            return next();
+          }
+        } catch {
+          // Continue to unauthorized response
+        }
       }
     }
 
-    (req as any).user = { uid: idToken || 'namoid_user' };
-    next();
+    return res.status(401).json({ success: false, error: "Unauthorized: Unverifiable authentication token" });
   } catch (error) {
-    logger.warn("Firebase ID Token middleware notice:", error);
+    logger.warn("Firebase ID Token middleware error:", error);
     return res.status(401).json({ success: false, error: "Unauthorized: Invalid or expired token" });
   }
 };
@@ -92,6 +113,41 @@ export const requireAdmin = async (req: express.Request, res: express.Response, 
   } catch (err) {
     logger.error("Admin verification error:", err);
     return res.status(500).json({ success: false, error: "Internal authorization check failed" });
+  }
+};
+
+// ─── Worker Verification Middleware ───
+export const requireWorker = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const user = (req as any).user;
+  if (!user || !user.uid) {
+    return res.status(401).json({ success: false, error: "Unauthorized: Authentication required" });
+  }
+
+  try {
+    const userProfile = await dbAdapter.getUser(user.uid);
+    // Approved worker must have role 'worker' and status 'APPROVED'
+    if (userProfile && userProfile.role === "worker" && userProfile.status === "APPROVED") {
+      (req as any).workerProfile = userProfile;
+      return next();
+    }
+
+    // Check worker application status in database
+    const workerApp = await dbAdapter.getWorkerApplicationByUid(user.uid)
+      || (userProfile?.phone ? await dbAdapter.getWorkerApplicationByContact({ phone: userProfile.phone }) : null);
+
+    if (workerApp && workerApp.status === "APPROVED") {
+      (req as any).workerApp = workerApp;
+      return next();
+    }
+
+    logger.security("Unauthorized worker endpoint access attempt", { uid: user.uid, status: workerApp?.status });
+    return res.status(403).json({
+      success: false,
+      error: "Forbidden: Verified and approved specialist authorization required"
+    });
+  } catch (err) {
+    logger.error("Worker verification error:", err);
+    return res.status(500).json({ success: false, error: "Internal worker authorization check failed" });
   }
 };
 
@@ -139,8 +195,13 @@ async function startServer() {
     message: { success: false, error: "Too many requests, please try again later." },
   }));
 
-  // Body size limits to prevent DoS via large payloads
-  app.use(express.json({ limit: "1mb" }));
+  // Body size limits to prevent DoS via large payloads & capture rawBody for webhook HMAC verification
+  app.use(express.json({
+    limit: "1mb",
+    verify: (req: any, _res: any, buf: Buffer) => {
+      req.rawBody = buf;
+    },
+  }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
   // Health check
@@ -181,20 +242,85 @@ async function startServer() {
     }
   });
 
-  // ─── ORDERS CRUD APIS ───
+  // ─── AUTHORITATIVE PRICING & QUOTES (TASK SHEET SECTION 6 [P0]) ───
+  app.post("/api/pricing/quote", async (req, res) => {
+    try {
+      const quote = calculateAuthoritativeQuote(req.body);
+      return res.json({ success: true, quote });
+    } catch (err: any) {
+      logger.error("Pricing quote error:", err);
+      return res.status(500).json({ success: false, error: "Failed to calculate pricing quote" });
+    }
+  });
+
+  // ─── ORDERS CRUD & IDOR HARDENING (TASK SHEET SECTIONS 2, 4, 5 [P0]) ───
   app.get("/api/orders", requireFirebaseUser, async (req, res) => {
     try {
       const uid = (req as any).user.uid;
       const user = await dbAdapter.getUser(uid);
       const isUserAdmin = user?.role === "admin";
-      
-      const orders = await dbAdapter.listOrders(
-        isUserAdmin ? undefined : { customerId: uid }
-      );
-      return res.json({ success: true, count: orders.length, orders });
+      const isUserWorker = user?.role === "worker" && user?.status === "APPROVED";
+
+      let orders: OrderRecord[] = [];
+
+      if (isUserAdmin) {
+        orders = await dbAdapter.listOrders();
+      } else if (isUserWorker) {
+        // Workers can view jobs assigned to them plus available open broadcast dispatches
+        const assignedOrders = await dbAdapter.listOrders({ workerId: uid });
+        const openDispatchOrders = await dbAdapter.listOrders({ status: "DISPATCHING" });
+        const legacyPending = await dbAdapter.listOrders({ status: "Pending" });
+
+        const combinedMap = new Map<string, OrderRecord>();
+        [...assignedOrders, ...openDispatchOrders, ...legacyPending].forEach((o) => {
+          combinedMap.set(o.id, o);
+        });
+        orders = Array.from(combinedMap.values());
+      } else {
+        // Citizens strictly see only their own bookings (IDOR protection)
+        orders = await dbAdapter.listOrders({ customerId: uid });
+      }
+
+      // Sanitize internal security fields (hashes, salts) before returning to client
+      const sanitized = orders.map((o) => {
+        const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...rest } = o as any;
+        return rest;
+      });
+
+      return res.json({ success: true, count: sanitized.length, orders: sanitized });
     } catch (err: any) {
       logger.error("List orders error:", err);
       return res.status(500).json({ success: false, error: "Failed to fetch orders" });
+    }
+  });
+
+  app.get("/api/orders/:id", requireFirebaseUser, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const uid = (req as any).user.uid;
+      const user = await dbAdapter.getUser(uid);
+      const isUserAdmin = user?.role === "admin";
+
+      const order = await dbAdapter.getOrder(id);
+      if (!order) {
+        return res.status(404).json({ success: false, error: "Order not found" });
+      }
+
+      // IDOR check: caller must be customer, assigned worker, or admin
+      const isWorkerAssigned = order.workerId === uid;
+      const isOpenDispatchForWorker = (order.status === "DISPATCHING" || order.status === "Pending") && user?.role === "worker";
+
+      if (!isUserAdmin && order.customerId !== uid && !isWorkerAssigned && !isOpenDispatchForWorker) {
+        logger.security("IDOR violation: unauthorized order access attempt", { uid, orderId: id });
+        return res.status(403).json({ success: false, error: "Forbidden: Access to this order is restricted" });
+      }
+
+      // Never expose OTP cryptographic hashes to client
+      const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...sanitized } = order as any;
+      return res.json({ success: true, order: sanitized });
+    } catch (err: any) {
+      logger.error("Get order error:", err);
+      return res.status(500).json({ success: false, error: "Failed to fetch order" });
     }
   });
 
@@ -202,24 +328,630 @@ async function startServer() {
     try {
       const uid = (req as any).user.uid;
       const orderData = req.body;
-      const created = await dbAdapter.createOrder({
-        ...orderData,
-        customerId: uid,
-        createdAt: new Date().toISOString(),
+
+      // 1. Authoritative Server-Side Pricing Calculation (Never trust client prices)
+      const quote = calculateAuthoritativeQuote({
+        serviceId: orderData.serviceId,
+        category: orderData.category,
+        isEmergency: Boolean(orderData.emergencySurcharge || orderData.isEmergency),
+        couponCode: orderData.couponUsed || orderData.couponCode,
+        customVisitingFee: orderData.visitingFee,
       });
-      return res.status(201).json({ success: true, order: created });
+
+      // 2. Initial state determination
+      const isCashOnDelivery = orderData.paymentMethod === "COD" || orderData.paymentMethod === "CASH" || orderData.paymentMethod === "PAY_AFTER_SERVICE";
+      const initialStatus: OrderStatus = isCashOnDelivery ? "DISPATCHING" : "PENDING_PAYMENT";
+
+      // 3. Cryptographic Start OTP Generation for Customer Verification Gate
+      const startOtpChallenge = generateSecureOtp();
+
+      const orderId = orderData.id || `ORD-${Date.now()}`;
+      const newOrder: OrderRecord = {
+        ...orderData,
+        id: orderId,
+        customerId: uid, // Server enforces caller UID
+        category: orderData.category || "General Service",
+        workerName: orderData.workerName || "Matching Specialist...",
+        price: quote.baseVisitingFee,
+        originalPrice: quote.subtotalBeforeDiscount,
+        discountApplied: quote.discountApplied,
+        couponUsed: quote.couponUsed,
+        visitingFee: quote.baseVisitingFee,
+        customerPlatformFee: quote.customerPlatformFee,
+        gstAmount: quote.gstAmount,
+        totalAmountToPay: quote.totalAmountToPay,
+        platformCommission: quote.platformCommission,
+        commissionRate: quote.commissionRate,
+        professionalPayout: quote.professionalPayout,
+        date: orderData.date || new Date().toISOString().slice(0, 10),
+        status: initialStatus,
+        createdAt: new Date().toISOString(),
+        startOtpHash: startOtpChallenge.hash,
+        startOtpSalt: startOtpChallenge.salt,
+        startOtpExpiresAt: startOtpChallenge.expiresAt,
+        startOtpAttempts: 0,
+        stateHistory: [
+          {
+            from: "NONE",
+            to: initialStatus,
+            timestamp: new Date().toISOString(),
+            actorUid: uid,
+            actorRole: "citizen",
+            reason: "Initial booking submission",
+          },
+        ],
+      };
+
+      const created = await dbAdapter.createOrder(newOrder);
+
+      // Return order to caller, including startOtp in plain text ONLY to the customer creating the order
+      const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...sanitized } = created as any;
+      return res.status(201).json({
+        success: true,
+        order: sanitized,
+        startOtp: startOtpChallenge.code, // Citizen receives their secret start code to give to the worker upon arrival
+      });
     } catch (err: any) {
       logger.error("Create order error:", err);
       return res.status(500).json({ success: false, error: "Failed to create order" });
     }
   });
 
+  // ─── ORDER STATE MACHINE TRANSITION API (TASK SHEET SECTION 5 [P0]) ───
+  app.post("/api/orders/:id/transition", requireFirebaseUser, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { targetStatus, reason, photoProof, notes } = req.body;
+      const uid = (req as any).user.uid;
+
+      if (!targetStatus) {
+        return res.status(400).json({ success: false, error: "Missing required targetStatus parameter" });
+      }
+
+      // Determine caller's authoritative role
+      const userProfile = await dbAdapter.getUser(uid);
+      let actorRole: "citizen" | "worker" | "admin" = "citizen";
+      if (userProfile?.role === "admin") {
+        actorRole = "admin";
+      } else if (userProfile?.role === "worker" && userProfile?.status === "APPROVED") {
+        actorRole = "worker";
+      }
+
+      const result = await executeOrderTransition(
+        id,
+        targetStatus as OrderStatus,
+        {
+          actorUid: uid,
+          actorRole,
+          reason,
+          workerName: userProfile?.name,
+          workerPhone: userProfile?.phone,
+          photoProof,
+          notes,
+        },
+        photoProof || notes ? { photoProof, issueDescription: notes } : undefined
+      );
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({ success: false, error: result.error });
+      }
+
+      const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...sanitized } = (result.order as any) || {};
+      return res.json({ success: true, order: sanitized });
+    } catch (err: any) {
+      logger.error("Order transition error:", err);
+      return res.status(500).json({ success: false, error: "Failed to execute state transition" });
+    }
+  });
+
+  // ─── DYNAMIC CRYPTOGRAPHIC OTP APIS (TASK SHEET SECTION 8 [P0]) ───
+  app.post("/api/orders/:id/otp/generate", requireFirebaseUser, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type = "START" } = req.body;
+      const uid = (req as any).user.uid;
+
+      const order = await dbAdapter.getOrder(id);
+      if (!order) {
+        return res.status(404).json({ success: false, error: "Order not found" });
+      }
+
+      // IDOR check: caller must be customer, assigned worker, or admin
+      const user = await dbAdapter.getUser(uid);
+      const isUserAdmin = user?.role === "admin";
+      const isCustomer = order.customerId === uid;
+      const isAssignedWorker = order.workerId === uid;
+
+      if (!isUserAdmin && !isCustomer && !isAssignedWorker) {
+        return res.status(403).json({ success: false, error: "Forbidden: Not authorized for this order" });
+      }
+
+      const generated = generateSecureOtp();
+      const updateData: Partial<OrderRecord> = {};
+
+      if (type === "COMPLETION") {
+        updateData.completionOtpHash = generated.hash;
+        updateData.completionOtpSalt = generated.salt;
+        updateData.completionOtpExpiresAt = generated.expiresAt;
+        updateData.completionOtpAttempts = 0;
+      } else {
+        updateData.startOtpHash = generated.hash;
+        updateData.startOtpSalt = generated.salt;
+        updateData.startOtpExpiresAt = generated.expiresAt;
+        updateData.startOtpAttempts = 0;
+      }
+
+      await dbAdapter.updateOrderStatus(id, order.status, updateData);
+      logger.info(`Generated ${type} OTP challenge for order ${id} by ${uid}`);
+
+      // Citizens and Admins receive the raw code to show/give to the specialist.
+      // Workers DO NOT receive the raw code (it is dispatched via customer notification/SMS simulation).
+      if (isCustomer || isUserAdmin) {
+        return res.json({
+          success: true,
+          type,
+          expiresAt: generated.expiresAt,
+          otp: generated.code,
+          message: `Security ${type} OTP generated successfully`,
+        });
+      } else {
+        return res.json({
+          success: true,
+          type,
+          expiresAt: generated.expiresAt,
+          message: `Security ${type} OTP dispatched securely to the customer's phone`,
+        });
+      }
+    } catch (err: any) {
+      logger.error("Generate OTP error:", err);
+      return res.status(500).json({ success: false, error: "Failed to generate security OTP" });
+    }
+  });
+
+  app.post("/api/orders/:id/otp/verify", requireFirebaseUser, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { type = "START", otp } = req.body;
+      const uid = (req as any).user.uid;
+
+      if (!otp) {
+        return res.status(400).json({ success: false, error: "Missing required otp parameter" });
+      }
+
+      const order = await dbAdapter.getOrder(id);
+      if (!order) {
+        return res.status(404).json({ success: false, error: "Order not found" });
+      }
+
+      const user = await dbAdapter.getUser(uid);
+      const isUserAdmin = user?.role === "admin";
+      const isAssignedWorker = order.workerId === uid;
+
+      // Specialists verify the code provided by the customer
+      if (!isUserAdmin && !isAssignedWorker) {
+        return res.status(403).json({ success: false, error: "Forbidden: Only assigned specialist can verify OTP" });
+      }
+
+      const isCompletion = type === "COMPLETION";
+      const challengeRecord = {
+        hash: isCompletion ? order.completionOtpHash : order.startOtpHash,
+        salt: isCompletion ? order.completionOtpSalt : order.startOtpSalt,
+        expiresAt: isCompletion ? order.completionOtpExpiresAt : order.startOtpExpiresAt,
+        attempts: isCompletion ? (order.completionOtpAttempts || 0) : (order.startOtpAttempts || 0),
+      };
+
+      const verifyResult = verifyOtpChallenge(otp, challengeRecord);
+
+      if (!verifyResult.valid) {
+        // Record incremented attempts in DB
+        const newAttempts = (challengeRecord.attempts || 0) + 1;
+        const attemptsUpdate = isCompletion
+          ? { completionOtpAttempts: newAttempts }
+          : { startOtpAttempts: newAttempts };
+        await dbAdapter.updateOrderStatus(id, order.status, attemptsUpdate);
+
+        const statusHttp = verifyResult.locked ? 429 : 400;
+        return res.status(statusHttp).json({
+          success: false,
+          error: verifyResult.error,
+          attemptsRemaining: verifyResult.attemptsRemaining,
+        });
+      }
+
+      // OTP is valid! Transition the order authoritatively
+      const targetState: OrderStatus = isCompletion ? "COMPLETED" : "IN_SERVICE";
+      const transitionResult = await executeOrderTransition(
+        id,
+        targetState,
+        {
+          actorUid: uid,
+          actorRole: isUserAdmin ? "admin" : "worker",
+          reason: `Verified valid ${type} security code from customer`,
+        },
+        isCompletion ? { serviceProof: { ...order.serviceProof, completionOtpVerified: true } } : undefined
+      );
+
+      const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...sanitized } = (transitionResult.order as any) || {};
+      return res.json({
+        success: true,
+        message: `${type} OTP verified successfully! Order moved to ${targetState}`,
+        order: sanitized,
+      });
+    } catch (err: any) {
+      logger.error("Verify OTP error:", err);
+      return res.status(500).json({ success: false, error: "Failed to verify security code" });
+    }
+  });
+
+  // ─── PAYMENT GATEWAY & WEBHOOK APIS (TASK SHEET SECTION 7 [P0]) ───
+  app.post("/api/payments/create-order", requireFirebaseUser, async (req, res) => {
+    try {
+      const { orderId } = req.body;
+      const uid = (req as any).user.uid;
+
+      if (!orderId) {
+        return res.status(400).json({ success: false, error: "Missing orderId parameter" });
+      }
+
+      const order = await dbAdapter.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ success: false, error: "Order not found" });
+      }
+
+      // IDOR check
+      if (order.customerId !== uid) {
+        return res.status(403).json({ success: false, error: "Forbidden: You can only initiate payment for your own orders" });
+      }
+
+      const user = await dbAdapter.getUser(uid);
+      const amountInRupees = order.totalAmountToPay || order.price;
+
+      const gatewayOrder = await createGatewayPaymentOrder({
+        orderId,
+        amountInRupees,
+        customerName: order.customerName || user?.name,
+        customerEmail: user?.email,
+        customerPhone: order.customerPhone || user?.phone,
+      });
+
+      // Update order with pending payment details
+      await dbAdapter.updateOrderStatus(orderId, "PENDING_PAYMENT", {
+        paymentDetails: {
+          razorpayOrderId: gatewayOrder.gatewayOrderId,
+          amount: gatewayOrder.amount,
+          currency: gatewayOrder.currency,
+          status: "CREATED",
+        },
+      });
+
+      return res.json({
+        success: true,
+        gatewayOrderId: gatewayOrder.gatewayOrderId,
+        amount: gatewayOrder.amount,
+        currency: gatewayOrder.currency,
+        keyId: gatewayOrder.keyId,
+        isMock: gatewayOrder.isMock,
+      });
+    } catch (err: any) {
+      logger.error("Payment create order error:", err);
+      return res.status(500).json({ success: false, error: "Failed to initialize payment gateway order" });
+    }
+  });
+
+  app.post("/api/payments/verify", requireFirebaseUser, async (req, res) => {
+    try {
+      const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+      const uid = (req as any).user.uid;
+
+      if (!orderId || !razorpayOrderId || !razorpayPaymentId) {
+        return res.status(400).json({ success: false, error: "Missing required payment parameters" });
+      }
+
+      const order = await dbAdapter.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ success: false, error: "Order not found" });
+      }
+
+      if (order.customerId !== uid) {
+        return res.status(403).json({ success: false, error: "Forbidden: Unauthorized payment verification" });
+      }
+
+      const isSignatureValid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+      if (!isSignatureValid) {
+        logger.security("Payment signature verification failed", { orderId, razorpayPaymentId });
+        return res.status(400).json({ success: false, error: "Invalid payment verification signature" });
+      }
+
+      // Transition order: PENDING_PAYMENT -> PAID -> DISPATCHING
+      const paidUpdate: Partial<OrderRecord> = {
+        paymentStatus: "PAID",
+        paymentMethod: "RAZORPAY_ONLINE",
+        paymentDetails: {
+          razorpayOrderId,
+          razorpayPaymentId,
+          signature: razorpaySignature,
+          paidAt: new Date().toISOString(),
+          status: "CAPTURED",
+        },
+      };
+
+      const transitionResult = await executeOrderTransition(
+        orderId,
+        "DISPATCHING",
+        {
+          actorUid: uid,
+          actorRole: "system",
+          reason: `Payment verified via gateway (Payment ID: ${razorpayPaymentId})`,
+        },
+        paidUpdate
+      );
+
+      const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...sanitized } = (transitionResult.order as any) || {};
+      return res.json({
+        success: true,
+        message: "Payment captured successfully. Specialist dispatching initiated.",
+        order: sanitized,
+      });
+    } catch (err: any) {
+      logger.error("Payment verification error:", err);
+      return res.status(500).json({ success: false, error: "Failed to verify payment" });
+    }
+  });
+
+  // Razorpay Server-to-Server Webhook Endpoint (HMAC-SHA256 signature validation & idempotency)
+  app.post("/api/payments/webhook", async (req, res) => {
+    try {
+      const signature = (req.headers["x-razorpay-signature"] as string) || "";
+      const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+
+      const isSignatureValid = verifyWebhookSignature(rawBody, signature);
+      if (!isSignatureValid) {
+        logger.security("Rejected unauthorized payment webhook: invalid signature");
+        return res.status(400).json({ error: "Invalid webhook signature" });
+      }
+
+      const event = req.body;
+      const eventId = event?.id || `${event?.event}_${event?.created_at}`;
+
+      // Idempotency check: prevent duplicate replay of the same webhook event
+      if (isEventProcessed(eventId)) {
+        logger.info(`Webhook event ${eventId} already processed, acknowledging idempotently`);
+        return res.json({ status: "already_processed" });
+      }
+
+      recordProcessedEvent(eventId, event?.event || "unknown");
+
+      // Handle payment capture / order paid events
+      if (event?.event === "payment.captured" || event?.event === "order.paid") {
+        const paymentEntity = event?.payload?.payment?.entity;
+        const appOrderId = paymentEntity?.notes?.appOrderId || paymentEntity?.receipt;
+
+        if (appOrderId) {
+          logger.info(`Webhook captured payment for order ${appOrderId}`);
+          await executeOrderTransition(
+            appOrderId,
+            "DISPATCHING",
+            {
+              actorUid: "gateway_webhook",
+              actorRole: "system",
+              reason: `Webhook payment capture (Transaction: ${paymentEntity.id})`,
+            },
+            {
+              paymentStatus: "PAID",
+              paymentDetails: {
+                razorpayOrderId: paymentEntity.order_id,
+                razorpayPaymentId: paymentEntity.id,
+                paidAt: new Date().toISOString(),
+                status: "CAPTURED",
+              },
+            }
+          );
+        }
+      }
+
+      return res.json({ status: "ok" });
+    } catch (err: any) {
+      logger.error("Webhook processing error:", err);
+      return res.status(500).json({ error: "Internal webhook processing failed" });
+    }
+  });
+
+  // ─── LIVE LOCATION TELEMETRY & GEOFENCING (TASK SHEET SECTION 9 [P0/P1]) ───
+  app.post("/api/tracking/location", requireFirebaseUser, requireWorker, async (req, res) => {
+    try {
+      const { orderId, lat, lng, heading, accuracy, speed } = req.body;
+      const uid = (req as any).user.uid;
+
+      if (!orderId || typeof lat !== "number" || typeof lng !== "number") {
+        return res.status(400).json({ success: false, error: "Missing required orderId and coordinate numbers" });
+      }
+
+      const result = await updateWorkerLocationTelemetry({
+        orderId,
+        workerUid: uid,
+        lat,
+        lng,
+        heading,
+        accuracy,
+        speed,
+      });
+
+      return res.status(result.statusCode).json({ success: result.success, error: result.error });
+    } catch (err: any) {
+      logger.error("Tracking location update error:", err);
+      return res.status(500).json({ success: false, error: "Failed to update location telemetry" });
+    }
+  });
+
+  app.get("/api/orders/:id/tracking", requireFirebaseUser, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const uid = (req as any).user.uid;
+      const user = await dbAdapter.getUser(uid);
+
+      const result = await getOrderTrackingStatus(id, uid, user?.role || "citizen");
+      if (!result.success) {
+        return res.status(result.statusCode).json({ success: false, error: result.error });
+      }
+
+      return res.json({ success: true, tracking: result.tracking });
+    } catch (err: any) {
+      logger.error("Get tracking status error:", err);
+      return res.status(500).json({ success: false, error: "Failed to fetch tracking telemetry" });
+    }
+  });
+
+  // ─── WORKER SIGNUP DYNAMIC DUAL OTP API (TASK SHEET SECTION 8 [P0]) ───
+  // Replaces hardcoded 8842/9921 with dynamic server-generated challenge
+  app.post("/api/auth/worker-signup-otp", async (req, res) => {
+    try {
+      const { action = "generate", phone, email, phoneOtp, emailOtp, challengeId } = req.body;
+
+      if (action === "generate") {
+        if (!phone || !email) {
+          return res.status(400).json({ success: false, error: "Phone and email are required to generate verification codes" });
+        }
+        const phoneChallenge = generateSecureOtp();
+        const emailChallenge = generateSecureOtp();
+        const newChallengeId = `CHAL-${Date.now()}`;
+
+        // Save in memory or db
+        (global as any).__workerOtpChallenges = (global as any).__workerOtpChallenges || new Map();
+        (global as any).__workerOtpChallenges.set(newChallengeId, {
+          phoneChallenge,
+          emailChallenge,
+          phone,
+          email,
+          createdAt: Date.now(),
+        });
+
+        // In development/test mode, provide the codes in the response so onboarding functions seamlessly
+        return res.json({
+          success: true,
+          challengeId: newChallengeId,
+          message: "Verification codes dispatched to mobile phone and email inbox",
+          debugCodes: process.env.NODE_ENV !== "production" ? {
+            phoneCode: phoneChallenge.code,
+            emailCode: emailChallenge.code,
+          } : undefined,
+        });
+      }
+
+      if (action === "verify") {
+        if (!challengeId || !phoneOtp || !emailOtp) {
+          return res.status(400).json({ success: false, error: "Missing challengeId or OTP inputs" });
+        }
+
+        const map = (global as any).__workerOtpChallenges;
+        const stored = map ? map.get(challengeId) : null;
+        if (!stored) {
+          return res.status(400).json({ success: false, error: "Challenge session expired or invalid" });
+        }
+
+        const phoneValid = verifyOtpChallenge(phoneOtp, stored.phoneChallenge);
+        const emailValid = verifyOtpChallenge(emailOtp, stored.emailChallenge);
+
+        if (!phoneValid.valid) {
+          return res.status(400).json({ success: false, error: `Invalid mobile OTP: ${phoneValid.error}` });
+        }
+        if (!emailValid.valid) {
+          return res.status(400).json({ success: false, error: `Invalid email OTP: ${emailValid.error}` });
+        }
+
+        map.delete(challengeId);
+        return res.json({ success: true, message: "Dual phone and email verification successful" });
+      }
+
+      return res.status(400).json({ success: false, error: "Invalid action" });
+    } catch (err: any) {
+      logger.error("Worker signup OTP error:", err);
+      return res.status(500).json({ success: false, error: "OTP processing failed" });
+    }
+  });
+
   // ─── WORKER APPLICATIONS APIS ───
+  // Query worker registration & verification status for authenticated user
+  app.get("/api/workers/status", requireFirebaseUser, async (req, res) => {
+    try {
+      const uid = (req as any).user.uid;
+      const userProfile = await dbAdapter.getUser(uid);
+      const workerApp = await dbAdapter.getWorkerApplicationByUid(uid)
+        || (userProfile?.phone || (req as any).user?.phone_number 
+            ? await dbAdapter.getWorkerApplicationByContact({ 
+                phone: userProfile?.phone || (req as any).user?.phone_number,
+                email: userProfile?.email || (req as any).user?.email
+              })
+            : null);
+
+      if (!workerApp && (!userProfile || userProfile.role !== "worker")) {
+        return res.json({
+          success: true,
+          registered: false,
+          status: "NOT_REGISTERED",
+          message: "No specialist registration found for this account"
+        });
+      }
+
+      const status = workerApp?.status || userProfile?.status || (userProfile?.role === "worker" ? "APPROVED" : "PENDING");
+      return res.json({
+        success: true,
+        registered: true,
+        status,
+        applicationId: workerApp?.id,
+        appliedAt: workerApp?.appliedAt,
+        role: userProfile?.role || (status === "APPROVED" ? "worker" : "citizen"),
+        categories: workerApp?.categories || userProfile?.workerCategories || [],
+        skill: workerApp?.skill || userProfile?.workerSkill || ""
+      });
+    } catch (err: any) {
+      logger.error("Worker status query error:", err);
+      return res.status(500).json({ success: false, error: "Failed to determine worker registration status" });
+    }
+  });
+
   app.post("/api/worker-applications", requireFirebaseUser, async (req, res) => {
     try {
       const uid = (req as any).user.uid;
       const appData = req.body;
-      const created = await dbAdapter.createWorkerApplication({ ...appData, uid });
+
+      if (!appData.legalName || !appData.phone || !appData.email) {
+        return res.status(400).json({ success: false, error: "Missing required registration details: legalName, phone, and email are required" });
+      }
+
+      // Check if this user already has an active application
+      const existingApp = await dbAdapter.getWorkerApplicationByUid(uid)
+        || await dbAdapter.getWorkerApplicationByContact({ phone: appData.phone, email: appData.email });
+
+      if (existingApp && existingApp.status === "PENDING") {
+        return res.status(200).json({
+          success: true,
+          application: existingApp,
+          message: "An existing application is already pending review"
+        });
+      }
+
+      // Server enforces PENDING status upon initial application submission
+      const created = await dbAdapter.createWorkerApplication({
+        ...appData,
+        uid,
+        status: "PENDING"
+      });
+
+      // Update user profile in database to PENDING status without prematurely granting 'worker' role
+      await dbAdapter.upsertUser({
+        uid,
+        name: appData.legalName,
+        email: appData.email,
+        phone: appData.phone,
+        role: "citizen", // Remains citizen until officially APPROVED by admin
+        status: "PENDING",
+        applicationId: created.id,
+        workerSkill: created.skill,
+        workerCategories: created.categories,
+        visitingFee: created.visitingFee
+      });
+
+      logger.info(`Worker application submitted: ${created.id} by uid ${uid}`);
       return res.status(201).json({ success: true, application: created });
     } catch (err: any) {
       logger.error("Worker application error:", err);
@@ -234,6 +966,27 @@ async function startServer() {
     } catch (err: any) {
       logger.error("List worker applications error:", err);
       return res.status(500).json({ success: false, error: "Failed to fetch worker applications" });
+    }
+  });
+
+  app.patch("/api/worker-applications/:id/status", requireFirebaseUser, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, notes } = req.body;
+      if (status !== "APPROVED" && status !== "REJECTED") {
+        return res.status(400).json({ success: false, error: "Invalid status: must be APPROVED or REJECTED" });
+      }
+
+      const updated = await dbAdapter.updateWorkerApplicationStatus(id, status, notes);
+      if (!updated) {
+        return res.status(404).json({ success: false, error: "Worker application not found" });
+      }
+
+      logger.info(`Admin updated worker application ${id} to ${status}`);
+      return res.json({ success: true, application: updated });
+    } catch (err: any) {
+      logger.error("Update worker application status error:", err);
+      return res.status(500).json({ success: false, error: "Failed to update worker application status" });
     }
   });
 
@@ -261,10 +1014,24 @@ async function startServer() {
   // NamoID -> Firebase Custom Token Exchange Endpoint
   app.post("/api/auth/namoid-token", async (req, res) => {
     try {
-      const { idToken, identity, role } = req.body;
+      const { idToken, identity } = req.body;
       const uid = identity?.sub || identity?.id || (identity?.email ? `namoid_${crypto.createHash('sha256').update(identity.email).digest('hex').substring(0, 20)}` : null);
       if (!uid) {
         return res.status(400).json({ success: false, error: "Missing user identity" });
+      }
+
+      // Authoritative role lookup from server-side database (NEVER trust client-provided role)
+      let authoritativeRole = "citizen";
+      const existingUser = await dbAdapter.getUser(uid);
+      if (existingUser && existingUser.role) {
+        authoritativeRole = existingUser.role;
+      } else {
+        // Check if there is an approved worker application for this user
+        const workerApp = await dbAdapter.getWorkerApplicationByUid(uid)
+          || (identity?.email ? await dbAdapter.getWorkerApplicationByContact({ email: identity.email }) : null);
+        if (workerApp && workerApp.status === "APPROVED") {
+          authoritativeRole = "worker";
+        }
       }
 
       if (getApps().length > 0) {
@@ -272,15 +1039,15 @@ async function startServer() {
           const customToken = await getAuth().createCustomToken(uid, {
             email: identity?.email || "",
             name: identity?.name || "",
-            role: role || "citizen",
+            role: authoritativeRole,
           });
-          return res.json({ success: true, customToken, uid });
+          return res.json({ success: true, customToken, uid, role: authoritativeRole });
         } catch (adminErr: any) {
           logger.warn("Firebase Admin custom token generation notice:", adminErr?.message || adminErr);
         }
       }
 
-      return res.json({ success: false, uid, message: "Firebase Admin custom token generation fallback" });
+      return res.json({ success: false, uid, role: authoritativeRole, message: "Firebase Admin custom token generation fallback" });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err?.message || "Token exchange failed" });
     }

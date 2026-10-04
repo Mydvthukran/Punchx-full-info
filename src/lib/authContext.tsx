@@ -73,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
     const firebaseUid: string = String(overrideUid || auth.currentUser?.uid || rawSub || `user_${Date.now()}`);
 
     const isCompleted = !!extractedName && !!extractedDob;
+    // New registrations always default to citizen. Worker role requires explicit admin approval.
     const fallbackProfile: UserProfile = {
       uid: firebaseUid,
       name: extractedName,
@@ -80,7 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       photoURL:
         (identity.picture as string) ||
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-      role,
+      role: 'citizen',
       dob: extractedDob,
       birthdate: extractedDob,
       isProfileCompleted: isCompleted,
@@ -104,6 +105,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
           if (userSnap.exists()) {
             const existingData = userSnap.data() as UserProfile;
+            // Only accept 'worker' if status is explicitly APPROVED by admin
+            const isApprovedWorker = existingData.role === 'worker' && existingData.status === 'APPROVED';
+            const resolvedRole: 'citizen' | 'worker' | 'admin' = existingData.role === 'admin' 
+              ? 'admin' 
+              : isApprovedWorker 
+                ? 'worker' 
+                : 'citizen';
+
             const updatedProfile: UserProfile = {
               ...existingData,
               uid: firebaseUid,
@@ -113,7 +122,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
               dob: existingData.dob || existingData.birthdate || extractedDob,
               birthdate: existingData.birthdate || existingData.dob || extractedDob,
               isProfileCompleted: existingData.isProfileCompleted ?? (!!existingData.name && !!(existingData.dob || existingData.birthdate) && !!existingData.address),
-              role: existingData.role || role,
+              role: resolvedRole,
+              status: existingData.status,
               address: existingData.address !== undefined ? existingData.address : '',
               phone: existingData.phone || identity.phone_number || ''
             };

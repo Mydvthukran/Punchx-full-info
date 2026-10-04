@@ -35,6 +35,17 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   const seenJobs = useRef<Set<string>>(new Set());
   const watchRef = useRef<number | null>(null);
 
+  // Security guard: verify specialist is approved before allowing dashboard access
+  useEffect(() => {
+    if (userProfile) {
+      const isApproved = userProfile.role === 'worker' && userProfile.status === 'APPROVED';
+      if (!isApproved) {
+        showNotification('🔒 Specialist approval required to access the dispatch terminal.');
+        onTransition(userProfile.status === 'PENDING' ? 'worker-pending-approval' : 'worker-signup');
+      }
+    }
+  }, [userProfile, onTransition, showNotification]);
+
   const workerCategories = useMemo(() => {
     const categories = userProfile?.categories || userProfile?.workerCategories || [];
     return Array.from(new Set([

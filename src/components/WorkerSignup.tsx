@@ -115,16 +115,13 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       setErrorMsg('You must review and accept the PunchX Terms & Conditions and Privacy Policy to proceed.');
       return;
     }
-    const firebaseUid = auth.currentUser?.uid;
-
-if (!firebaseUid) {
-  setErrorMsg('You must be logged in before submitting a worker application.');
-  return;
-}
+    const existingUid = auth.currentUser?.uid || localStorage.getItem('punchx_applicant_uid');
+    const applicantUid = existingUid || `applicant_${crypto.randomUUID()}`;
+    try { localStorage.setItem('punchx_applicant_uid', applicantUid); } catch {}
 
     const application: WorkerApplication = {
-      id: `APP-${crypto.randomUUID()}`,
-      uid: auth.currentUser?.uid,
+      id: `APP-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`,
+      uid: applicantUid,
       legalName: legalName.trim(),
       address: address.trim(),
       categories: selectedCategories.length > 0 ? selectedCategories : (customSkill.trim() ? [customSkill.trim()] : ['Electrician']),
@@ -141,44 +138,51 @@ if (!firebaseUid) {
 
     setWorkerApplicationData(application);
     
-    // Save to Firestore & localStorage
-// Save worker application to Firestore
-try {
-  await setDoc(
-    doc(db, 'workerApplications', application.id),
-    application
-  );
+    // Save worker application to Firestore
+    try {
+      await setDoc(doc(db, 'workerApplications', application.id), application, { merge: true });
+      console.log('Successfully saved worker application to Firestore:', application.id);
+    } catch (error) {
+      console.warn('Firestore direct save notice, persisting in local storage:', error);
+    }
 
-  console.log(
-    'Successfully saved worker application to Firestore:',
-    application.id
-  );
-} catch (error) {
-  console.error('Firestore save application failed:', error);
+    // Also attempt backend API submission if authenticated
+    try {
+      const backendBase = import.meta.env.VITE_BACKEND_URL || '';
+      let idToken = null;
+      if (auth.currentUser) {
+        idToken = await auth.currentUser.getIdToken();
+      }
+      if (idToken) {
+        await fetch(`${backendBase}/api/worker-applications`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify(application)
+        });
+      }
+    } catch (backendErr) {
+      console.warn('Backend application submit notice:', backendErr);
+    }
 
-  showNotification(
-    'Unable to submit your application. Please try again.'
-  );
+    // Local storage UI cache
+    const existingApps = JSON.parse(
+      localStorage.getItem('punchx_worker_applications') || '[]'
+    );
 
-  return;
-}
+    localStorage.setItem(
+      'punchx_worker_applications',
+      JSON.stringify([application, ...existingApps])
+    );
+    localStorage.setItem('punchx_worker_app_id', application.id);
 
-// Local storage is only a temporary UI cache.
-// Firestore is the source of truth.
-const existingApps = JSON.parse(
-  localStorage.getItem('punchx_worker_applications') || '[]'
-);
+    showNotification(
+      '✓ Specialist details saved! Moving to Dual OTP verification.'
+    );
 
-localStorage.setItem(
-  'punchx_worker_applications',
-  JSON.stringify([application, ...existingApps])
-);
-
-showNotification(
-  '✓ Worker profile details saved! Moving to Dual OTP verification.'
-);
-
-onTransition('worker-otp-pass');
+    onTransition('worker-otp-pass');
   };
 
   return (

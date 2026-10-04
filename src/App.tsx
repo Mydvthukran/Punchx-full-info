@@ -12,6 +12,7 @@ import WebsiteFooter from './components/WebsiteFooter';
 import CitizenProfileDrawer from './components/CitizenProfileDrawer';
 import { AppScreen, Worker, WorkerApplication } from './types';
 import { AuthProvider, useAuth } from './lib/authContext';
+import { auth } from './lib/firebase';
 import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
 import NamoIDAuthShell from './components/NamoIDAuthShell';
@@ -111,19 +112,100 @@ function AppMain() {
     window.setTimeout(() => setToastMessage(prev => prev === message ? null : prev), 4500);
   };
 
+  // Sync worker application status for authenticated user
+  useEffect(() => {
+    if (!currentUser) {
+      setWorkerApplication(null);
+      return;
+    }
+    const checkWorkerStatus = async () => {
+      try {
+        const backendBase = import.meta.env.VITE_BACKEND_URL || '';
+        let idToken = null;
+        try {
+          if (auth && auth.currentUser) {
+            idToken = await auth.currentUser.getIdToken();
+          }
+        } catch {}
+        const headers: Record<string, string> = {};
+        if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+        const res = await fetch(`${backendBase}/api/workers/status`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.registered && data.applicationId) {
+            setWorkerApplication({
+              id: data.applicationId,
+              uid: (currentUser as any)?.sub || (currentUser as any)?.id || '',
+              legalName: userProfile?.name || 'Applicant Specialist',
+              address: userProfile?.address || '',
+              skill: data.skill || '',
+              categories: data.categories || [],
+              experienceYears: 'Verified',
+              phone: userProfile?.phone || '',
+              email: userProfile?.email || '',
+              termsAccepted: true,
+              status: data.status,
+              appliedAt: data.appliedAt || 'Recent'
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Worker status sync notice:', e);
+      }
+    };
+    checkWorkerStatus();
+  }, [currentUser, userProfile]);
+
   useEffect(() => {
     const protectedScreens: AppScreen[] = ['home', 'customer-setup', 'worker-setup', 'worker-dashboard', 'admin-dashboard', 'tracking', 'booking', 'payment', 'providers', 'provider-details'];
     if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen)) {
       showToast('🔒 Active session required. Redirecting to portal select...');
       setCurrentScreen('panel-select');
     }
-    if (!isLoadingProfile && currentUser && (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select')) {
-      const resolvedRole = userProfile?.role || activePanelRole || 'customer';
-      if (resolvedRole === 'worker') { setActivePanelRole('worker'); setCurrentScreen('worker-dashboard'); }
-      else if (resolvedRole === 'admin') { setActivePanelRole('admin'); setCurrentScreen('admin-dashboard'); }
-      else { setActivePanelRole('customer'); setCurrentScreen('home'); }
+
+    // Strict Guard for Worker Dashboard: Non-approved users cannot stay on worker-dashboard
+    if (!isLoadingProfile && currentScreen === 'worker-dashboard') {
+      const isApproved = userProfile?.role === 'worker' && userProfile?.status === 'APPROVED';
+      const hasApprovedApp = workerApplication?.status === 'APPROVED';
+      if (!isApproved && !hasApprovedApp) {
+        if (workerApplication?.status === 'PENDING' || userProfile?.status === 'PENDING') {
+          showToast('⏳ Worker application under review. Please wait for admin approval.');
+          setCurrentScreen('worker-pending-approval');
+        } else {
+          showToast('🔒 Unwanted login prevented. You must register and be approved to access the Specialist Panel.');
+          setActivePanelRole('worker');
+          setCurrentScreen('worker-signup');
+        }
+      }
     }
-  }, [currentUser, userProfile, isLoadingProfile, currentScreen, activePanelRole]);
+
+    if (!isLoadingProfile && currentUser && (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select')) {
+      if (userProfile?.role === 'admin') {
+        setActivePanelRole('admin');
+        setCurrentScreen('admin-dashboard');
+      } else if (activePanelRole === 'worker' || userProfile?.role === 'worker') {
+        const isApproved = userProfile?.role === 'worker' && userProfile?.status === 'APPROVED';
+        if (isApproved) {
+          setActivePanelRole('worker');
+          setCurrentScreen('worker-dashboard');
+        } else if (workerApplication?.status === 'PENDING' || userProfile?.status === 'PENDING') {
+          setActivePanelRole('worker');
+          setCurrentScreen('worker-pending-approval');
+        } else if (workerApplication?.status === 'REJECTED' || userProfile?.status === 'REJECTED') {
+          showToast('❌ Worker registration declined. Please contact support.');
+          setActivePanelRole('customer');
+          setCurrentScreen('panel-select');
+        } else {
+          showToast('⚠️ Specialist registration required. Please submit your application first.');
+          setActivePanelRole('worker');
+          setCurrentScreen('worker-signup');
+        }
+      } else {
+        setActivePanelRole('customer');
+        setCurrentScreen('home');
+      }
+    }
+  }, [currentUser, userProfile, isLoadingProfile, currentScreen, activePanelRole, workerApplication]);
 
   const onClaimPromo = () => {
     if (hasClaimedBonus || hasUsedBonus) { showToast('⚠️ 20% First Order Bonus coupon has already been claimed.'); return; }
@@ -149,8 +231,10 @@ function AppMain() {
       const protectedNavScreens: Record<string, string> = { tracking: '📍 Live Tracking', providers: '🔍 Find Specialists', booking: '📋 Booking', payment: '💳 Payment', 'provider-details': '👤 Specialist Details' };
       if (!currentUser && protectedNavScreens[target]) { showToast(`🔒 Sign in required to access ${protectedNavScreens[target]}. Redirecting to portal...`); resolvedTarget = 'panel-select'; }
       else if (target === 'panel-select' && currentUser) {
-        const resolvedRole = userProfile?.role || activePanelRole || 'customer';
-        resolvedTarget = resolvedRole === 'worker' ? 'worker-dashboard' : resolvedRole === 'admin' ? 'admin-dashboard' : 'home';
+        if (userProfile?.role === 'admin') resolvedTarget = 'admin-dashboard';
+        else if (userProfile?.role === 'worker' && userProfile?.status === 'APPROVED') resolvedTarget = 'worker-dashboard';
+        else if (workerApplication?.status === 'PENDING' || userProfile?.status === 'PENDING') resolvedTarget = 'worker-pending-approval';
+        else resolvedTarget = 'home';
       } else if (target === 'home' && !currentUser) resolvedTarget = 'panel-select';
 
       if (resolvedTarget === 'privacy-policy') { window.history.pushState({}, '', '/privacy-policy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }

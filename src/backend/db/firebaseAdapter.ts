@@ -91,14 +91,17 @@ export class FirebaseAdapter implements IDatabaseAdapter {
   // ─── WORKER APPLICATIONS ───
   async createWorkerApplication(app: WorkerApplication): Promise<WorkerApplication> {
     const id = app.id || `app_${Date.now()}`;
-    const record = { ...app, id, appliedAt: app.appliedAt || new Date().toISOString() };
+    const record = { ...app, id, status: app.status || 'PENDING', appliedAt: app.appliedAt || new Date().toISOString() };
     this.inMemoryFallback.workerApplications.set(id, record);
 
     const firestore = this.db;
     if (firestore) {
       try {
-        const ref = firestore.collection('worker_applications').doc(id);
-        await ref.set(record, { merge: true });
+        // Write to both workerApplications and worker_applications for full compatibility
+        await Promise.allSettled([
+          firestore.collection('workerApplications').doc(id).set(record, { merge: true }),
+          firestore.collection('worker_applications').doc(id).set(record, { merge: true })
+        ]);
       } catch (err) {
         logger.warn('Firebase createWorkerApplication notice (saved in memory):', err);
       }
@@ -106,15 +109,104 @@ export class FirebaseAdapter implements IDatabaseAdapter {
     return record;
   }
 
+  async getWorkerApplication(id: string): Promise<WorkerApplication | null> {
+    const inMem = this.inMemoryFallback.workerApplications.get(id);
+    if (inMem) return inMem;
+
+    const firestore = this.db;
+    if (firestore) {
+      try {
+        let snap = await firestore.collection('workerApplications').doc(id).get();
+        if (!snap.exists) {
+          snap = await firestore.collection('worker_applications').doc(id).get();
+        }
+        if (snap.exists) {
+          return { id: snap.id, ...(snap.data() as any) } as WorkerApplication;
+        }
+      } catch (err) {
+        logger.warn('Firebase getWorkerApplication error:', err);
+      }
+    }
+    return null;
+  }
+
+  async getWorkerApplicationByUid(uid: string): Promise<WorkerApplication | null> {
+    for (const app of this.inMemoryFallback.workerApplications.values()) {
+      if (app.uid === uid) return app;
+    }
+
+    const firestore = this.db;
+    if (firestore) {
+      try {
+        let qSnap = await firestore.collection('workerApplications').where('uid', '==', uid).limit(1).get();
+        if (qSnap.empty) {
+          qSnap = await firestore.collection('worker_applications').where('uid', '==', uid).limit(1).get();
+        }
+        if (!qSnap.empty) {
+          const doc = qSnap.docs[0];
+          return { id: doc.id, ...(doc.data() as any) } as WorkerApplication;
+        }
+      } catch (err) {
+        logger.warn('Firebase getWorkerApplicationByUid error:', err);
+      }
+    }
+    return null;
+  }
+
+  async getWorkerApplicationByContact(contact: { phone?: string; email?: string }): Promise<WorkerApplication | null> {
+    for (const app of this.inMemoryFallback.workerApplications.values()) {
+      if ((contact.phone && app.phone === contact.phone) || (contact.email && app.email === contact.email)) {
+        return app;
+      }
+    }
+
+    const firestore = this.db;
+    if (firestore) {
+      try {
+        if (contact.phone) {
+          let snap = await firestore.collection('workerApplications').where('phone', '==', contact.phone).limit(1).get();
+          if (snap.empty) {
+            snap = await firestore.collection('worker_applications').where('phone', '==', contact.phone).limit(1).get();
+          }
+          if (!snap.empty) {
+            const doc = snap.docs[0];
+            return { id: doc.id, ...(doc.data() as any) } as WorkerApplication;
+          }
+        }
+        if (contact.email) {
+          let snap = await firestore.collection('workerApplications').where('email', '==', contact.email).limit(1).get();
+          if (snap.empty) {
+            snap = await firestore.collection('worker_applications').where('email', '==', contact.email).limit(1).get();
+          }
+          if (!snap.empty) {
+            const doc = snap.docs[0];
+            return { id: doc.id, ...(doc.data() as any) } as WorkerApplication;
+          }
+        }
+      } catch (err) {
+        logger.warn('Firebase getWorkerApplicationByContact error:', err);
+      }
+    }
+    return null;
+  }
+
   async listWorkerApplications(status?: string): Promise<WorkerApplication[]> {
     const firestore = this.db;
     if (firestore) {
       try {
-        let q: Query = firestore.collection('worker_applications');
+        let q: Query = firestore.collection('workerApplications');
         if (status) q = q.where('status', '==', status);
         const snap = await q.get();
         if (snap.docs.length > 0) {
           return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        }
+
+        // Fallback to worker_applications if workerApplications is empty
+        let q2: Query = firestore.collection('worker_applications');
+        if (status) q2 = q2.where('status', '==', status);
+        const snap2 = await q2.get();
+        if (snap2.docs.length > 0) {
+          return snap2.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         }
       } catch (err) {
         logger.warn('Firebase listWorkerApplications notice, falling back to memory store:', err);
@@ -124,7 +216,7 @@ export class FirebaseAdapter implements IDatabaseAdapter {
     return status ? list.filter((a) => a.status === status) : list;
   }
 
-  async updateWorkerApplicationStatus(id: string, status: 'APPROVED' | 'REJECTED'): Promise<WorkerApplication | null> {
+  async updateWorkerApplicationStatus(id: string, status: 'APPROVED' | 'REJECTED', notes?: string): Promise<WorkerApplication | null> {
     const existing = this.inMemoryFallback.workerApplications.get(id);
     if (existing) {
       existing.status = status;
@@ -132,19 +224,54 @@ export class FirebaseAdapter implements IDatabaseAdapter {
     }
 
     const firestore = this.db;
+    let updatedRecord: WorkerApplication | null = existing || null;
+
     if (firestore) {
       try {
-        const ref = firestore.collection('worker_applications').doc(id);
-        await ref.update({ status, updatedAt: new Date().toISOString() });
-        const snap = await ref.get();
+        const updateData: any = { status, updatedAt: new Date().toISOString() };
+        if (notes) updateData.notes = notes;
+
+        await Promise.allSettled([
+          firestore.collection('workerApplications').doc(id).set(updateData, { merge: true }),
+          firestore.collection('worker_applications').doc(id).set(updateData, { merge: true })
+        ]);
+
+        let snap = await firestore.collection('workerApplications').doc(id).get();
+        if (!snap.exists) {
+          snap = await firestore.collection('worker_applications').doc(id).get();
+        }
         if (snap.exists) {
-          return { id: snap.id, ...(snap.data() as any) } as WorkerApplication;
+          updatedRecord = { id: snap.id, ...(snap.data() as any) } as WorkerApplication;
+        }
+
+        // When approved or rejected, sync to the corresponding user in 'users' collection
+        if (updatedRecord && updatedRecord.uid) {
+          const userRef = firestore.collection('users').doc(updatedRecord.uid);
+          const userSnap = await userRef.get();
+          if (userSnap.exists) {
+            if (status === 'APPROVED') {
+              await userRef.set({
+                role: 'worker',
+                status: 'APPROVED',
+                workerSkill: updatedRecord.skill || 'Electrician',
+                workerCategories: updatedRecord.categories || [updatedRecord.skill || 'Electrician'],
+                visitingFee: updatedRecord.visitingFee || 199,
+                approvedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            } else {
+              await userRef.set({
+                status: 'REJECTED',
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            }
+          }
         }
       } catch (err) {
         logger.warn('Firebase updateWorkerApplicationStatus notice:', err);
       }
     }
-    return existing || null;
+    return updatedRecord;
   }
 
   // ─── ORDER OPERATIONS ───

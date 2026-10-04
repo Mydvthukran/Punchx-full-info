@@ -116,19 +116,59 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
         const callbackUrl = window.location.href;
         const result = await completePunchXAuthRedirect(client, callbackUrl);
         const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
-        const role: 'citizen' | 'worker' | 'admin' = 
-          rawRole === 'worker' ? 'worker' : rawRole === 'admin' ? 'admin' : 'citizen';
 
+        let profile;
         if (result.tokens?.id_token) {
-          await loginWithNamoID(result.identity, role, result.tokens.id_token);
+          profile = await loginWithNamoID(result.identity, 'citizen', result.tokens.id_token);
         } else {
-          await loginWithNamoID(result.identity, role);
+          profile = await loginWithNamoID(result.identity, 'citizen');
         }
         window.history.replaceState({}, document.title, '/');
 
-        if (role === 'admin') onTransition('admin-dashboard');
-        else if (role === 'worker') onTransition('worker-dashboard');
-        else onTransition('home');
+        if (rawRole === 'admin') {
+          if (profile?.role === 'admin') {
+            onTransition('admin-dashboard');
+          } else {
+            onTransition('home');
+          }
+        } else if (rawRole === 'worker') {
+          // Check worker status: verify whether this account is an approved specialist
+          let workerStatus: string = profile?.status || 'NOT_REGISTERED';
+          let hasWorkerApp = false;
+
+          try {
+            const backendBase = import.meta.env.VITE_BACKEND_URL || '';
+            const headers: Record<string, string> = {};
+            if (result.tokens?.id_token) headers['Authorization'] = `Bearer ${result.tokens.id_token}`;
+            const statusRes = await fetch(`${backendBase}/api/workers/status`, { headers });
+            if (statusRes.ok) {
+              const data = await statusRes.json();
+              if (data.registered) {
+                hasWorkerApp = true;
+                workerStatus = data.status;
+              }
+            }
+          } catch (statusErr) {
+            console.warn('Worker status backend check notice:', statusErr);
+          }
+
+          if (profile?.role === 'worker' && workerStatus === 'APPROVED') {
+            localStorage.setItem('punchx_auth_role', 'worker');
+            onTransition('worker-dashboard');
+          } else if (workerStatus === 'PENDING' || hasWorkerApp) {
+            localStorage.setItem('punchx_auth_role', 'worker');
+            onTransition('worker-pending-approval');
+          } else if (workerStatus === 'REJECTED') {
+            localStorage.setItem('punchx_auth_role', 'customer');
+            onTransition('panel-select');
+          } else {
+            // STOP UNWANTED WORKER LOGIN: User has not registered as a specialist
+            localStorage.setItem('punchx_auth_role', 'worker');
+            onTransition('worker-signup');
+          }
+        } else {
+          onTransition('home');
+        }
       } catch (e: any) {
         console.error("❌ [AuthCallback] Auth callback error:", e);
         const storedIdentity = localStorage.getItem('punchx_namoid_identity');
@@ -136,7 +176,7 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
           const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
           window.history.replaceState({}, document.title, '/');
           if (rawRole === 'admin') onTransition('admin-dashboard');
-          else if (rawRole === 'worker') onTransition('worker-dashboard');
+          else if (rawRole === 'worker') onTransition('worker-signup');
           else onTransition('home');
           return;
         }

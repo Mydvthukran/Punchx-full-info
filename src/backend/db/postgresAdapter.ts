@@ -216,6 +216,114 @@ export class PostgresAdapter implements IDatabaseAdapter {
     }
   }
 
+  async getWorkerApplication(id: string): Promise<WorkerApplication | null> {
+    const inMem = this.inMemoryFallback.workerApplications.get(id);
+    if (inMem) return inMem;
+    if (!this.pool) return null;
+    try {
+      const res = await this.pool.query('SELECT * FROM worker_applications WHERE id = $1 LIMIT 1', [id]);
+      if (res.rows.length === 0) return null;
+      const row = res.rows[0];
+      return {
+        id: row.id,
+        uid: row.uid,
+        legalName: row.legal_name,
+        address: row.address,
+        area: row.area,
+        sector: row.sector,
+        skill: row.skill,
+        categories: row.categories,
+        customSkill: row.custom_skill,
+        experienceYears: row.experience_years,
+        phone: row.phone,
+        email: row.email,
+        visitingFee: row.visiting_fee ? Number(row.visiting_fee) : 0,
+        termsAccepted: row.terms_accepted,
+        status: row.status,
+        appliedAt: row.applied_at?.toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getWorkerApplicationByUid(uid: string): Promise<WorkerApplication | null> {
+    for (const app of this.inMemoryFallback.workerApplications.values()) {
+      if (app.uid === uid) return app;
+    }
+    if (!this.pool) return null;
+    try {
+      const res = await this.pool.query('SELECT * FROM worker_applications WHERE uid = $1 ORDER BY applied_at DESC LIMIT 1', [uid]);
+      if (res.rows.length === 0) return null;
+      const row = res.rows[0];
+      return {
+        id: row.id,
+        uid: row.uid,
+        legalName: row.legal_name,
+        address: row.address,
+        area: row.area,
+        sector: row.sector,
+        skill: row.skill,
+        categories: row.categories,
+        customSkill: row.custom_skill,
+        experienceYears: row.experience_years,
+        phone: row.phone,
+        email: row.email,
+        visitingFee: row.visiting_fee ? Number(row.visiting_fee) : 0,
+        termsAccepted: row.terms_accepted,
+        status: row.status,
+        appliedAt: row.applied_at?.toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async getWorkerApplicationByContact(contact: { phone?: string; email?: string }): Promise<WorkerApplication | null> {
+    for (const app of this.inMemoryFallback.workerApplications.values()) {
+      if ((contact.phone && app.phone === contact.phone) || (contact.email && app.email === contact.email)) {
+        return app;
+      }
+    }
+    if (!this.pool) return null;
+    try {
+      const conditions: string[] = [];
+      const values: any[] = [];
+      if (contact.phone) {
+        values.push(contact.phone);
+        conditions.push(`phone = $${values.length}`);
+      }
+      if (contact.email) {
+        values.push(contact.email);
+        conditions.push(`email = $${values.length}`);
+      }
+      if (conditions.length === 0) return null;
+      const res = await this.pool.query(`SELECT * FROM worker_applications WHERE ${conditions.join(' OR ')} ORDER BY applied_at DESC LIMIT 1`, values);
+      if (res.rows.length === 0) return null;
+      const row = res.rows[0];
+      return {
+        id: row.id,
+        uid: row.uid,
+        legalName: row.legal_name,
+        address: row.address,
+        area: row.area,
+        sector: row.sector,
+        skill: row.skill,
+        categories: row.categories,
+        customSkill: row.custom_skill,
+        experienceYears: row.experience_years,
+        phone: row.phone,
+        email: row.email,
+        visitingFee: row.visiting_fee ? Number(row.visiting_fee) : 0,
+        termsAccepted: row.terms_accepted,
+        status: row.status,
+        appliedAt: row.applied_at?.toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   async listWorkerApplications(status?: string): Promise<WorkerApplication[]> {
     if (!this.pool) {
       const list = Array.from(this.inMemoryFallback.workerApplications.values());
@@ -251,7 +359,7 @@ export class PostgresAdapter implements IDatabaseAdapter {
     }
   }
 
-  async updateWorkerApplicationStatus(id: string, status: 'APPROVED' | 'REJECTED'): Promise<WorkerApplication | null> {
+  async updateWorkerApplicationStatus(id: string, status: 'APPROVED' | 'REJECTED', notes?: string): Promise<WorkerApplication | null> {
     const existing = this.inMemoryFallback.workerApplications.get(id);
     if (existing) {
       existing.status = status;
@@ -264,7 +372,34 @@ export class PostgresAdapter implements IDatabaseAdapter {
       const q = 'UPDATE worker_applications SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
       const res = await this.pool.query(q, [status, id]);
       if (res.rows.length === 0) return existing || null;
-      return existing || null;
+      const row = res.rows[0];
+      const updatedApp: WorkerApplication = {
+        id: row.id,
+        uid: row.uid,
+        legalName: row.legal_name,
+        address: row.address,
+        area: row.area,
+        sector: row.sector,
+        skill: row.skill,
+        categories: row.categories,
+        customSkill: row.custom_skill,
+        experienceYears: row.experience_years,
+        phone: row.phone,
+        email: row.email,
+        visitingFee: row.visiting_fee ? Number(row.visiting_fee) : 0,
+        termsAccepted: row.terms_accepted,
+        status: row.status,
+        appliedAt: row.applied_at?.toISOString(),
+      };
+
+      if (row.uid && status === 'APPROVED') {
+        await this.pool.query(
+          `UPDATE users SET role = 'worker', updated_at = NOW() WHERE id = $1`,
+          [row.uid]
+        );
+      }
+
+      return updatedApp;
     } catch (e) {
       return existing || null;
     }
