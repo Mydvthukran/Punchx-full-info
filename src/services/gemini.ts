@@ -3,19 +3,22 @@
 // the same conversation across page renders while Backboard keeps long-term memory.
 const DRAGO_THREAD_STORAGE_KEY = 'punchx_drago_thread_id';
 
+async function getFirebaseToken(): Promise<string> {
+  try {
+    const { auth } = await import('../lib/firebase');
+    if (auth?.currentUser) return await auth.currentUser.getIdToken();
+  } catch (error) {
+    console.warn('DRAGO auth context unavailable:', error);
+  }
+  return '';
+}
+
 export async function getAIResponse(userMessage: string, context = ''): Promise<string> {
   const prompt = userMessage.trim();
   if (!prompt) return 'Please enter a valid query for DRAGO AI.';
 
   try {
-    let token = '';
-    try {
-      const { auth } = await import('../lib/firebase');
-      if (auth?.currentUser) token = await auth.currentUser.getIdToken();
-    } catch (authError) {
-      console.warn('DRAGO auth context unavailable; using Gemini fallback.', authError);
-    }
-
+    const token = await getFirebaseToken();
     let threadId = '';
     try {
       threadId = window.localStorage.getItem(DRAGO_THREAD_STORAGE_KEY) || '';
@@ -37,7 +40,10 @@ export async function getAIResponse(userMessage: string, context = ''): Promise<
     });
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) return data?.error || `DRAGO service is temporarily unavailable (status ${res.status}).`;
+    if (!res.ok) {
+      console.error('DRAGO API error:', res.status, data?.error || data);
+      return data?.error || 'DRAGO is temporarily unavailable. Please try again shortly.';
+    }
 
     if (typeof data?.threadId === 'string' && data.threadId) {
       try {
@@ -54,10 +60,36 @@ export async function getAIResponse(userMessage: string, context = ''): Promise<
   }
 }
 
-export function clearDragoConversation(): void {
+/**
+ * Clears both the browser's active thread and the server-side Backboard
+ * assistant/memory for the authenticated PunchX account.
+ */
+export async function clearDragoConversation(): Promise<boolean> {
+  const token = await getFirebaseToken();
+
   try {
-    window.localStorage.removeItem(DRAGO_THREAD_STORAGE_KEY);
-  } catch {
-    // Ignore storage errors.
+    const res = await fetch('/api/drago-clear-memory', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      console.error('DRAGO memory clear error:', res.status, data?.error || data);
+      return false;
+    }
+
+    try {
+      window.localStorage.removeItem(DRAGO_THREAD_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors.
+    }
+    return true;
+  } catch (error) {
+    console.error('DRAGO memory clear request failed:', error);
+    return false;
   }
 }
