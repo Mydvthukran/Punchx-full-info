@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, X, Send, Bot } from 'lucide-react';
 import { AppScreen } from '../types';
 import { getAIResponse } from '../services/gemini';
+import { decidePunchXIntent, PunchXIntent } from '../services/decisionRouter';
 
 interface DragoAssistantProps {
   currentScreen: AppScreen;
@@ -10,6 +11,14 @@ interface DragoAssistantProps {
   onApplyPromo?: (code: string) => void;
   onAutoFillBooking?: () => void;
 }
+
+const intentLabels: Record<PunchXIntent, string> = {
+  book_service: 'service booking',
+  track_booking: 'booking tracking',
+  payment_help: 'payment help',
+  professional_help: 'professional information',
+  general_help: 'general help',
+};
 
 export default function DragoAssistant({ currentScreen }: DragoAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -35,8 +44,41 @@ export default function DragoAssistant({ currentScreen }: DragoAssistantProps) {
     setMessages((prev) => [...prev, { sender: 'user', text }]);
     setInputText('');
     setIsTyping(true);
+
     try {
-      const response = await getAIResponse(text);
+      // Fast local/on-device semantic routing happens before the generative AI
+      // call. On Chrome builds with the experimental Decisions API this uses
+      // DecisionModel; otherwise the small deterministic fallback keeps today’s
+      // PunchX production flow working.
+      const decision = await decidePunchXIntent(text);
+
+      if (decision.containsSensitiveData) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'drago',
+            text: 'For your security, please remove phone numbers, email addresses, passwords, API keys, or other credentials before sending this message.',
+          },
+        ]);
+        return;
+      }
+
+      if (decision.needsClarification) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: 'drago',
+            text: 'I can help. Are you trying to book a service, track an existing booking, get payment help, or learn about a professional?',
+          },
+        ]);
+        return;
+      }
+
+      // Keep the existing Gemini/DRAGO response layer, but give it a compact,
+      // trusted intent signal instead of asking a generative model to classify
+      // every request itself.
+      const routedPrompt = `[PunchX intent: ${intentLabels[decision.intent]} | confidence: ${decision.confidence.toFixed(2)}] ${text}`;
+      const response = await getAIResponse(routedPrompt);
       setMessages((prev) => [...prev, { sender: 'drago', text: response }]);
     } catch {
       setMessages((prev) => [...prev, { sender: 'drago', text: 'DRAGO is temporarily unavailable. Please try again shortly.' }]);
