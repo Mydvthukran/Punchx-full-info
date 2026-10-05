@@ -92,24 +92,24 @@ async function backboardRequest(apiKey: string, path: string, init: RequestInit 
   headers.set('Content-Type', 'application/json');
 
   const response = await fetch(`${BACKBOARD_BASE_URL}${path}`, { ...init, headers });
-  const data = await response.json().catch(() => ({}));
+  const raw = await response.text();
+  let data: any = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    data = { raw };
+  }
+
   if (!response.ok) {
-    throw new Error(`Backboard ${response.status}: ${JSON.stringify(data).slice(0, 800)}`);
+    const error = new Error(`Backboard ${response.status}: ${JSON.stringify(data).slice(0, 1200)}`);
+    (error as any).status = response.status;
+    (error as any).data = data;
+    throw error;
   }
   return data;
 }
 
-async function getOrCreateUserAssistant(apiKey: string, uid: string): Promise<string> {
-  ensureFirebaseAdmin();
-  const firestore = getFirestore();
-  const ref = firestore.collection('dragoBackboardUsers').doc(uid);
-  const stored = await ref.get();
-  const storedAssistantId = stored.data()?.assistantId;
-
-  if (typeof storedAssistantId === 'string' && storedAssistantId) {
-    return storedAssistantId;
-  }
-
+async function createUserAssistant(apiKey: string, uid: string): Promise<string> {
   const created = await backboardRequest(apiKey, '/assistants', {
     method: 'POST',
     body: JSON.stringify({
@@ -124,17 +124,30 @@ async function getOrCreateUserAssistant(apiKey: string, uid: string): Promise<st
   });
 
   if (!created?.assistant_id) throw new Error('Backboard did not return an assistant_id');
+  return created.assistant_id;
+}
 
+async function getOrCreateUserAssistant(apiKey: string, uid: string, forceNew = false): Promise<string> {
+  ensureFirebaseAdmin();
+  const firestore = getFirestore();
+  const ref = firestore.collection('dragoBackboardUsers').doc(uid);
+  const stored = await ref.get();
+  const storedAssistantId = stored.data()?.assistantId;
+
+  if (!forceNew && typeof storedAssistantId === 'string' && storedAssistantId) {
+    return storedAssistantId;
+  }
+
+  const assistantId = await createUserAssistant(apiKey, uid);
   await ref.set(
     {
-      assistantId: created.assistant_id,
+      assistantId,
       updatedAt: new Date().toISOString(),
       provider: 'backboard',
     },
     { merge: true },
   );
-
-  return created.assistant_id;
+  return assistantId;
 }
 
 async function saveUserThread(uid: string, threadId: string) {
@@ -160,82 +173,95 @@ async function clearSavedUserThread(uid: string) {
   );
 }
 
+async function sendBackboardMessage(
+  apiKey: string,
+  assistantId: string,
+  threadId: string | undefined,
+  content: string,
+  model: string,
+  useProMemory: boolean,
+) {
+  const body: Record<string, unknown> = {
+    assistant_id: assistantId,
+    ...(threadId ? { thread_id: threadId } : {}),
+    content,
+    system_prompt: DRAGO_SYSTEM_INSTRUCTION,
+    llm_provider: 'google',
+    model_name: model,
+    stream: false,
+    // Keep the first production path conservative. Backboard's API supports
+    // provider-specific thinking controls, but an empty object lets the selected
+    // Gemini model choose its supported defaults instead of risking a 422.
+    thinking: {},
+    memory_response_citation: false,
+    web_search: 'off',
+    metadata: { punchx_product: 'PunchX', assistant: 'DRAGO' },
+  };
+
+  if (useProMemory) body.memory_pro = 'Auto';
+  else body.memory = 'Auto';
+
+  return backboardRequest(apiKey, '/threads/messages', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 async function callBackboard(
   apiKey: string,
   uid: string,
   prompt: string,
   context: string,
   requestedThreadId?: string,
-): Promise<{ response: string; threadId: string; assistantId: string }> {
-  const assistantId = await getOrCreateUserAssistant(apiKey, uid);
-  const savedThreadId = requestedThreadId || await getSavedUserThread(uid);
+): Promise<{ response: string; threadId: string }> {
+  let assistantId = await getOrCreateUserAssistant(apiKey, uid);
+  let savedThreadId = requestedThreadId || await getSavedUserThread(uid);
   const model = process.env.BACKBOARD_GEMINI_MODEL?.trim() || DEFAULT_BACKBOARD_GEMINI_MODEL;
   const useProMemory = process.env.DRAGO_MEMORY_PRO === 'true';
-  const thinkingBudget = Math.max(1024, Number(process.env.BACKBOARD_THINKING_BUDGET || 4096));
 
-  const continuity = context
-    ? `Additional authenticated PunchX context for continuity:\n${context}\n\n`
-    : '';
-
-  const body: Record<string, unknown> = {
-    assistant_id: assistantId,
-    ...(savedThreadId ? { thread_id: savedThreadId } : {}),
-    content: `${continuity}${prompt}`,
-    system_prompt: DRAGO_SYSTEM_INSTRUCTION,
-    llm_provider: 'google',
-    model_name: model,
-    stream: false,
-    // Gemini 2.5 uses budget_tokens for reasoning; effort is not valid here.
-    thinking: { budget_tokens: thinkingBudget },
-    web_search: 'Auto',
-    metadata: { punchx_user_id: uid, product: 'PunchX', assistant: 'DRAGO' },
-  };
-
-  // Backboard does not allow memory and memory_pro together.
-  if (useProMemory) body.memory_pro = 'Auto';
-  else body.memory = 'Auto';
+  const content = context
+    ? `Additional authenticated PunchX context for continuity:\n${context}\n\nLatest user message:\n${prompt}`
+    : prompt;
 
   let data: any;
   try {
-    data = await backboardRequest(apiKey, '/threads/messages', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-  } catch (firstError) {
-    // A stale/deleted thread should never break DRAGO. Start a fresh thread once.
-    if (savedThreadId) {
-      console.warn('DRAGO thread failed; creating a fresh Backboard thread:', firstError);
+    data = await sendBackboardMessage(apiKey, assistantId, savedThreadId, content, model, useProMemory);
+  } catch (firstError: any) {
+    const status = Number(firstError?.status) || 0;
+
+    // Recover automatically from a stale thread.
+    if (savedThreadId && (status === 400 || status === 404 || status === 422)) {
+      console.warn('DRAGO: stale Backboard thread detected; starting a fresh thread.');
       await clearSavedUserThread(uid);
-      delete body.thread_id;
-      data = await backboardRequest(apiKey, '/threads/messages', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
+      savedThreadId = undefined;
+      data = await sendBackboardMessage(apiKey, assistantId, undefined, content, model, useProMemory);
+    } else if (status === 400 || status === 404 || status === 422) {
+      // Recover from an assistant/config/model mismatch by creating a fresh
+      // PunchX DRAGO assistant once, then retrying without a thread.
+      console.warn('DRAGO: Backboard assistant/config rejected; creating a fresh assistant.');
+      assistantId = await getOrCreateUserAssistant(apiKey, uid, true);
+      savedThreadId = undefined;
+      data = await sendBackboardMessage(apiKey, assistantId, undefined, content, model, useProMemory);
     } else {
       throw firstError;
     }
   }
 
-  if (data?.status === 'REQUIRES_ACTION') {
-    throw new Error('Backboard requested an unimplemented tool action.');
-  }
   if (data?.status === 'FAILED') {
-    throw new Error(`Backboard run failed: ${JSON.stringify(data).slice(0, 800)}`);
+    throw new Error(`Backboard run failed: ${JSON.stringify(data).slice(0, 1200)}`);
+  }
+  if (data?.status === 'REQUIRES_ACTION') {
+    throw new Error('Backboard requested a tool action that PunchX has not registered yet.');
   }
   if (typeof data?.content !== 'string' || !data.content.trim()) {
-    throw new Error(`Backboard returned no assistant content: ${JSON.stringify(data).slice(0, 800)}`);
+    throw new Error(`Backboard returned no assistant content: ${JSON.stringify(data).slice(0, 1200)}`);
   }
   if (typeof data?.thread_id !== 'string' || !data.thread_id) {
     throw new Error('Backboard did not return a thread_id');
   }
 
   await saveUserThread(uid, data.thread_id);
-
-  return {
-    response: data.content.trim(),
-    threadId: data.thread_id,
-    assistantId,
-  };
+  return { response: data.content.trim(), threadId: data.thread_id };
 }
 
 async function callDirectGemini(prompt: string, context: string): Promise<string> {
@@ -294,8 +320,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           memory: true,
           threadId: result.threadId,
         });
-      } catch (error) {
-        console.error('DRAGO Backboard error; falling back to direct Gemini:', error);
+      } catch (error: any) {
+        // Never expose provider internals to the customer. Log enough server-side
+        // information to diagnose the failure, then use Gemini as the safety net.
+        console.error('DRAGO Backboard error:', error?.message || error);
       }
     }
 
@@ -303,18 +331,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const response = await callDirectGemini(prompt.trim(), safeContext);
       return res.json({ response, engine: 'direct-gemini', memory: false });
     } catch (error: any) {
-      console.error('DRAGO Gemini error:', error);
+      console.error('DRAGO Gemini error:', error?.message || error);
       const status = Number(error?.status) || 500;
       if (status === 401 || status === 403) {
-        return res.status(502).json({ error: 'Gemini authentication failed. Check GEMINI_API_KEY in Vercel Production environment variables.' });
+        return res.status(502).json({ error: 'DRAGO AI authentication is not configured correctly on the server.' });
       }
       if (status === 429) {
-        return res.status(429).json({ error: 'DRAGO is temporarily busy because the Gemini API rate limit was reached.' });
+        return res.status(429).json({ error: 'DRAGO is temporarily busy. Please try again shortly.' });
       }
-      return res.status(500).json({ error: 'DRAGO could not process the request. Check the Gemini and Backboard environment variables.' });
+      return res.status(500).json({ error: 'DRAGO could not process the request right now. Please try again shortly.' });
     }
   } catch (error) {
     console.error('DRAGO API handler error:', error);
-    return res.status(500).json({ error: 'DRAGO service encountered a server error.' });
+    return res.status(500).json({ error: 'DRAGO could not process the request right now. Please try again shortly.' });
   }
 }
