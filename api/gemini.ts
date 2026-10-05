@@ -2,11 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
 import { cert, applicationDefault, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const MAX_PROMPT_LENGTH = 4000;
 const MAX_CONTEXT_LENGTH = 12000;
 const BACKBOARD_BASE_URL = 'https://app.backboard.io/api';
-const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_BACKBOARD_GEMINI_MODEL = 'gemini-2.5-flash';
 
 const DRAGO_SYSTEM_INSTRUCTION = `You are DRAGO, the official professional AI assistant for PunchX, a local-services marketplace.
@@ -17,7 +18,7 @@ PERSONALITY AND INTELLIGENCE:
 - Resolve references such as "that", "same person", "my last booking", and "continue" from context instead of asking the user to repeat information.
 - Support English, Hindi/Hinglish, Bengali/Banglish, transliteration, slang, spelling mistakes and mixed-language messages. Reply naturally in the user's language.
 - Ask only the minimum clarification required.
-- For complex requests, reason carefully internally and present a clear, useful result without exposing hidden reasoning.
+- For complex requests, reason carefully internally and present a clear useful result without exposing hidden reasoning.
 
 PUNCHX:
 - PunchX connects citizens/customers with independent local professionals for household and day-to-day services.
@@ -93,40 +94,70 @@ async function backboardRequest(apiKey: string, path: string, init: RequestInit 
   const response = await fetch(`${BACKBOARD_BASE_URL}${path}`, { ...init, headers });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`Backboard ${response.status}: ${JSON.stringify(data).slice(0, 500)}`);
+    throw new Error(`Backboard ${response.status}: ${JSON.stringify(data).slice(0, 800)}`);
   }
   return data;
 }
 
 async function getOrCreateUserAssistant(apiKey: string, uid: string): Promise<string> {
-  // Backboard memory is scoped to an assistant. Therefore each authenticated
-  // PunchX user gets an isolated assistant to prevent cross-user memory leaks.
-  const name = `PunchX DRAGO User ${uid}`;
-  const list = await backboardRequest(
-    apiKey,
-    `/assistants?name=${encodeURIComponent(name)}&limit=1`,
-    { method: 'GET' },
-  );
+  ensureFirebaseAdmin();
+  const firestore = getFirestore();
+  const ref = firestore.collection('dragoBackboardUsers').doc(uid);
+  const stored = await ref.get();
+  const storedAssistantId = stored.data()?.assistantId;
 
-  if (Array.isArray(list?.assistants) && list.assistants[0]?.assistant_id) {
-    return list.assistants[0].assistant_id;
+  if (typeof storedAssistantId === 'string' && storedAssistantId) {
+    return storedAssistantId;
   }
 
   const created = await backboardRequest(apiKey, '/assistants', {
     method: 'POST',
     body: JSON.stringify({
-      name,
+      name: `PunchX DRAGO User ${uid.slice(0, 12)}`,
       system_prompt: DRAGO_SYSTEM_INSTRUCTION,
       tok_k: 12,
       custom_fact_extraction_prompt:
         'Extract only durable, useful, non-sensitive user preferences and explicitly stated profile/project facts. Never extract passwords, API keys, OTPs, payment details, authentication tokens, full addresses or private contact details.',
       custom_update_memory_prompt:
-        'Keep memory accurate and minimal. Add useful durable facts, update facts when clearly corrected, and remove stale/contradicted facts. Never store credentials, secrets, OTPs, payment details, authentication tokens, full addresses or private contact details.',
+        'Keep memory accurate and minimal. Add useful durable facts, update facts when clearly corrected, and remove stale or contradicted facts. Never store credentials, secrets, OTPs, payment details, authentication tokens, full addresses or private contact details.',
     }),
   });
 
   if (!created?.assistant_id) throw new Error('Backboard did not return an assistant_id');
+
+  await ref.set(
+    {
+      assistantId: created.assistant_id,
+      updatedAt: new Date().toISOString(),
+      provider: 'backboard',
+    },
+    { merge: true },
+  );
+
   return created.assistant_id;
+}
+
+async function saveUserThread(uid: string, threadId: string) {
+  ensureFirebaseAdmin();
+  await getFirestore().collection('dragoBackboardUsers').doc(uid).set(
+    { threadId, updatedAt: new Date().toISOString() },
+    { merge: true },
+  );
+}
+
+async function getSavedUserThread(uid: string): Promise<string | undefined> {
+  ensureFirebaseAdmin();
+  const snap = await getFirestore().collection('dragoBackboardUsers').doc(uid).get();
+  const value = snap.data()?.threadId;
+  return typeof value === 'string' && value ? value : undefined;
+}
+
+async function clearSavedUserThread(uid: string) {
+  ensureFirebaseAdmin();
+  await getFirestore().collection('dragoBackboardUsers').doc(uid).set(
+    { threadId: null, updatedAt: new Date().toISOString() },
+    { merge: true },
+  );
 }
 
 async function callBackboard(
@@ -134,11 +165,13 @@ async function callBackboard(
   uid: string,
   prompt: string,
   context: string,
-  threadId?: string,
-): Promise<{ response: string; threadId?: string; assistantId: string }> {
+  requestedThreadId?: string,
+): Promise<{ response: string; threadId: string; assistantId: string }> {
   const assistantId = await getOrCreateUserAssistant(apiKey, uid);
+  const savedThreadId = requestedThreadId || await getSavedUserThread(uid);
   const model = process.env.BACKBOARD_GEMINI_MODEL?.trim() || DEFAULT_BACKBOARD_GEMINI_MODEL;
   const useProMemory = process.env.DRAGO_MEMORY_PRO === 'true';
+  const thinkingBudget = Math.max(1024, Number(process.env.BACKBOARD_THINKING_BUDGET || 4096));
 
   const continuity = context
     ? `Additional authenticated PunchX context for continuity:\n${context}\n\n`
@@ -146,34 +179,61 @@ async function callBackboard(
 
   const body: Record<string, unknown> = {
     assistant_id: assistantId,
-    ...(threadId ? { thread_id: threadId } : {}),
+    ...(savedThreadId ? { thread_id: savedThreadId } : {}),
     content: `${continuity}${prompt}`,
+    system_prompt: DRAGO_SYSTEM_INSTRUCTION,
     llm_provider: 'google',
     model_name: model,
     stream: false,
-    thinking: { effort: 'medium' },
+    // Gemini 2.5 uses budget_tokens for reasoning; effort is not valid here.
+    thinking: { budget_tokens: thinkingBudget },
     web_search: 'Auto',
     metadata: { punchx_user_id: uid, product: 'PunchX', assistant: 'DRAGO' },
   };
 
+  // Backboard does not allow memory and memory_pro together.
   if (useProMemory) body.memory_pro = 'Auto';
   else body.memory = 'Auto';
 
-  const data = await backboardRequest(apiKey, '/threads/messages', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  let data: any;
+  try {
+    data = await backboardRequest(apiKey, '/threads/messages', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  } catch (firstError) {
+    // A stale/deleted thread should never break DRAGO. Start a fresh thread once.
+    if (savedThreadId) {
+      console.warn('DRAGO thread failed; creating a fresh Backboard thread:', firstError);
+      await clearSavedUserThread(uid);
+      delete body.thread_id;
+      data = await backboardRequest(apiKey, '/threads/messages', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    } else {
+      throw firstError;
+    }
+  }
 
   if (data?.status === 'REQUIRES_ACTION') {
-    throw new Error('DRAGO requested a tool action that PunchX has not yet approved.');
+    throw new Error('Backboard requested an unimplemented tool action.');
+  }
+  if (data?.status === 'FAILED') {
+    throw new Error(`Backboard run failed: ${JSON.stringify(data).slice(0, 800)}`);
   }
   if (typeof data?.content !== 'string' || !data.content.trim()) {
-    throw new Error('Backboard returned no assistant content');
+    throw new Error(`Backboard returned no assistant content: ${JSON.stringify(data).slice(0, 800)}`);
   }
+  if (typeof data?.thread_id !== 'string' || !data.thread_id) {
+    throw new Error('Backboard did not return a thread_id');
+  }
+
+  await saveUserThread(uid, data.thread_id);
 
   return {
     response: data.content.trim(),
-    threadId: typeof data.thread_id === 'string' ? data.thread_id : threadId,
+    threadId: data.thread_id,
     assistantId,
   };
 }
@@ -188,7 +248,7 @@ async function callDirectGemini(prompt: string, context: string): Promise<string
     : prompt;
 
   const requested = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  const models = [...new Set([requested, DEFAULT_GEMINI_MODEL, 'gemini-3.5-flash'])];
+  const models = [...new Set([requested, DEFAULT_GEMINI_MODEL])];
   let lastError: any;
 
   for (const model of models) {
@@ -235,7 +295,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           threadId: result.threadId,
         });
       } catch (error) {
-        console.error('DRAGO Backboard error; falling back to Gemini:', error);
+        console.error('DRAGO Backboard error; falling back to direct Gemini:', error);
       }
     }
 
