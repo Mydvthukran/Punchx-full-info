@@ -38,6 +38,14 @@ export default function DragoAssistant({ currentScreen, onRecommendProfessional 
   const [recommendation, setRecommendation] = useState<Worker | null>(null);
   const [recommendationRequest, setRecommendationRequest] = useState('');
 
+  // DRAGO uses the location already saved in the user's PunchX profile.
+  // It does not ask for location again when that profile location is available.
+  const knownLocation = useMemo(() => ({
+    area: userProfile?.area || '',
+    sector: userProfile?.sector || '',
+    address: userProfile?.address || '',
+  }), [userProfile?.area, userProfile?.sector, userProfile?.address]);
+
   const identityKey = useMemo(() => String((currentUser as any)?.sub || (currentUser as any)?.id || (currentUser as any)?.user_id || ''), [currentUser]);
 
   useEffect(() => {
@@ -121,7 +129,7 @@ export default function DragoAssistant({ currentScreen, onRecommendProfessional 
 
         // DRAGO's distinctive capability: recommend a real verified PunchX professional.
         if (detectedCategory && onRecommendProfessional) {
-          const worker = await findDragoRecommendedProfessional(detectedCategory, text);
+          const worker = await findDragoRecommendedProfessional(detectedCategory, text, knownLocation);
           if (worker) {
             setRecommendation(worker);
             setRecommendationRequest(text);
@@ -134,6 +142,9 @@ export default function DragoAssistant({ currentScreen, onRecommendProfessional 
       const context = [
         firstName ? `Known user first name: ${firstName}` : '',
         `Current PunchX screen: ${currentScreen}`,
+        knownLocation.area || knownLocation.sector || knownLocation.address
+          ? `Known customer service location: ${[knownLocation.area, knownLocation.sector].filter(Boolean).join(', ')}${knownLocation.address ? ` (saved address available in PunchX)` : ''}. Do not ask the customer for location again unless they explicitly want to change it.`
+          : 'No saved customer service location is available. Ask for the service location only when it is genuinely required.',
         `Smart routing signal: ${smartContext}`,
         'Conversation history:',
         buildConversationContext(nextMemoryBase),
