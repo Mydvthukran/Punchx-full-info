@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 
 const MAX_PROMPT_LENGTH = 8000;
 const MAX_CONTEXT_LENGTH = 24000;
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
 
 const DRAGO_SYSTEM_INSTRUCTION = `You are DRAGO, the official AI assistant of PunchX.
 
@@ -111,7 +111,7 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
 
   const ai = new GoogleGenAI({ apiKey });
   const configuredModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-2.5-flash-lite'])];
+  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])];
 
   const contextBlock = context
     ? `PRIVATE PUNCHX CONVERSATION AND APPLICATION CONTEXT FOR THIS USER:\n${context}\n\n`
@@ -124,7 +124,7 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
     try {
       const result = await ai.models.generateContent({
         model,
-        contents: fullInput,
+        contents: [{ role: 'user', parts: [{ text: fullInput }] }],
         config: {
           systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
           maxOutputTokens: 1400,
@@ -191,6 +191,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(500).json({
       error: 'DRAGO could not process your request right now. Please try again shortly.',
+      code: 'GEMINI_REQUEST_FAILED',
+      ...(process.env.NODE_ENV === 'development' ? { detail: message } : {}),
     });
   }
 }
