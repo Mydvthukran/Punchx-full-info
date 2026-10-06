@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 
 const MAX_PROMPT_LENGTH = 8000;
 const MAX_CONTEXT_LENGTH = 24000;
-const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash';
 
 const DRAGO_SYSTEM_INSTRUCTION = `You are DRAGO, the official AI assistant of PunchX.
 
@@ -111,7 +111,7 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
 
   const ai = new GoogleGenAI({ apiKey });
   const configuredModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])];
+  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'])];
 
   const contextBlock = context
     ? `PRIVATE PUNCHX CONVERSATION AND APPLICATION CONTEXT FOR THIS USER:\n${context}\n\n`
@@ -186,6 +186,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (status === 429) {
       return res.status(429).json({
         error: 'DRAGO is temporarily busy. Please try again shortly.',
+      });
+    }
+
+    if (message.includes('GEMINI_API_KEY is not configured')) {
+      return res.status(503).json({
+        error: 'DRAGO AI is not configured on the server. Add GEMINI_API_KEY to the Vercel Production environment.',
+        code: 'GEMINI_CONFIG_MISSING',
+      });
+    }
+
+    if (status === 404) {
+      return res.status(502).json({
+        error: 'DRAGO could not find a supported Gemini model. Please redeploy the latest PunchX version.',
+        code: 'GEMINI_MODEL_NOT_FOUND',
+      });
+    }
+
+    if (status === 400) {
+      return res.status(400).json({
+        error: 'DRAGO sent an invalid request to Gemini. Please try again.',
+        code: 'GEMINI_BAD_REQUEST',
       });
     }
 
