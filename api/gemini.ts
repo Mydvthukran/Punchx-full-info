@@ -219,15 +219,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    res.status(200);
-    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders?.();
-
-    await streamWithGemini(prompt.trim(), normalizeContext(context).slice(0, 10000), res);
-    return res.end();
+    const response = await generateWithGemini(prompt.trim(), normalizeContext(context).slice(0, 10000));
+    return res.status(200).json({ response, engine: 'gemini', memory: true });
   } catch (error: any) {
     const status = statusFromError(error);
     const message = messageFromError(error);
