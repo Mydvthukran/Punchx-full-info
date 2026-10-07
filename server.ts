@@ -662,7 +662,7 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "Invalid payment verification signature" });
       }
 
-      // Transition order: PENDING_PAYMENT -> PAID -> DISPATCHING
+      // Payment lifecycle is authoritative: PENDING_PAYMENT -> PAID -> DISPATCHING.
       const paidUpdate: Partial<OrderRecord> = {
         paymentStatus: "PAID",
         paymentMethod: "RAZORPAY_ONLINE",
@@ -675,9 +675,9 @@ async function startServer() {
         },
       };
 
-      const transitionResult = await executeOrderTransition(
+      const paidResult = await executeOrderTransition(
         orderId,
-        "DISPATCHING",
+        "PAID",
         {
           actorUid: uid,
           actorRole: "system",
@@ -685,8 +685,24 @@ async function startServer() {
         },
         paidUpdate
       );
+      if (!paidResult.success) {
+        return res.status(paidResult.statusCode).json({ success: false, error: paidResult.error || "Unable to mark payment as paid" });
+      }
 
-      const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...sanitized } = (transitionResult.order as any) || {};
+      const dispatchResult = await executeOrderTransition(
+        orderId,
+        "DISPATCHING",
+        {
+          actorUid: uid,
+          actorRole: "system",
+          reason: "Payment confirmed; specialist dispatch initiated",
+        }
+      );
+      if (!dispatchResult.success) {
+        return res.status(dispatchResult.statusCode).json({ success: false, error: dispatchResult.error || "Unable to dispatch paid order" });
+      }
+
+      const { startOtpHash, startOtpSalt, completionOtpHash, completionOtpSalt, ...sanitized } = (dispatchResult.order as any) || {};
       return res.json({
         success: true,
         message: "Payment captured successfully. Specialist dispatching initiated.",
@@ -728,9 +744,9 @@ async function startServer() {
 
         if (appOrderId) {
           logger.info(`Webhook captured payment for order ${appOrderId}`);
-          await executeOrderTransition(
+          const paidResult = await executeOrderTransition(
             appOrderId,
-            "DISPATCHING",
+            "PAID",
             {
               actorUid: "gateway_webhook",
               actorRole: "system",
@@ -746,6 +762,17 @@ async function startServer() {
               },
             }
           );
+          if (paidResult.success) {
+            await executeOrderTransition(
+              appOrderId,
+              "DISPATCHING",
+              {
+                actorUid: "gateway_webhook",
+                actorRole: "system",
+                reason: "Webhook payment confirmed; specialist dispatch initiated",
+              }
+            );
+          }
         }
       }
 
