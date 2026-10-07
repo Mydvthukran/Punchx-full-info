@@ -113,48 +113,7 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
 
   const ai = new GoogleGenAI({ apiKey });
   const configuredModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  const staticCandidates = [
-    configuredModel,
-    DEFAULT_GEMINI_MODEL,
-    'gemini-flash-latest',
-    'gemini-3.7-flash',
-    'gemini-3.6-flash',
-    'gemini-3.5-flash',
-    'gemini-2.5-flash',
-  ];
-
-  // Do not assume a model is available to this API key/project. Gemini exposes
-  // the models and their supported actions through models.list(); use that list
-  // to select a real generateContent-capable model before making the request.
-  let models: string[] = [...new Set(staticCandidates)];
-  try {
-    const available: string[] = [];
-    for await (const modelInfo of ai.models.list()) {
-      const name = String((modelInfo as any)?.name || '').replace(/^models\//, '');
-      const actions = (modelInfo as any)?.supportedActions || (modelInfo as any)?.supported_actions || [];
-      if (name && Array.isArray(actions) && actions.includes('generateContent')) {
-        available.push(name);
-      }
-    }
-
-    if (available.length > 0) {
-      const preferredAvailable = staticCandidates.filter((name) => available.includes(name));
-      const otherFlash = available
-        .filter((name) => /gemini-.*flash/i.test(name))
-        .sort()
-        .reverse();
-      const otherTextModels = available
-        .filter((name) => /gemini-.*(pro|flash)/i.test(name))
-        .sort()
-        .reverse();
-
-      models = [...new Set([...preferredAvailable, ...otherFlash, ...otherTextModels])];
-    }
-  } catch (error: any) {
-    // If model discovery is temporarily unavailable, retain the static
-    // candidates and let the normal request/fallback handling continue.
-    console.warn('DRAGO Gemini model discovery failed:', messageFromError(error));
-  }
+  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-3.7-flash', 'gemini-3.6-flash'])];
 
   const contextBlock = context
     ? `PRIVATE PUNCHX CONVERSATION AND APPLICATION CONTEXT FOR THIS USER:\n${context}\n\n`
@@ -170,7 +129,8 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
         contents: [{ role: 'user', parts: [{ text: fullInput }] }],
         config: {
           systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
-          maxOutputTokens: 1400,
+          maxOutputTokens: 700,
+          thinkingConfig: { thinkingLevel: 'low' },
         },
       });
 
@@ -181,8 +141,59 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
       lastError = error;
       const status = statusFromError(error);
       console.error(`DRAGO Gemini ${model} error:`, messageFromError(error));
+      if (![400, 404, 408, 409, 429, 500, 502, 503, 504].includes(status)) break;
+    }
+  }
 
-      // Try the next compatible Gemini model for transient/model configuration errors.
+  throw lastError || new Error('Gemini request failed');
+}
+
+async function streamWithGemini(prompt: string, context: string, res: VercelResponse): Promise<void> {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server');
+
+  const ai = new GoogleGenAI({ apiKey });
+  const configuredModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-3.7-flash', 'gemini-3.6-flash'])];
+
+  const contextBlock = context
+    ? `PRIVATE PUNCHX CONVERSATION AND APPLICATION CONTEXT FOR THIS USER:\n${context}\n\n`
+    : '';
+  const fullInput = `${contextBlock}LATEST USER MESSAGE:\n${prompt}`;
+
+  let lastError: any = null;
+
+  for (const model of models) {
+    try {
+      const stream = await ai.models.generateContentStream({
+        model,
+        contents: [{ role: 'user', parts: [{ text: fullInput }] }],
+        config: {
+          systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
+          maxOutputTokens: 700,
+          thinkingConfig: { thinkingLevel: 'low' },
+        },
+      });
+
+      let sentText = false;
+      for await (const chunk of stream) {
+        const text = chunk.text || '';
+        if (text) {
+          sentText = true;
+          res.write(`data: ${JSON.stringify({ text })}\\n\\n`);
+        }
+      }
+
+      if (sentText) {
+        res.write('data: [DONE]\\n\\n');
+        return;
+      }
+
+      lastError = new Error(`Gemini returned an empty response from ${model}`);
+    } catch (error: any) {
+      lastError = error;
+      const status = statusFromError(error);
+      console.error(`DRAGO Gemini stream ${model} error:`, messageFromError(error));
       if (![400, 404, 408, 409, 429, 500, 502, 503, 504].includes(status)) break;
     }
   }
@@ -208,17 +219,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const response = await generateWithGemini(prompt.trim(), normalizeContext(context));
+    res.status(200);
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
 
-    return res.status(200).json({
-      response,
-      engine: 'gemini',
-      memory: true,
-    });
+    await streamWithGemini(prompt.trim(), normalizeContext(context).slice(0, 10000), res);
+    return res.end();
   } catch (error: any) {
     const status = statusFromError(error);
     const message = messageFromError(error);
     console.error('DRAGO Gemini request failed:', message);
+
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: 'DRAGO could not process your request right now. Please try again shortly.' })}\\n\\n`);
+      res.write('data: [DONE]\\n\\n');
+      return res.end();
+    }
 
     if (status === 401 || status === 403) {
       return res.status(502).json({
