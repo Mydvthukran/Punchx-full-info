@@ -21,7 +21,7 @@ export interface TrackingStatusResponse {
   orderId: string;
   orderStatus: string;
   workerName: string;
-  workerLocation: {
+  workerLocation?: {
     lat: number;
     lng: number;
     updatedAt: string;
@@ -142,7 +142,7 @@ export async function getOrderTrackingStatus(
         orderId,
         orderStatus: order.status,
         workerName: order.workerName || 'Specialist',
-        workerLocation: undefined as any,
+        workerLocation: undefined,
         customerLocation: order.customerLocation,
         distanceKm: 0,
         etaMinutes: 0,
