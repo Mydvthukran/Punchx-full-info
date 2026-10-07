@@ -7,9 +7,18 @@ export async function getAIResponse(userMessage: string, context = ''): Promise<
   if (!prompt) return 'Please enter a valid query for DRAGO AI.';
 
   try {
+    const { auth } = await import('../lib/firebase');
+    const user = auth.currentUser;
+    if (!user) return 'Please sign in to PunchX before using DRAGO.';
+    const idToken = await user.getIdToken();
+
     const res = await fetch('/api/gemini', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'Authorization': `Bearer ${idToken}`,
+      },
       body: JSON.stringify({
         prompt,
         context: context.slice(0, 12000),
