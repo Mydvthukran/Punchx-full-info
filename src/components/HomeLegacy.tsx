@@ -119,8 +119,8 @@ export default function HomeDashboard(props: HomeProps) {
         const data = docSnap.data();
         if (data.status === 'APPROVED') list.push({
           id: docSnap.id, name: data.legalName || 'Authorized Specialist', category: data.skill || 'General Repairs',
-          rating: 5.0, reviewsCount: 12,
-          avatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?auto=format&fit=crop&q=80&w=200',
+          rating: data.rating || 0, reviewsCount: data.reviewsCount || 0,
+          avatar: data.photoURL || data.avatar || '',
           proBadge: 'AUTHORIZED', price: data.visitingFee || 199, visitingFee: data.visitingFee || 199,
           available: true, address: data.address || citizenAddress || 'Kolkata', area: data.area || 'Kolkata',
           sector: data.sector || '', phone: data.phone || ''

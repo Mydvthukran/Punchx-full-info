@@ -33,7 +33,7 @@ const normalize = (id: string, data: any): Service | null => {
 
 const DEMO_SERVICES: Service[] = PUNCHX_50_CATEGORIES.map(item => ({ id: `demo-service-${item.id}`, name: `${item.name} Test Service`, category: item.name,
   subcategory: 'Demo service for QA testing', description: `Temporary PUNCHX demo service for testing the ${item.name} booking flow. This service is not a real customer offering.`,
-  price: Number(item.basePrice || 199), duration: '60 min', reviews: 24, rating: 4.8, demo: true }));
+  price: Number(item.basePrice || 199), duration: '60 min', reviews: 0, rating: 0, demo: true }));
 
 export default function SimpleProvidersFlow({ onTransition, selectedCategory, onSelectCategory, onSelectWorker, showNotification, citizenAddress, setCitizenAddress }: Props) {
   const [services, setServices] = useState<Service[]>([]); const [workers, setWorkers] = useState<Worker[]>([]); const [loading, setLoading] = useState(true);

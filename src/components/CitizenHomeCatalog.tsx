@@ -335,7 +335,7 @@ export default function CitizenHomeCatalog({
                   <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
                     <Clock className="h-3 w-3" /> 45 min
                     <span className="ml-auto flex items-center gap-0.5 text-amber-500">
-                      <Star className="h-3 w-3 fill-amber-400" /> 4.8
+
                     </span>
                   </div>
                 </motion.button>

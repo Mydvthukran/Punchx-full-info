@@ -152,7 +152,7 @@ export default function PdfServiceFlow({ onTransition, selectedCategory, onSelec
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'workerApplications'), snapshot => {
       const next = snapshot.docs.filter(doc => doc.data().status === 'APPROVED').map(doc => normalizeProfessional(doc.id, doc.data()));
-      const demos = DEMO_PROFESSIONALS.map((worker: any) => ({ id: worker.id, name: worker.name, category: worker.category, categories: worker.categories, rating: worker.rating || 4.8, available: worker.available !== false, address: worker.address, area: worker.area, sector: worker.sector, location: worker.location, isDemo: true }));
+      const demos = DEMO_PROFESSIONALS.map((worker: any) => ({ id: worker.id, name: worker.name, category: worker.category, categories: worker.categories, rating: worker.rating || 0, available: worker.available !== false, address: worker.address, area: worker.area, sector: worker.sector, location: worker.location, isDemo: true }));
       setProfessionals(DEMO_PROFESSIONALS_ENABLED ? [...demos, ...next] : next);
     }, error => {
       console.warn('PUNCHX professional catalogue:', error);
