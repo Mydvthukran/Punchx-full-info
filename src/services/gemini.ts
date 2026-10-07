@@ -1,6 +1,7 @@
 // Client-side DRAGO service.
 // Gemini is the only AI engine. Conversation memory is supplied from PunchX's
 // existing local/app memory so no third-party AI memory service is required.
+
 export async function getAIResponse(userMessage: string, context = ''): Promise<string> {
   const prompt = userMessage.trim();
   if (!prompt) return 'Please enter a valid query for DRAGO AI.';
@@ -8,19 +9,58 @@ export async function getAIResponse(userMessage: string, context = ''): Promise<
   try {
     const res = await fetch('/api/gemini', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
       body: JSON.stringify({
         prompt,
-        context: context.slice(0, 24000),
+        context: context.slice(0, 12000),
       }),
     });
 
-    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
       return data?.error || 'DRAGO is temporarily unavailable. Please try again shortly.';
     }
 
-    return data?.response || 'DRAGO did not return a response. Please try again.';
+    if (!res.body) {
+      return 'DRAGO did not return a response. Please try again.';
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let responseText = '';
+
+    const processEvent = (event: string) => {
+      for (const line of event.split(/\r?\n/)) {
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+
+        try {
+          const parsed = JSON.parse(payload);
+          if (typeof parsed?.text === 'string') responseText += parsed.text;
+          if (typeof parsed?.error === 'string' && !responseText) responseText = parsed.error;
+        } catch {
+          // Ignore malformed SSE frames rather than failing the entire response.
+        }
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split(/\r?\n\r?\n/);
+      buffer = events.pop() || '';
+
+      for (const event of events) processEvent(event);
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) processEvent(buffer);
+
+    return responseText.trim() || 'DRAGO did not return a response. Please try again.';
   } catch (error) {
     console.error('DRAGO Gemini client error:', error);
     return 'DRAGO is temporarily unavailable. Please try again shortly.';
