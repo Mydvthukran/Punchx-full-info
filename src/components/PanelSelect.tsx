@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { User, Wrench, ArrowRight, ShieldCheck, Sparkles, X, Lock, Key, Eye, EyeOff, AlertCircle, Building2 } from 'lucide-react';
+import React from 'react';
+import { motion } from 'motion/react';
+import { User, Wrench, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 import { AppScreen } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
 
@@ -10,52 +10,6 @@ interface PanelSelectProps {
 }
 
 export default function PanelSelect({ onSelectPanel, showNotification }: PanelSelectProps) {
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [adminPin, setAdminPin] = useState('');
-  const [showPin, setShowPin] = useState(false);
-  const [adminError, setAdminError] = useState('');
-  const [logoTaps, setLogoTaps] = useState(0);
-
-  useEffect(() => {
-    if (logoTaps === 0) return;
-    const timer = window.setTimeout(() => setLogoTaps(0), 3000);
-    return () => window.clearTimeout(timer);
-  }, [logoTaps]);
-
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'a') {
-        event.preventDefault();
-        setAdminOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  const openAdmin = () => {
-    const next = logoTaps + 1;
-    setLogoTaps(next);
-    if (next >= 10) {
-      setLogoTaps(0);
-      setAdminOpen(true);
-    }
-  };
-
-  const submitAdmin = (event: React.FormEvent) => {
-    event.preventDefault();
-    const value = adminPin.trim();
-    if (value === '' || value.toLowerCase() === 'admin' || value.toUpperCase() === 'PUNCHX2026' || value === '0910' || value === 'PUNCHX^(@)0910') {
-      setAdminError('');
-      setAdminOpen(false);
-      setAdminPin('');
-      showNotification('Administrator gateway opened.');
-      onSelectPanel('admin', 'login');
-      return;
-    }
-    setAdminError('Invalid administrator passcode.');
-  };
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f7faff] text-[#0f172a] px-5 py-8 sm:px-8">
       <style>{`
@@ -72,11 +26,11 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-4xl flex-col items-center justify-center">
         <motion.div initial={{ y: -18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8 flex flex-col items-center text-center">
-          <button onClick={openAdmin} className="mb-5 rounded-full border border-[#bfdbfe] bg-white/80 p-2 shadow-lg backdrop-blur transition-transform hover:scale-105 active:scale-95" aria-label="PUNCHX">
+          <div className="mb-5 rounded-full border border-[#bfdbfe] bg-white/80 p-2 shadow-lg backdrop-blur">
             <div className="h-16 w-16 rounded-full bg-white p-1.5"><img src={PUNCHX_LOGO} alt="PUNCHX" className="h-full w-full object-contain" /></div>
-          </button>
+          </div>
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/75 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#2563eb] shadow-sm backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5" /> PUNCHX UNIFIED PLATFORM GATEWAY
+            <Sparkles className="h-3.5 w-3.5" /> PUNCHX UNIFIED PLATFORM
           </div>
           <h1 className="text-3xl font-black tracking-[-0.04em] text-[#0f172a] sm:text-5xl">Select Your PunchX Workspace</h1>
           <p className="mt-4 max-w-lg text-sm font-medium leading-6 text-[#64748b] sm:text-base">Book verified neighborhood professionals or sign in as an authorized specialist partner.</p>
@@ -131,28 +85,8 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
           </motion.section>
 
         </div>
-
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[11px] font-semibold text-[#64748b]">
-          <button onClick={() => onSelectPanel('worker', 'signup')} className="inline-flex items-center gap-1.5 hover:text-[#2563eb] transition-colors"><ShieldCheck className="h-3.5 w-3.5" /> Specialist Registration Guide</button>
-          <span className="w-1 h-1 rounded-full bg-[#cbd5e1] hidden sm:block"></span>
-          <button onClick={() => setAdminOpen(true)} className="inline-flex items-center gap-1.5 hover:text-[#2563eb] transition-colors"><Lock className="h-3.5 w-3.5" /> Enterprise Gateway</button>
-        </div>
       </div>
-
-      <AnimatePresence>
-        {adminOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/50 p-4 backdrop-blur-md">
-            <motion.form onSubmit={submitAdmin} initial={{ opacity: 0, scale: .96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .96, y: 12 }} className="relative w-full max-w-md rounded-3xl border border-[#dbeafe] bg-white p-6 shadow-2xl sm:p-7">
-              <button type="button" onClick={() => setAdminOpen(false)} className="absolute right-4 top-4 rounded-xl p-2 text-[#64748b] hover:bg-[#eff6ff] hover:text-[#2563eb]"><X className="h-5 w-5" /></button>
-              <div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eff6ff] text-[#2563eb]"><Building2 className="h-6 w-6" /></div><div><h3 className="font-extrabold text-[#0f172a]">PUNCHX Enterprise Gateway</h3><p className="text-xs text-[#64748b]">Authorized management access</p></div></div>
-              {adminError && <div className="mt-5 flex items-center gap-2 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-xs font-semibold text-[#1d4ed8]"><AlertCircle className="h-4 w-4" />{adminError}</div>}
-              <label className="mt-6 block text-xs font-bold uppercase tracking-wider text-[#475569]">Administrator passcode</label>
-              <div className="relative mt-2"><Key className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#2563eb]" /><input autoFocus type={showPin ? 'text' : 'password'} value={adminPin} onChange={e => setAdminPin(e.target.value)} className="w-full rounded-xl border border-[#cbd5e1] bg-white py-3 pl-10 pr-10 text-sm outline-none focus:border-[#2563eb] focus:ring-4 focus:ring-[#2563eb]/10" placeholder="Enter passcode" /><button type="button" onClick={() => setShowPin(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b]">{showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>
-              <button type="submit" className="mt-5 w-full rounded-xl bg-[#2563eb] py-3.5 text-sm font-extrabold text-white hover:bg-[#1d4ed8]">Authorize</button>
-            </motion.form>
-          </div>
-        )}
-      </AnimatePresence>
     </main>
   );
 }
+
