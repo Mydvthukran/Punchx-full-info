@@ -959,6 +959,38 @@ async function startServer() {
     }
   });
 
+  // Public professional discovery: return only sanitized, approved marketplace fields.
+  // Private application fields (phone, email, documents, OTPs, review notes, etc.) stay server-side.
+  app.get("/api/public/professionals", requireFirebaseUser, async (req, res) => {
+    try {
+      const apps = await dbAdapter.listWorkerApplications("APPROVED");
+      const professionals = apps
+        .filter((app: any) => app.status === "APPROVED" && app.available !== false)
+        .map((app: any) => ({
+          id: app.id,
+          name: String(app.legalName || "Verified Professional"),
+          category: String(app.skill || app.category || "Professional"),
+          categories: Array.isArray(app.categories) ? app.categories.map(String) : undefined,
+          rating: Number(app.rating || 0),
+          reviewsCount: Number(app.reviewsCount || 0),
+          avatar: String(app.photoURL || app.avatar || ""),
+          proBadge: "AUTHORIZED",
+          price: Number(app.price || app.visitingFee || 0),
+          visitingFee: Number(app.visitingFee || 0),
+          available: true,
+          area: String(app.area || ""),
+          sector: String(app.sector || ""),
+          location: app.location && typeof app.location.lat === "number" && typeof app.location.lng === "number"
+            ? { lat: app.location.lat, lng: app.location.lng }
+            : undefined,
+        }));
+      return res.json({ success: true, count: professionals.length, professionals });
+    } catch (err: any) {
+      logger.error("Public professional discovery error:", err);
+      return res.status(500).json({ success: false, error: "Failed to load verified professionals" });
+    }
+  });
+
   app.get("/api/worker-applications", requireFirebaseUser, requireAdmin, async (req, res) => {
     try {
       const apps = await dbAdapter.listWorkerApplications();
