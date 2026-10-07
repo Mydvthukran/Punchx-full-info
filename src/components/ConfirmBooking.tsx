@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronRight, Home, MapPin, Plus, ShoppingBag, Trash2, UserRound, Wallet, X } from 'lucide-react';
 import { AppScreen, Worker } from '../types';
 import { calculatePunchXPricing, formatINR } from '../config/punchxCommerce';
 import { DEMO_PROFESSIONALS } from '../data/demoProfessionals';
-import { db } from '../lib/firebase';
 
 interface ConfirmBookingProps {
   onTransition: (target: AppScreen) => void;
@@ -39,15 +37,19 @@ export default function ConfirmBooking({ onTransition, selectedWorker, bookingTi
   const [warranty,setWarranty]=useState(false);
   const [note,setNote]=useState('');
 
-  useEffect(()=>{
-    const pending=loadJSON<any>('punchx_pending_booking',null);
-    if(!cart.length && pending?.serviceName){ setCart([{id:`pending-${pending.serviceName}`,serviceId:pending.serviceId,serviceName:pending.serviceName,category:pending.category||'Service',description:pending.description,price:Number(pending.price||0),duration:pending.duration}]); }
-    const unsub=onSnapshot(collection(db,'workerApplications'),snap=>{
-      const approved=snap.docs.filter(d=>String(d.data().status||'').toUpperCase()==='APPROVED').map(d=>{const x=d.data();return {id:d.id,name:String(x.legalName||'Verified Professional'),category:String(x.skill||x.category||'Professional'),categories:Array.isArray(x.categories)?x.categories.map(String):undefined,rating:Number(x.rating||0),reviewsCount:Number(x.reviewsCount||0),avatar:String(x.photoURL||x.avatar||''),proBadge:'AUTHORIZED',price:Number(x.price||x.visitingFee||0),visitingFee:Number(x.visitingFee||0),available:x.available!==false,phone:String(x.phone||''),address:String(x.address||''),area:String(x.area||''),sector:String(x.sector||'')} as Worker;});
-      setWorkers(DEMO_ENABLED?[...DEMO_PROFESSIONALS,...approved]:approved);
-    },()=>setWorkers(DEMO_ENABLED?DEMO_PROFESSIONALS:[]));
-    return ()=>unsub();
-  },[cart.length]);
+  useEffect(() => {
+    const pending = loadJSON<any>('punchx_pending_booking', null);
+    if (!cart.length && pending?.serviceName) {
+      setCart([{ id:`pending-${pending.serviceName}`, serviceId:pending.serviceId, serviceName:pending.serviceName, category:pending.category||'Service', description:pending.description, price:Number(pending.price||0), duration:pending.duration }]);
+    }
+    let active = true;
+    void fetchApprovedProfessionals().then(approved => {
+      if (active) setWorkers(DEMO_ENABLED ? [...DEMO_PROFESSIONALS, ...approved] : approved);
+    }).catch(() => {
+      if (active) setWorkers(DEMO_ENABLED ? DEMO_PROFESSIONALS : []);
+    });
+    return () => { active = false; };
+  }, []);
 
   const serviceValue=useMemo(()=>cart.reduce((sum,item)=>sum+Number(item.price||0),0),[cart]);
   const pricing=useMemo(()=>calculatePunchXPricing(serviceValue),[serviceValue]);
