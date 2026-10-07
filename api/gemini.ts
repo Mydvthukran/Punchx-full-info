@@ -180,7 +180,7 @@ async function streamWithGemini(prompt: string, context: string, res: VercelResp
         const text = chunk.text || '';
         if (text) {
           sentText = true;
-          res.write(`data: ${JSON.stringify({ text })}\\n\\n`);
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
         }
       }
 
@@ -234,7 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('DRAGO Gemini request failed:', message);
 
     if (res.headersSent) {
-      res.write(`data: ${JSON.stringify({ error: 'DRAGO could not process your request right now. Please try again shortly.' })}\\n\\n`);
+      res.write(`data: ${JSON.stringify({ error: 'DRAGO could not process your request right now. Please try again shortly.' })}\n\n`);
       res.write('data: [DONE]\\n\\n');
       return res.end();
     }
