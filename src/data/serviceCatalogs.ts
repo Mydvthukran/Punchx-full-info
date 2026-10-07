@@ -99,8 +99,6 @@ const buildCategory = (category: typeof PUNCHX_50_CATEGORIES[number]): ServiceCa
             serviceType: serviceTypeFor(itemName),
             material,
             duration: durationFor(itemName),
-            rating: 4.8,
-            reviews: 100 + ((subIndex + 1) * 37) + itemIndex * 19,
           };
         }),
       };
