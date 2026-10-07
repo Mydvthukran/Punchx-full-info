@@ -185,7 +185,7 @@ async function streamWithGemini(prompt: string, context: string, res: VercelResp
       }
 
       if (sentText) {
-        res.write('data: [DONE]\\n\\n');
+        res.write('data: [DONE]\n\n');
         return;
       }
 
@@ -235,7 +235,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (res.headersSent) {
       res.write(`data: ${JSON.stringify({ error: 'DRAGO could not process your request right now. Please try again shortly.' })}\n\n`);
-      res.write('data: [DONE]\\n\\n');
+      res.write('data: [DONE]\n\n');
       return res.end();
     }
 
