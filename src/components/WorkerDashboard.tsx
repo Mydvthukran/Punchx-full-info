@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { CheckCircle2, Clock3, MapPin, Phone, Power, RefreshCw, XCircle, Navigation, BriefcaseBusiness } from 'lucide-react';
 import PostClientReviewModal from './PostClientReviewModal';
+import WorkerDragoAssistant from './WorkerDragoAssistant';
 
 interface WorkerDashboardProps {
   onTransition: (target: AppScreen) => void;
@@ -304,6 +305,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
           </div>
         )}
       </main>
+
+      <WorkerDragoAssistant jobs={jobs} selectedJob={selected} />
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-6" onClick={() => setSelected(null)}>

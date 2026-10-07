@@ -88,7 +88,11 @@ export async function createGatewayPaymentOrder(params: PaymentOrderParams): Pro
     }
   }
 
-  // Cryptographically deterministic mock gateway order ID for development/staging
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Razorpay production configuration is missing or unavailable');
+  }
+
+  // Development/staging only: explicit mock gateway.
   const randomHex = crypto.randomBytes(8).toString('hex');
   const gatewayOrderId = `order_${randomHex}`;
 

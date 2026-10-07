@@ -1,9 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 const MAX_PROMPT_LENGTH = 8000;
 const MAX_CONTEXT_LENGTH = 24000;
-const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+const MAX_REQUESTS_PER_MINUTE = 20;
+const requestWindows = new Map<string, { startedAt: number; count: number }>();
 
 const DRAGO_SYSTEM_INSTRUCTION = `You are DRAGO, the official AI assistant of PunchX.
 
@@ -94,6 +98,50 @@ function normalizeContext(value: unknown): string {
   return typeof value === 'string' ? value.slice(0, MAX_CONTEXT_LENGTH) : '';
 }
 
+function ensureFirebaseAdmin() {
+  if (getApps().length > 0) return;
+  const encoded = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
+  if (encoded) {
+    const serviceAccount = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+    initializeApp({ credential: cert(serviceAccount) });
+    return;
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').trim();
+  if (projectId && clientEmail && privateKey) {
+    initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+    return;
+  }
+  throw new Error('Firebase Admin authentication is not configured on the server');
+}
+
+async function requireAuthenticatedUser(req: VercelRequest): Promise<string> {
+  const authorization = String(req.headers.authorization || '');
+  if (!authorization.startsWith('Bearer ')) {
+    throw Object.assign(new Error('Authentication required'), { status: 401 });
+  }
+  ensureFirebaseAdmin();
+  const token = authorization.slice(7).trim();
+  if (!token) throw Object.assign(new Error('Authentication required'), { status: 401 });
+  const decoded = await getAuth().verifyIdToken(token);
+  return decoded.uid;
+}
+
+function enforceRateLimit(key: string) {
+  const now = Date.now();
+  const current = requestWindows.get(key);
+  if (!current || now - current.startedAt >= 60_000) {
+    requestWindows.set(key, { startedAt: now, count: 1 });
+    return;
+  }
+  if (current.count >= MAX_REQUESTS_PER_MINUTE) {
+    throw Object.assign(new Error('Too many DRAGO requests'), { status: 429 });
+  }
+  current.count += 1;
+}
+
 function getApiKey(): string | null {
   const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   return key?.trim() || null;
@@ -113,7 +161,7 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
 
   const ai = new GoogleGenAI({ apiKey });
   const configuredModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'])];
+  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-3.7-flash', 'gemini-3.6-flash'])];
 
   const contextBlock = context
     ? `PRIVATE PUNCHX CONVERSATION AND APPLICATION CONTEXT FOR THIS USER:\n${context}\n\n`
@@ -129,7 +177,8 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
         contents: [{ role: 'user', parts: [{ text: fullInput }] }],
         config: {
           systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
-          maxOutputTokens: 1400,
+          maxOutputTokens: 700,
+          thinkingConfig: { thinkingLevel: 'low' },
         },
       });
 
@@ -140,8 +189,59 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
       lastError = error;
       const status = statusFromError(error);
       console.error(`DRAGO Gemini ${model} error:`, messageFromError(error));
+      if (![400, 404, 408, 409, 429, 500, 502, 503, 504].includes(status)) break;
+    }
+  }
 
-      // Try the next compatible Gemini model for transient/model configuration errors.
+  throw lastError || new Error('Gemini request failed');
+}
+
+async function streamWithGemini(prompt: string, context: string, res: VercelResponse): Promise<void> {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server');
+
+  const ai = new GoogleGenAI({ apiKey });
+  const configuredModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-3.7-flash', 'gemini-3.6-flash'])];
+
+  const contextBlock = context
+    ? `PRIVATE PUNCHX CONVERSATION AND APPLICATION CONTEXT FOR THIS USER:\n${context}\n\n`
+    : '';
+  const fullInput = `${contextBlock}LATEST USER MESSAGE:\n${prompt}`;
+
+  let lastError: any = null;
+
+  for (const model of models) {
+    try {
+      const stream = await ai.models.generateContentStream({
+        model,
+        contents: [{ role: 'user', parts: [{ text: fullInput }] }],
+        config: {
+          systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
+          maxOutputTokens: 700,
+          thinkingConfig: { thinkingLevel: 'low' },
+        },
+      });
+
+      let sentText = false;
+      for await (const chunk of stream) {
+        const text = chunk.text || '';
+        if (text) {
+          sentText = true;
+          res.write(`data: ${JSON.stringify({ text })}\n\n`);
+        }
+      }
+
+      if (sentText) {
+        res.write('data: [DONE]\n\n');
+        return;
+      }
+
+      lastError = new Error(`Gemini returned an empty response from ${model}`);
+    } catch (error: any) {
+      lastError = error;
+      const status = statusFromError(error);
+      console.error(`DRAGO Gemini stream ${model} error:`, messageFromError(error));
       if (![400, 404, 408, 409, 429, 500, 502, 503, 504].includes(status)) break;
     }
   }
@@ -155,6 +255,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const uid = await requireAuthenticatedUser(req);
+    enforceRateLimit(uid);
+
     const { prompt, context } = req.body || {};
 
     if (typeof prompt !== 'string' || !prompt.trim()) {
@@ -167,22 +270,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const response = await generateWithGemini(prompt.trim(), normalizeContext(context));
-
-    return res.status(200).json({
-      response,
-      engine: 'gemini',
-      memory: true,
-    });
+    const response = await generateWithGemini(prompt.trim(), normalizeContext(context).slice(0, 10000));
+    return res.status(200).json({ response, engine: 'gemini', memory: true });
   } catch (error: any) {
     const status = statusFromError(error);
     const message = messageFromError(error);
     console.error('DRAGO Gemini request failed:', message);
 
-    if (status === 401 || status === 403) {
-      return res.status(502).json({
-        error: 'DRAGO AI is not configured correctly. Please check the Gemini API key in the server environment.',
-      });
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: 'DRAGO could not process your request right now. Please try again shortly.' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    if (status === 401) {
+      return res.status(401).json({ error: 'Please sign in to use DRAGO.', code: 'AUTH_REQUIRED' });
+    }
+
+    if (status === 403) {
+      return res.status(403).json({ error: 'Your PunchX session is not authorized to use DRAGO.', code: 'AUTH_FORBIDDEN' });
     }
 
     if (status === 429) {
@@ -200,7 +306,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (status === 404) {
       return res.status(502).json({
-        error: 'DRAGO could not find a supported Gemini model. Please redeploy the latest PunchX version.',
+        error: 'DRAGO could not access an available Gemini model for this server configuration. Please check the Gemini API key/project and redeploy the latest PunchX version.',
         code: 'GEMINI_MODEL_NOT_FOUND',
       });
     }

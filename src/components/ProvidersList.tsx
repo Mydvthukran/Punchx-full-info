@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, MapPin, Search, ShieldCheck, ShoppingCart, Star, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AppScreen, Worker } from '../types';
@@ -7,7 +6,7 @@ import { PUNCHX_50_CATEGORIES, isCategoryMatching } from '../data/categories';
 import { getCatalogCategory, ServiceCategory, ServicesSubcategory, ServiceItem } from '../data/serviceCatalogs';
 import { DEMO_PROFESSIONALS } from '../data/demoProfessionals';
 import { calculateDistanceKm } from '../lib/location';
-import { db } from '../lib/firebase';
+import { fetchApprovedProfessionals } from '../services/professionalDirectory';
 
 interface ProvidersListProps {
   onTransition: (target: AppScreen) => void;
@@ -45,15 +44,14 @@ export default function ProvidersList({ onTransition, selectedCategory, onSelect
   const [geo] = useState<{lat:number;lng:number;area?:string;city?:string}|null>(() => { try { const v=JSON.parse(localStorage.getItem('punchx_user_location')||'null'); return v&&typeof v.lat==='number'&&typeof v.lng==='number'?v:null; } catch { return null; } });
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'workerApplications'), snapshot => {
-      const approved = snapshot.docs.filter(doc => String(doc.data().status || '').toUpperCase() === 'APPROVED').map(doc => {
-        const x = doc.data();
-        const location = x.location && typeof x.location.lat === 'number' && typeof x.location.lng === 'number' ? x.location : (typeof x.lat === 'number' && typeof x.lng === 'number' ? {lat:x.lat,lng:x.lng} : undefined);
-        return { id: doc.id, name: String(x.legalName || 'Verified Professional'), category: String(x.skill || x.category || 'Professional'), categories: Array.isArray(x.categories) ? x.categories.map(String) : undefined, rating: Number(x.rating || 0), reviewsCount: Number(x.reviewsCount || 0), avatar: String(x.photoURL || x.avatar || ''), proBadge: 'AUTHORIZED', price: Number(x.price || x.visitingFee || 0), visitingFee: Number(x.visitingFee || 0), available: x.available !== false, phone: String(x.phone || ''), address: String(x.address || ''), area: String(x.area || ''), sector: String(x.sector || ''), location } as Worker;
-      });
+    let active = true;
+    void fetchApprovedProfessionals().then(approved => {
+      if (!active) return;
       setWorkers(DEMO_ENABLED ? [...DEMO_PROFESSIONALS, ...approved] : approved);
-    }, () => setWorkers(DEMO_ENABLED ? DEMO_PROFESSIONALS : []));
-    return () => unsub();
+    }).catch(() => {
+      if (active) setWorkers(DEMO_ENABLED ? DEMO_PROFESSIONALS : []);
+    });
+    return () => { active = false; };
   }, []);
 
   const categories = useMemo(() => { const q=norm(search); return PUNCHX_50_CATEGORIES.filter(c => !q || norm(`${c.name} ${c.shortDesc} ${c.keywords.join(' ')}`).includes(q)); }, [search]);
