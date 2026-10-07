@@ -78,7 +78,24 @@ export default function WebsiteFooter({ onTransition, onSelectCategory, showNoti
         </div>
 
         <div className="flex flex-col gap-4 pt-7 text-[10px] text-white/40 md:flex-row md:items-center md:justify-between">
-          <div>© {new Date().getFullYear()} PunchX. All rights reserved.</div>
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div>© {new Date().getFullYear()} PunchX. All rights reserved.</div>
+            <a 
+              href="https://namoid.in/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center gap-2 hover:text-white transition group"
+            >
+              <span>Authenticated via</span>
+              <div className="flex items-center gap-1.5 bg-white/5 rounded-full px-2 py-1 group-hover:bg-white/10 transition">
+                <svg width="14" height="14" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="400" height="400" rx="100" fill="#115c46" />
+                  <path d="M120 280V120L280 280V120" stroke="white" strokeWidth="48" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="font-bold text-white tracking-wide">NamoID</span>
+              </div>
+            </a>
+          </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <button onClick={() => onTransition('founder')} className="hover:text-white">Founding team</button>
             <button onClick={() => onTransition('terms-and-conditions')} className="hover:text-white">Terms</button>

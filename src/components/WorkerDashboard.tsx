@@ -11,6 +11,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { CheckCircle2, Clock3, MapPin, Phone, Power, RefreshCw, XCircle, Navigation, BriefcaseBusiness } from 'lucide-react';
+import PostClientReviewModal from './PostClientReviewModal';
 
 interface WorkerDashboardProps {
   onTransition: (target: AppScreen) => void;
@@ -32,6 +33,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<OrderRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reviewOrder, setReviewOrder] = useState<OrderRecord | null>(null);
   const seenJobs = useRef<Set<string>>(new Set());
   const watchRef = useRef<number | null>(null);
 
@@ -326,11 +328,24 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                 <button disabled={!!busyId} onClick={() => acceptJob(selected)} className="rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white disabled:opacity-50">{busyId ? 'Accepting…' : 'Accept Job'}</button>
               </> : selected.workerId === uid && isActive(selected.status) ? <>
                 <button disabled={!!busyId} onClick={() => updateStatus(selected, 'In-Progress')} className="rounded-xl border px-4 py-3 font-semibold">Work In Progress</button>
-                <button disabled={!!busyId} onClick={() => updateStatus(selected, 'Done')} className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white">Mark Completed</button>
+                <button disabled={!!busyId} onClick={() => setReviewOrder(selected)} className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white">Mark Completed</button>
               </> : null}
             </div>
           </div>
         </div>
+      )}
+
+      {reviewOrder && (
+        <PostClientReviewModal
+          order={reviewOrder}
+          isOpen={!!reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          onSubmitSuccess={() => {
+            updateStatus(reviewOrder, 'Done');
+            setReviewOrder(null);
+          }}
+          showNotification={showNotification}
+        />
       )}
     </div>
   );
