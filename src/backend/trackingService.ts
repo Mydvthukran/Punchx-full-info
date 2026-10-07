@@ -142,13 +142,10 @@ export async function getOrderTrackingStatus(
         orderId,
         orderStatus: order.status,
         workerName: order.workerName || 'Specialist',
-        workerLocation: {
-          lat: 12.9716,
-          lng: 77.5946,
-          updatedAt: new Date().toISOString(),
-        },
+        workerLocation: undefined as any,
+        customerLocation: order.customerLocation,
         distanceKm: 0,
-        etaMinutes: 15,
+        etaMinutes: 0,
         isArrivedGeofence: false,
       },
     };
