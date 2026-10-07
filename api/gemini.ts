@@ -1,9 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 const MAX_PROMPT_LENGTH = 8000;
 const MAX_CONTEXT_LENGTH = 24000;
 const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
+const MAX_REQUESTS_PER_MINUTE = 20;
+const requestWindows = new Map<string, { startedAt: number; count: number }>();
 
 const DRAGO_SYSTEM_INSTRUCTION = `You are DRAGO, the official AI assistant of PunchX.
 
@@ -92,6 +96,50 @@ RESPONSE QUALITY
 
 function normalizeContext(value: unknown): string {
   return typeof value === 'string' ? value.slice(0, MAX_CONTEXT_LENGTH) : '';
+}
+
+function ensureFirebaseAdmin() {
+  if (getApps().length > 0) return;
+  const encoded = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
+  if (encoded) {
+    const serviceAccount = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+    initializeApp({ credential: cert(serviceAccount) });
+    return;
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').trim();
+  if (projectId && clientEmail && privateKey) {
+    initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+    return;
+  }
+  throw new Error('Firebase Admin authentication is not configured on the server');
+}
+
+async function requireAuthenticatedUser(req: VercelRequest): Promise<string> {
+  const authorization = String(req.headers.authorization || '');
+  if (!authorization.startsWith('Bearer ')) {
+    throw Object.assign(new Error('Authentication required'), { status: 401 });
+  }
+  ensureFirebaseAdmin();
+  const token = authorization.slice(7).trim();
+  if (!token) throw Object.assign(new Error('Authentication required'), { status: 401 });
+  const decoded = await getAuth().verifyIdToken(token);
+  return decoded.uid;
+}
+
+function enforceRateLimit(key: string) {
+  const now = Date.now();
+  const current = requestWindows.get(key);
+  if (!current || now - current.startedAt >= 60_000) {
+    requestWindows.set(key, { startedAt: now, count: 1 });
+    return;
+  }
+  if (current.count >= MAX_REQUESTS_PER_MINUTE) {
+    throw Object.assign(new Error('Too many DRAGO requests'), { status: 429 });
+  }
+  current.count += 1;
 }
 
 function getApiKey(): string | null {
@@ -207,6 +255,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const uid = await requireAuthenticatedUser(req);
+    enforceRateLimit(uid);
+
     const { prompt, context } = req.body || {};
 
     if (typeof prompt !== 'string' || !prompt.trim()) {
@@ -232,10 +283,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.end();
     }
 
-    if (status === 401 || status === 403) {
-      return res.status(502).json({
-        error: 'DRAGO AI is not configured correctly. Please check the Gemini API key in the server environment.',
-      });
+    if (status === 401) {
+      return res.status(401).json({ error: 'Please sign in to use DRAGO.', code: 'AUTH_REQUIRED' });
+    }
+
+    if (status === 403) {
+      return res.status(403).json({ error: 'Your PunchX session is not authorized to use DRAGO.', code: 'AUTH_FORBIDDEN' });
     }
 
     if (status === 429) {
