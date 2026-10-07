@@ -370,6 +370,23 @@ service cloud.firestore {
 
 
     // =====================================================
+    // =====================================================
+    // DRAGO CONVERSATIONS
+    // Private per-user AI memory. Never expose one user's
+    // conversation to another user.
+    // =====================================================
+    match /dragoConversations/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.userId == userId
+        && request.resource.data.messages is list;
+      allow update: if isOwner(userId)
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.messages is list;
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+
     // CATCH-ALL
     // Everything not explicitly allowed above is DENIED.
     // =====================================================
