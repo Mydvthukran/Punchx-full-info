@@ -111,11 +111,11 @@ async function tryDecisionsApi(input: string, candidates: ServiceCategoryItem[])
     const answers = await model.decide(input);
     const ranked = candidates
       .map((category, index) => {
-        const answer = answers?.[`candidate_${index}`] || {};
+        const answer = answers?.[`candidate_${index}`];
         return {
           category,
-          confidence: Number(answer.confidence || 0),
-          matched: String(answer.label).toLowerCase() === 'true',
+          confidence: Number(answer?.confidence || 0),
+          matched: String(answer?.label).toLowerCase() === 'true',
         };
       })
       .sort((a, b) => Number(b.matched) - Number(a.matched) || b.confidence - a.confidence);
