@@ -1,5 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { calculateAuthoritativeQuote } from './backend/pricingService';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import DragoAssistant from './components/DragoAssistant';
@@ -24,7 +25,7 @@ const ConfirmBooking = lazy(() => import('./components/ConfirmBooking'));
 const ChoosePayment = lazy(() => import('./components/ChoosePayment'));
 const LiveTracking = lazy(() => import('./components/LiveTracking'));
 const WorkerDashboard = lazy(() => import('./components/WorkerDashboard'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+
 const WorkerSignup = lazy(() => import('./components/WorkerSignup'));
 const WorkerOtpPass = lazy(() => import('./components/WorkerOtpPass'));
 const WorkerPendingApproval = lazy(() => import('./components/WorkerPendingApproval'));
@@ -216,13 +217,13 @@ function AppMain() {
 
   const handleApplyPromoCode = (code: string) => {
     const upper = code.trim().toUpperCase();
-    const validCodes = ['ELITE20', 'PUNCHX20', 'FIRST20', 'WELCOME20', 'BONUS20', 'SAVE20', 'DISCOUNT20'];
-    if (validCodes.includes(upper)) {
+    const quote = calculateAuthoritativeQuote({ couponCode: upper });
+    if (quote.couponValid) {
       if (hasUsedBonus) { showToast('⚠️ First-order promo coupon has already been redeemed on an earlier order.'); return; }
       setPromoApplied(true); setHasClaimedBonus(true);
       try { localStorage.setItem('punchx_first_order_coupon_claimed', 'true'); localStorage.setItem('punchx_active_coupon_applied', 'true'); } catch {}
-      showToast(`✓ Coupon '${upper}' applied! 20% discount added to order.`);
-    } else showToast("⚠️ Invalid coupon code. Try 'ELITE20' or 'PUNCHX20'.");
+      showToast(`✓ ${quote.couponMessage || 'Coupon applied!'}`);
+    } else showToast(`⚠️ ${quote.couponMessage || 'Invalid coupon code.'}`);
   };
 
   const handleTransition = (target: AppScreen) => {
@@ -231,8 +232,7 @@ function AppMain() {
       const protectedNavScreens: Record<string, string> = { tracking: '📍 Live Tracking', providers: '🔍 Find Specialists', booking: '📋 Booking', payment: '💳 Payment', 'provider-details': '👤 Specialist Details' };
       if (!currentUser && protectedNavScreens[target]) { showToast(`🔒 Sign in required to access ${protectedNavScreens[target]}. Redirecting to portal...`); resolvedTarget = 'panel-select'; }
       else if (target === 'panel-select' && currentUser) {
-        if (userProfile?.role === 'admin') resolvedTarget = 'admin-dashboard';
-        else if (userProfile?.role === 'worker' && userProfile?.status === 'APPROVED') resolvedTarget = 'worker-dashboard';
+        if (userProfile?.role === 'worker' && userProfile?.status === 'APPROVED') resolvedTarget = 'worker-dashboard';
         else if (workerApplication?.status === 'PENDING' || userProfile?.status === 'PENDING') resolvedTarget = 'worker-pending-approval';
         else resolvedTarget = 'home';
       } else if (target === 'home' && !currentUser) resolvedTarget = 'panel-select';
@@ -312,7 +312,7 @@ function AppMain() {
           {currentScreen === 'payment' && <ChoosePayment onTransition={handleTransition} selectedWorker={selectedWorker} promoApplied={promoApplied} hasUsedBonus={hasUsedBonus} onOrderFinalized={() => { if (promoApplied) { setHasUsedBonus(true); setPromoApplied(false); try { localStorage.setItem('punchx_first_order_coupon_used', 'true'); localStorage.removeItem('punchx_active_coupon_applied'); } catch {} } }} onApplyPromo={handleApplyPromoCode} showNotification={showToast} />}
           {currentScreen === 'tracking' && <LiveTracking onTransition={handleTransition} bookingTime={bookingTime} />}
           {currentScreen === 'worker-dashboard' && <WorkerDashboard onTransition={handleTransition} showNotification={showToast} />}
-          {currentScreen === 'admin-dashboard' && <AdminDashboard onTransition={handleTransition} showNotification={showToast} />}
+
           {currentScreen === 'privacy-policy' && <PrivacyPolicy onTransition={handleTransition} showNotification={showToast} />}
           {currentScreen === 'terms-and-conditions' && <TermsAndConditions onTransition={handleTransition} showNotification={showToast} />}
               {currentScreen === 'founder' && <Founder onTransition={handleTransition} showNotification={showToast} />}

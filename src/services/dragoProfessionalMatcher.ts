@@ -30,7 +30,7 @@ export async function findDragoRecommendedProfessional(
           name: String(data.legalName || 'Verified Professional'),
           category: String(data.skill || data.category || 'Professional'),
           categories: Array.isArray(data.categories) ? data.categories.map(String) : undefined,
-          rating: Number(data.rating || 4.8),
+          rating: Number(data.rating || 0),
           reviewsCount: Number(data.reviewsCount || 0),
           avatar: String(data.photoURL || data.avatar || ''),
           proBadge: 'AUTHORIZED',

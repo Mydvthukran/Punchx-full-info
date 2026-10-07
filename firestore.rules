@@ -196,6 +196,17 @@ service cloud.firestore {
               'warrantyClaimId',
               'warrantyClaimStatus'
             ])
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+            || request.resource.data.status == 'Cancelled'
+          )
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['prepaidRefundAmount', 'qualityDiscountApplied'])
+            || (
+               request.resource.data.prepaidRefundAmount <= 1000
+               && request.resource.data.qualityDiscountApplied <= 1000
+            )
+          )
         )
         || (
           resource.data.workerId == request.auth.uid
@@ -207,6 +218,10 @@ service cloud.firestore {
               'completedAt',
               'photoProof'
             ])
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+            || request.resource.data.status in ['Accepted', 'Enroute', 'Arrived', 'Completed']
+          )
         )
       );
 
@@ -257,8 +272,8 @@ service cloud.firestore {
   && request.resource.data.keys().hasAll(['orderId', 'problemDescription'])
   && exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId))
   && (
-    get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == request.auth.uid
-    || get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.workerId == request.auth.uid
+    (request.resource.data.customerId == request.auth.uid && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == request.auth.uid)
+    || (request.resource.data.workerId == request.auth.uid && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.workerId == request.auth.uid)
   );
       // Only admins can change claim status/resolution.
       allow update: if isAdmin()
@@ -297,7 +312,9 @@ service cloud.firestore {
           'customerName',
           'workerName',
           'status'
-        ]);
+        ])
+        && exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId))
+        && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == request.auth.uid;
 
       // Only admins can update complaint status/resolution.
       allow update: if isAdmin()
