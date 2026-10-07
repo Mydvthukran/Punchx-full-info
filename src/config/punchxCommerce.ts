@@ -12,6 +12,13 @@ export type PunchXCommissionTier = {
  */
 export const PUNCHX_COMMERCE = {
   customerPlatformFee: 10,
+  visitingFee: {
+    amount: 59,
+    freeAbove: 499,
+  },
+  taxes: {
+    gstRate: 0.18,
+  },
   personalSelection: {
     freeCompletedBookings: 3,
     feeRateAfterFreeBookings: 0.05,
@@ -59,9 +66,17 @@ export function calculatePunchXPricing(
   const rate = getPunchXCommissionRate(value);
   const commission = Math.round(value * rate * 100) / 100;
   const professionalPayout = Math.max(0, Math.round((value - commission) * 100) / 100);
+  
   const citizenPlatformFee = Math.max(0, Number(customerFee) || 0);
   const personalSelectionFee = Math.round(value * Math.max(0, Number(personalSelectionRate) || 0) * 100) / 100;
-  const customerTotal = Math.round((value + citizenPlatformFee + personalSelectionFee) * 100) / 100;
+  
+  const visitingFee = (value > 0 && value < PUNCHX_COMMERCE.visitingFee.freeAbove) 
+    ? PUNCHX_COMMERCE.visitingFee.amount 
+    : 0;
+
+  const preTaxCustomerTotal = value + citizenPlatformFee + personalSelectionFee + visitingFee;
+  const gstAmount = Math.round(preTaxCustomerTotal * PUNCHX_COMMERCE.taxes.gstRate * 100) / 100;
+  const customerTotal = Math.round((preTaxCustomerTotal + gstAmount) * 100) / 100;
 
   return {
     serviceValue: value,
@@ -71,6 +86,8 @@ export function calculatePunchXPricing(
     customerPlatformFee: citizenPlatformFee,
     personalSelectionRate: Math.max(0, Number(personalSelectionRate) || 0),
     personalSelectionFee,
+    visitingFee,
+    gstAmount,
     customerTotal,
     punchXGrossRevenue: Math.round((commission + citizenPlatformFee + personalSelectionFee) * 100) / 100,
   };
