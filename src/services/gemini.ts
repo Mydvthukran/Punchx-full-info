@@ -16,6 +16,17 @@ export async function getAIResponse(userMessage: string, context = ''): Promise<
       }),
     });
 
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return data?.error || 'DRAGO is temporarily unavailable. Please try again shortly.';
+      }
+      return typeof data?.response === 'string' && data.response.trim()
+        ? data.response.trim()
+        : 'DRAGO did not return a response. Please try again.';
+    }
+
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       return data?.error || 'DRAGO is temporarily unavailable. Please try again shortly.';
