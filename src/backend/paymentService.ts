@@ -109,7 +109,11 @@ export function verifyPaymentSignature(
   razorpayPaymentId: string,
   signature: string
 ): boolean {
-  const secret = process.env.RAZORPAY_KEY_SECRET || 'punchx_default_payment_secret_2026';
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) {
+    logger.error('Missing RAZORPAY_KEY_SECRET for payment signature verification.');
+    return false;
+  }
   const payload = `${razorpayOrderId}|${razorpayPaymentId}`;
   const expectedSignature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
@@ -130,7 +134,11 @@ export function verifyWebhookSignature(
   rawBody: string | Buffer,
   signatureHeader: string
 ): boolean {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET || 'punchx_default_webhook_secret_2026';
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) {
+    logger.error('Missing RAZORPAY_WEBHOOK_SECRET for webhook signature verification.');
+    return false;
+  }
   const hmac = crypto.createHmac('sha256', secret);
   hmac.update(rawBody);
   const expectedSignature = hmac.digest('hex');
