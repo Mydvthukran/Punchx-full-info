@@ -3,7 +3,7 @@ import { GoogleGenAI } from '@google/genai';
 
 const MAX_PROMPT_LENGTH = 8000;
 const MAX_CONTEXT_LENGTH = 24000;
-const DEFAULT_GEMINI_MODEL = 'gemini-3.6-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 const DRAGO_SYSTEM_INSTRUCTION = `You are DRAGO, the official AI assistant of PunchX.
 
@@ -113,7 +113,48 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
 
   const ai = new GoogleGenAI({ apiKey });
   const configuredModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  const models = [...new Set([configuredModel, DEFAULT_GEMINI_MODEL, 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'])];
+  const staticCandidates = [
+    configuredModel,
+    DEFAULT_GEMINI_MODEL,
+    'gemini-flash-latest',
+    'gemini-3.7-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash',
+  ];
+
+  // Do not assume a model is available to this API key/project. Gemini exposes
+  // the models and their supported actions through models.list(); use that list
+  // to select a real generateContent-capable model before making the request.
+  let models: string[] = [...new Set(staticCandidates)];
+  try {
+    const available: string[] = [];
+    for await (const modelInfo of ai.models.list()) {
+      const name = String((modelInfo as any)?.name || '').replace(/^models\//, '');
+      const actions = (modelInfo as any)?.supportedActions || (modelInfo as any)?.supported_actions || [];
+      if (name && Array.isArray(actions) && actions.includes('generateContent')) {
+        available.push(name);
+      }
+    }
+
+    if (available.length > 0) {
+      const preferredAvailable = staticCandidates.filter((name) => available.includes(name));
+      const otherFlash = available
+        .filter((name) => /gemini-.*flash/i.test(name))
+        .sort()
+        .reverse();
+      const otherTextModels = available
+        .filter((name) => /gemini-.*(pro|flash)/i.test(name))
+        .sort()
+        .reverse();
+
+      models = [...new Set([...preferredAvailable, ...otherFlash, ...otherTextModels])];
+    }
+  } catch (error: any) {
+    // If model discovery is temporarily unavailable, retain the static
+    // candidates and let the normal request/fallback handling continue.
+    console.warn('DRAGO Gemini model discovery failed:', messageFromError(error));
+  }
 
   const contextBlock = context
     ? `PRIVATE PUNCHX CONVERSATION AND APPLICATION CONTEXT FOR THIS USER:\n${context}\n\n`
@@ -200,7 +241,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (status === 404) {
       return res.status(502).json({
-        error: 'DRAGO could not find a supported Gemini model. Please redeploy the latest PunchX version.',
+        error: 'DRAGO could not access an available Gemini model for this server configuration. Please check the Gemini API key/project and redeploy the latest PunchX version.',
         code: 'GEMINI_MODEL_NOT_FOUND',
       });
     }
