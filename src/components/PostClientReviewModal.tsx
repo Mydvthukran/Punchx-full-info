@@ -14,17 +14,17 @@ interface PostServiceReviewModalProps {
 }
 
 const BEHAVIOUR_TAGS_PRESETS = [
-  'Punctual & On-Time',
-  'Polite & Soft-Spoken',
-  'Clean & Tidy Setup',
-  'Transparent Costing',
-  'Patient Explanation',
-  'Verified Credentials',
-  'Expert Technical Skill',
-  'Zero Spot Damage'
+  'Clear Requirements',
+  'Polite & Respectful',
+  'Prompt Payment',
+  'Reasonable Expectations',
+  'Good Communication',
+  'Safe Environment',
+  'Friendly',
+  'Highly Recommended'
 ];
 
-export default function PostServiceReviewModal({
+export default function PostClientReviewModal({
   order,
   isOpen,
   onClose,
@@ -33,10 +33,10 @@ export default function PostServiceReviewModal({
 }: PostServiceReviewModalProps) {
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
-  const [punctuality, setPunctuality] = useState<string>('On Time');
-  const [professionalism, setProfessionalism] = useState<string>('Polite & Soft-Spoken');
-  const [cleanliness, setCleanliness] = useState<string>('Spotless Cleanup');
-  const [selectedTags, setSelectedTags] = useState<string[]>(['Punctual & On-Time', 'Polite & Soft-Spoken']);
+  const [punctuality, setPunctuality] = useState<string>('Clear');
+  const [professionalism, setProfessionalism] = useState<string>('Polite & Respectful');
+  const [cleanliness, setCleanliness] = useState<string>('Prompt Payment');
+  const [selectedTags, setSelectedTags] = useState<string[]>(['Clear Requirements', 'Polite & Respectful']);
   const [comment, setComment] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -64,7 +64,7 @@ export default function PostServiceReviewModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!comment.trim()) {
-      showNotification(' Please add a brief description of the specialist behavior and service quality.');
+      showNotification(' Please add a brief description of the client behavior and experience.');
       return;
     }
 
@@ -75,7 +75,7 @@ export default function PostServiceReviewModal({
       orderId: order.id,
       customer: order.customerName || 'Citizen User',
       workerName: order.workerName || 'PunchX Specialist',
-      workerId: order.category?.toLowerCase().includes('ac') ? 'rajesh' : 'marcus',
+      workerId: auth.currentUser?.uid || 'worker',
       category: order.category || 'General Home Care',
       rating,
       comment: comment.trim(),
@@ -101,21 +101,21 @@ export default function PostServiceReviewModal({
       // 2. Update order in Firestore /orders/{orderId}
       try {
         await updateDoc(doc(db, 'orders', order.id), {
-          isRated: true,
-          userRating: rating,
-          userBehaviour: comment.trim()
+          isClientRated: true,
+          workerRating: rating,
+          workerBehaviour: comment.trim()
         });
       } catch (err) {
         console.warn('Order doc update skipped or fallback offline:', err);
       }
 
-      showNotification(`⭐ Thank you! Structured review for ${order.workerName} has been saved to PunchX Authority Network.`);
+      showNotification(`⭐ Thank you! Structured review for ${order.customerName} has been saved.`);
       onSubmitSuccess(reviewPayload);
       onClose();
     } catch (error) {
       console.error('Error submitting review to Firestore:', error);
       // Fallback: save locally & trigger notification
-      showNotification(`⭐ Feedback submitted! Saved locally for ${order.workerName}.`);
+      showNotification(`⭐ Feedback submitted! Saved locally for ${order.customerName}.`);
       onSubmitSuccess(reviewPayload);
       onClose();
       handleFirestoreError(error, OperationType.WRITE, `reviews/${reviewId}`);
@@ -137,11 +137,11 @@ export default function PostServiceReviewModal({
           <div className="bg-gradient-to-r from-[#11192e] to-[#07122a] p-5 border-b border-[#c5a059]/25 flex justify-between items-start relative">
             <div className="space-y-1">
               <span className="text-[10px] text-[#e9c176] font-mono tracking-widest uppercase font-bold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> Structured Citizen Feedback
+                <Sparkles className="w-3.5 h-3.5" /> Structured Client Feedback
               </span>
-              <h2 className="text-lg font-bold font-sans text-white">Rate Service Performance</h2>
+              <h2 className="text-lg font-bold font-sans text-white">Rate Client & Experience</h2>
               <p className="text-xs text-zinc-400 font-sans">
-                Work completed by <strong className="text-white">{order.workerName}</strong> ({order.category})
+                Service completed for <strong className="text-white">{order.customerName}</strong> ({order.category})
               </p>
             </div>
             <button
@@ -199,10 +199,10 @@ export default function PostServiceReviewModal({
               {/* Punctuality */}
               <div className="space-y-1.5">
                 <span className="text-[11px] text-zinc-400 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#e9c176]" /> Punctuality & Timeliness:
+                  <Clock className="w-3.5 h-3.5 text-[#e9c176]" /> Communication & Requirements:
                 </span>
                 <div className="grid grid-cols-3 gap-2">
-                  {['On Time', 'Slight Delay', 'Delayed'].map((opt) => (
+                  {['Clear', 'Somewhat Clear', 'Unclear'].map((opt) => (
                     <button
                       key={opt}
                       type="button"
@@ -222,10 +222,10 @@ export default function PostServiceReviewModal({
               {/* Professionalism */}
               <div className="space-y-1.5">
                 <span className="text-[11px] text-zinc-400 flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-[#e9c176]" /> Professional Behavior & Soft Skills:
+                  <UserCheck className="w-3.5 h-3.5 text-[#e9c176]" /> Behavior & Respect:
                 </span>
                 <div className="grid grid-cols-3 gap-2">
-                  {['Polite & Soft-Spoken', 'Uniform & ID Worn', 'Respectful Manners'].map((opt) => (
+                  {['Polite & Respectful', 'Neutral', 'Disrespectful'].map((opt) => (
                     <button
                       key={opt}
                       type="button"
@@ -245,10 +245,10 @@ export default function PostServiceReviewModal({
               {/* Work Cleanliness */}
               <div className="space-y-1.5">
                 <span className="text-[11px] text-zinc-400 flex items-center gap-1.5">
-                  <SparkleIcon className="w-3.5 h-3.5 text-[#e9c176]" /> Workmanship & Cleanliness:
+                  <SparkleIcon className="w-3.5 h-3.5 text-[#e9c176]" /> Payment & Ease:
                 </span>
                 <div className="grid grid-cols-3 gap-2">
-                  {['Spotless Cleanup', 'Tidy Setup', 'Needs Cleanup'].map((opt) => (
+                  {['Prompt Payment', 'Minor Delay', 'Disputed'].map((opt) => (
                     <button
                       key={opt}
                       type="button"
@@ -302,7 +302,7 @@ export default function PostServiceReviewModal({
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
-                placeholder="Describe your experience with the technician (e.g. Arrived exactly on time, was extremely polite, wore clean shoe covers, and fixed the issue with great accuracy...)"
+                placeholder="Describe your experience with the client (e.g. Friendly, easy to communicate with, paid promptly...)"
                 className="w-full bg-[#07122a] border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:border-[#c5a059] outline-none font-sans resize-none"
               />
             </div>
@@ -336,7 +336,7 @@ export default function PostServiceReviewModal({
                 ) : (
                   <>
                     <ThumbsUp className="w-4 h-4 fill-black" />
-                    Submit Citizen Review
+                    Submit Client Review
                   </>
                 )}
               </button>
