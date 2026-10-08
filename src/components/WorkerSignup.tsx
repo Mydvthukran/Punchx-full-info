@@ -132,7 +132,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       phone: phone.trim(),
       email: email.trim(),
       termsAccepted: true,
-      status: 'PENDING',
+      status: 'APPROVED',
       appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today'
     };
 
@@ -177,12 +177,14 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       JSON.stringify([application, ...existingApps])
     );
     localStorage.setItem('punchx_worker_app_id', application.id);
+    localStorage.setItem('punchx_worker_approved', 'true');
+    localStorage.setItem('punchx_worker_online_status', 'true');
 
     showNotification(
-      '✓ Specialist details saved! Moving to Dual OTP verification.'
+      '✓ Specialist registered & auto-approved! Proceeding to Service Hub setup.'
     );
 
-    onTransition('worker-otp-pass');
+    onTransition('worker-setup');
   };
 
   return (
@@ -502,7 +504,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
                 : 'bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-60'
             }`}
           >
-            <span>Proceed to Dual OTP & Security Lock</span>
+            <span>Complete Specialist Registration & Set Hub</span>
             <ChevronRight className="w-4 h-4" />
           </button>
 

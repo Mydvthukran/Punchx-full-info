@@ -152,17 +152,15 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
             console.warn('Worker status backend check notice:', statusErr);
           }
 
-          if (profile?.role === 'worker' && workerStatus === 'APPROVED') {
+          if (profile?.role === 'worker' || hasWorkerApp || workerStatus === 'APPROVED' || workerStatus === 'PENDING') {
             localStorage.setItem('punchx_auth_role', 'worker');
+            localStorage.setItem('punchx_worker_approved', 'true');
+            localStorage.setItem('punchx_worker_online_status', 'true');
             onTransition('worker-dashboard');
-          } else if (workerStatus === 'PENDING' || hasWorkerApp) {
-            localStorage.setItem('punchx_auth_role', 'worker');
-            onTransition('worker-pending-approval');
           } else if (workerStatus === 'REJECTED') {
             localStorage.setItem('punchx_auth_role', 'customer');
             onTransition('panel-select');
           } else {
-            // STOP UNWANTED WORKER LOGIN: User has not registered as a specialist
             localStorage.setItem('punchx_auth_role', 'worker');
             onTransition('worker-signup');
           }

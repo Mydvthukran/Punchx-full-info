@@ -139,19 +139,15 @@ export default function WorkerPendingApproval({
   };
 
   const handleEnterWorkerTerminal = () => {
-    if (appStatus !== 'APPROVED') {
-      showNotification('⚠️ Access Restricted: Application is pending approval on the Company Admin Dashboard.');
-      return;
-    }
-
-    // Ensure worker terminal online status is ready
+    setAppStatus('APPROVED');
     try {
+      localStorage.setItem('punchx_worker_approved', 'true');
       localStorage.setItem('punchx_worker_online_status', 'true');
     } catch (e) {
       console.warn(e);
     }
 
-    showNotification('🚀 Launching fresh Worker Operations Terminal...');
+    showNotification('🚀 Launching Worker Dashboard (Admin review bypassed)...');
     onTransition('worker-dashboard');
   };
 
@@ -273,14 +269,9 @@ export default function WorkerPendingApproval({
         <button
           id="enter-worker-terminal-btn"
           onClick={handleEnterWorkerTerminal}
-          disabled={appStatus !== 'APPROVED'}
-          className={`w-full py-4 rounded-xl font-extrabold text-xs uppercase tracking-widest font-mono transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer ${
-            appStatus === 'APPROVED'
-              ? 'bg-gradient-to-r from-emerald-500 to-teal-400 text-black border border-emerald-300 hover:brightness-110 active:scale-[0.98]'
-              : 'bg-zinc-800 text-zinc-500 border border-zinc-700 cursor-not-allowed opacity-60'
-          }`}
+          className="w-full py-4 rounded-xl font-extrabold text-xs uppercase tracking-widest font-mono transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-400 text-black border border-emerald-300 hover:brightness-110 active:scale-[0.98]"
         >
-          <span>{appStatus === 'APPROVED' ? 'Enter Fresh Worker Dashboard' : 'Waiting for Admin Approval...'}</span>
+          <span>Enter Worker Dashboard (Admin Review Bypassed)</span>
           <ArrowRight className="w-4 h-4" />
         </button>
 

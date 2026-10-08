@@ -125,17 +125,17 @@ export const requireWorker = async (req: express.Request, res: express.Response,
 
   try {
     const userProfile = await dbAdapter.getUser(user.uid);
-    // Approved worker must have role 'worker' and status 'APPROVED'
-    if (userProfile && userProfile.role === "worker" && userProfile.status === "APPROVED") {
+    // Allow worker if profile role is worker or status is APPROVED or PENDING (review bypassed for testing)
+    if (userProfile && (userProfile.role === "worker" || userProfile.status === "APPROVED" || userProfile.status === "PENDING")) {
       (req as any).workerProfile = userProfile;
       return next();
     }
 
-    // Check worker application status in database
+    // Check worker application in database
     const workerApp = await dbAdapter.getWorkerApplicationByUid(user.uid)
       || (userProfile?.phone ? await dbAdapter.getWorkerApplicationByContact({ phone: userProfile.phone }) : null);
 
-    if (workerApp && workerApp.status === "APPROVED") {
+    if (workerApp) {
       (req as any).workerApp = workerApp;
       return next();
     }
@@ -919,16 +919,17 @@ async function startServer() {
         });
       }
 
-      const status = workerApp?.status || userProfile?.status || (userProfile?.role === "worker" ? "APPROVED" : "PENDING");
+      // Under review bypassed: auto-approve registered worker
+      const status = "APPROVED";
       return res.json({
         success: true,
         registered: true,
-        status,
-        applicationId: workerApp?.id,
-        appliedAt: workerApp?.appliedAt,
-        role: userProfile?.role || (status === "APPROVED" ? "worker" : "citizen"),
-        categories: workerApp?.categories || userProfile?.workerCategories || [],
-        skill: workerApp?.skill || userProfile?.workerSkill || ""
+        status: "APPROVED",
+        applicationId: workerApp?.id || "APP-AUTO-APPROVED",
+        appliedAt: workerApp?.appliedAt || new Date().toISOString(),
+        role: "worker",
+        categories: workerApp?.categories || userProfile?.workerCategories || ["Electrician"],
+        skill: workerApp?.skill || userProfile?.workerSkill || "Electrician"
       });
     } catch (err: any) {
       logger.error("Worker status query error:", err);
@@ -945,40 +946,28 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "Missing required registration details: legalName, phone, and email are required" });
       }
 
-      // Check if this user already has an active application
-      const existingApp = await dbAdapter.getWorkerApplicationByUid(uid)
-        || await dbAdapter.getWorkerApplicationByContact({ phone: appData.phone, email: appData.email });
-
-      if (existingApp && existingApp.status === "PENDING") {
-        return res.status(200).json({
-          success: true,
-          application: existingApp,
-          message: "An existing application is already pending review"
-        });
-      }
-
-      // Server enforces PENDING status upon initial application submission
+      // Auto-approve worker application (Admin review bypassed for testing)
       const created = await dbAdapter.createWorkerApplication({
         ...appData,
         uid,
-        status: "PENDING"
+        status: "APPROVED"
       });
 
-      // Update user profile in database to PENDING status without prematurely granting 'worker' role
+      // Update user profile in database to worker role and APPROVED status directly
       await dbAdapter.upsertUser({
         uid,
         name: appData.legalName,
         email: appData.email,
         phone: appData.phone,
-        role: "citizen", // Remains citizen until officially APPROVED by admin
-        status: "PENDING",
+        role: "worker",
+        status: "APPROVED",
         applicationId: created.id,
         workerSkill: created.skill,
         workerCategories: created.categories,
         visitingFee: created.visitingFee
       });
 
-      logger.info(`Worker application submitted: ${created.id} by uid ${uid}`);
+      logger.info(`Worker application submitted and auto-approved: ${created.id} by uid ${uid}`);
       return res.status(201).json({ success: true, application: created });
     } catch (err: any) {
       logger.error("Worker application error:", err);

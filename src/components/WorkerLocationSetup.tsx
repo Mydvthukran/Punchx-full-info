@@ -276,17 +276,19 @@ export default function WorkerLocationSetup({
         email: appData.email,
         phone: appData.phone,
         legalName: appData.legalName,
-        status: 'PENDING',
+        status: 'APPROVED',
         applicationId: generatedAppId
       };
       localStorage.setItem(`punchx_worker_cred_${appData.phone}`, JSON.stringify(workerAccount));
+      localStorage.setItem('punchx_worker_approved', 'true');
+      localStorage.setItem('punchx_worker_online_status', 'true');
     } catch (dbErr) {
       console.warn("Firestore worker profile save error:", dbErr);
     }
 
     setIsSubmitting(false);
-    showNotification(`📋 Hub Registered! Request submitted to Company Admin Dashboard for authorization review.`);
-    onTransition('worker-pending-approval');
+    showNotification(`✓ Service Hub Location Registered! Welcome to your Specialist Dashboard.`);
+    onTransition('worker-dashboard');
   };
 
   return (

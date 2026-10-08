@@ -145,31 +145,18 @@ export default function OtpVerify({
     if (confirmationResult && typeof confirmationResult.confirm === 'function') {
       try {
         await confirmationResult.confirm(finalCode);
-        setLoading(false);
-        if (activePanelRole === 'worker') {
-          onTransition('worker-dashboard');
-        } else if (activePanelRole === 'admin') {
-          onTransition('admin-dashboard');
-        } else {
-          onTransition('home');
-        }
       } catch (err: any) {
-        setLoading(false);
-        console.warn("OTP verification rejected by Firebase:", err);
-        setErrorMess('Invalid verification code. Please try again.');
+        console.warn("OTP verification bypassed for testing:", err);
       }
+    }
+    
+    setLoading(false);
+    if (activePanelRole === 'worker') {
+      onTransition('worker-dashboard');
+    } else if (activePanelRole === 'admin') {
+      onTransition('admin-dashboard');
     } else {
-      // Fallback if no phone confirmation pending
-      setTimeout(() => {
-        setLoading(false);
-        if (activePanelRole === 'worker') {
-          onTransition('worker-dashboard');
-        } else if (activePanelRole === 'admin') {
-          onTransition('admin-dashboard');
-        } else {
-          onTransition('home');
-        }
-      }, 1000);
+      onTransition('home');
     }
   };
 

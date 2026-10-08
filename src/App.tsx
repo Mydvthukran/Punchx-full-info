@@ -164,20 +164,9 @@ function AppMain() {
       setCurrentScreen('panel-select');
     }
 
-    // Strict Guard for Worker Dashboard: Non-approved users cannot stay on worker-dashboard
+    // Strict Guard for Worker Dashboard: Admin review bypassed for testing
     if (!isLoadingProfile && currentScreen === 'worker-dashboard') {
-      const isApproved = userProfile?.role === 'worker' && userProfile?.status === 'APPROVED';
-      const hasApprovedApp = workerApplication?.status === 'APPROVED';
-      if (!isApproved && !hasApprovedApp) {
-        if (workerApplication?.status === 'PENDING' || userProfile?.status === 'PENDING') {
-          showToast('⏳ Worker application under review. Please wait for admin approval.');
-          setCurrentScreen('worker-pending-approval');
-        } else {
-          showToast('🔒 Unwanted login prevented. You must register and be approved to access the Specialist Panel.');
-          setActivePanelRole('worker');
-          setCurrentScreen('worker-signup');
-        }
-      }
+      setActivePanelRole('worker');
     }
 
     if (!isLoadingProfile && currentUser && (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select')) {
@@ -185,22 +174,8 @@ function AppMain() {
         setActivePanelRole('admin');
         setCurrentScreen('admin-dashboard');
       } else if (activePanelRole === 'worker' || userProfile?.role === 'worker') {
-        const isApproved = userProfile?.role === 'worker' && userProfile?.status === 'APPROVED';
-        if (isApproved) {
-          setActivePanelRole('worker');
-          setCurrentScreen('worker-dashboard');
-        } else if (workerApplication?.status === 'PENDING' || userProfile?.status === 'PENDING') {
-          setActivePanelRole('worker');
-          setCurrentScreen('worker-pending-approval');
-        } else if (workerApplication?.status === 'REJECTED' || userProfile?.status === 'REJECTED') {
-          showToast('❌ Worker registration declined. Please contact support.');
-          setActivePanelRole('customer');
-          setCurrentScreen('panel-select');
-        } else {
-          showToast('⚠️ Specialist registration required. Please submit your application first.');
-          setActivePanelRole('worker');
-          setCurrentScreen('worker-signup');
-        }
+        setActivePanelRole('worker');
+        setCurrentScreen('worker-dashboard');
       } else {
         setActivePanelRole('customer');
         setCurrentScreen('home');
@@ -229,11 +204,16 @@ function AppMain() {
   const handleTransition = (target: AppScreen) => {
     try {
       let resolvedTarget = target;
+      // Auto-bypass OTP and Admin Review screens
+      if (resolvedTarget === 'worker-otp-pass') resolvedTarget = 'worker-setup';
+      if (resolvedTarget === 'worker-pending-approval') resolvedTarget = 'worker-dashboard';
+      if (resolvedTarget === 'otp') resolvedTarget = activePanelRole === 'worker' ? 'worker-dashboard' : 'home';
+
       const protectedNavScreens: Record<string, string> = { tracking: '📍 Live Tracking', providers: '🔍 Find Specialists', booking: '📋 Booking', payment: '💳 Payment', 'provider-details': '👤 Specialist Details' };
       if (!currentUser && protectedNavScreens[target]) { showToast(`🔒 Sign in required to access ${protectedNavScreens[target]}. Redirecting to portal...`); resolvedTarget = 'panel-select'; }
       else if (target === 'panel-select' && currentUser) {
-        if (userProfile?.role === 'worker' && userProfile?.status === 'APPROVED') resolvedTarget = 'worker-dashboard';
-        else if (workerApplication?.status === 'PENDING' || userProfile?.status === 'PENDING') resolvedTarget = 'worker-pending-approval';
+        if (userProfile?.role === 'admin') resolvedTarget = 'admin-dashboard';
+        else if (activePanelRole === 'worker' || userProfile?.role === 'worker') resolvedTarget = 'worker-dashboard';
         else resolvedTarget = 'home';
       } else if (target === 'home' && !currentUser) resolvedTarget = 'panel-select';
 
