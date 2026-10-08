@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus } from 'lucide-react';
+import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus, Timer, Package } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { db } from '../lib/firebase';
+import { OrderRecord } from '../types';
 import { collection, doc, onSnapshot, runTransaction, updateDoc } from 'firebase/firestore';
 import './worker-partner-panel.css';
 
@@ -22,6 +23,9 @@ const week=[1200,1850,900,2100,1650,2450,1300];
 
 const pending=(s?:string)=>!s || ['Pending','PAID','DISPATCHING'].includes(s);
 const money=(n:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
+const normalise=(value:unknown)=>String(value??'').trim().toLowerCase();
+const statusText=(status:string)=>({EN_ROUTE:'travelling',ARRIVED:'arrived',IN_SERVICE:'service started',Done:'completed'} as Record<string,string>)[status] || status.toLowerCase().replace(/_/g,' ');
+const statusLabel:Record<string,string>={...labels,ALL:'All'};
 
 export default function WorkerPartnerPanel({onTransition,showNotification}:{onTransition?:(s:any)=>void;showNotification?:(m:string)=>void}) {
  const {currentUser,userProfile}=useAuth() as any;
