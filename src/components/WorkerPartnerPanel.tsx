@@ -40,7 +40,7 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
  const nav=function(t:Tab){setTab(t);setSelected(null);setMobile(false)};
  const advance=function(o:Order){var n=next[o.status];if(!n)return;setOrders(function(xs){return xs.map(function(x){return x.id===o.id?Object.assign({},x,{status:n}):x})});showNotification?.(n==='COMPLETED'?'✓ Order '+o.id+' completed. '+money(o.earning)+' added to earnings.':'Order '+o.id+': '+labels[n])};
  const action=function(s:Status){return s==='NEW'?'Accept order':s==='ACCEPTED'?'Start travel':s==='TRAVELLING'?'Arrived':s==='ARRIVED'?'Start service':'Complete order'};
- const menu=[['home','Home',Home],['orders','Orders',ClipboardList],['earnings','Earnings',Wallet],['profile','Profile',UserRound],['notifications','Notifications',Bell],['incentives','Incentives',Gift],['support','Support',LifeBuoy],['settings','Settings',Settings]] as any[];
+ const menu=[['home','Home',Home],['orders','Orders',ClipboardList],['schedule','Schedule',CalendarDays],['earnings','Earnings',Wallet],['performance','Performance',TrendingUp],['training','Training',ShieldCheck],['inventory','Inventory',BriefcaseBusiness],['profile','Profile',UserRound],['notifications','Notifications',Bell],['incentives','Incentives',Gift],['support','Support',LifeBuoy],['settings','Settings',Settings]] as any[];
 
  return <div className="wx-app">
   <aside className={'wx-sidebar '+(mobile?'open':'')}>
@@ -62,7 +62,7 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
     {tab==='support'&&<SupportView/>}
     {tab==='settings'&&<SettingsView online={online} setOnline={setOnline}/>}
    </main>
-   <footer className="wx-mobile-nav">{menu.slice(0,4).map(function(m:any){var I=m[2];return <button key={m[0]} className={tab===m[0]?'active':''} onClick={()=>nav(m[0])}><I size={19}/><span>{m[1]}</span></button>})}</footer>
+   <footer className="wx-mobile-nav">{menu.slice(0,5).map(function(m:any){var I=m[2];return <button key={m[0]} className={tab===m[0]?'active':''} onClick={()=>nav(m[0])}><I size={19}/><span>{m[1]}</span></button>})}</footer>
   </div>
   {selected&&<OrderModal order={selected} close={()=>setSelected(null)} advance={()=>advance(selected)} action={action(selected.status)}/>}
   {withdraw&&<div className="wx-overlay"><div className="wx-modal wx-small"><button className="wx-modal-x" onClick={()=>setWithdraw(false)}><X/></button><div className="wx-modal-icon"><Banknote/></div><h2>Request withdrawal</h2><p>Available balance</p><strong className="wx-modal-money">{money(35750)}</strong><label>Amount<input defaultValue="35750" type="number" min="1" max="35750"/></label><button className="wx-primary" onClick={()=>{setWithdraw(false);showNotification?.('Withdrawal request submitted successfully.')}}>Request withdrawal</button></div></div>}
