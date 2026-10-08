@@ -4,7 +4,7 @@ import {
   Loader2, MapPin, Search, ShieldCheck, Star, UserRound, X,
   Zap, Droplet, Hammer, Paintbrush, HardHat, Flame, Scissors, Wrench, Bike, Car,
   Wind, Snowflake, Waves, Smartphone, Laptop, Tv, Video, Sun, Droplets, Key,
-  Sparkles, Bug, Sprout, Utensils, Cake, Package, Truck, Shield, Palette, Camera, Music
+  Sparkles, Bug, Sprout, Utensils, Cake, Package, Truck, Shield, Palette, Camera, Music, FileText, Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, Worker } from '../types';
@@ -106,7 +106,18 @@ export default function CitizenHomeCatalog({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'home' | 'bookings' | 'profile'>('home');
+  const [orderHistory, setOrderHistory] = useState<any[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const history = localStorage.getItem('punchx_order_history');
+      if (history) {
+        setOrderHistory(JSON.parse(history));
+      }
+    } catch {}
+  }, []);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -230,6 +241,8 @@ export default function CitizenHomeCatalog({
       </header>
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6">
+        {activeTab === 'home' && (
+          <>
         {/* ── HERO ── */}
         <section className="pt-6 pb-2">
           <motion.div
@@ -395,6 +408,79 @@ export default function CitizenHomeCatalog({
             </motion.div>
           ))}
         </section>
+          </>
+        )}
+
+        {activeTab === 'bookings' && (
+          <section className="pt-6 pb-20">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Your Bookings</h2>
+            {orderHistory.length === 0 ? (
+              <div className="rounded-3xl bg-white p-10 text-center shadow-sm border border-gray-100">
+                <CalendarDays className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <h3 className="text-lg font-bold text-gray-800">No recent bookings</h3>
+                <p className="text-sm text-gray-500 mt-2">Services you book will appear here.</p>
+                <button onClick={() => setActiveTab('home')} className="mt-6 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700">Find a service</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orderHistory.map((order, i) => (
+                  <div key={i} className="rounded-2xl bg-white p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-bold text-gray-900">{order.category || 'Service Booking'}</span>
+                        <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-600 border border-blue-100">Recent</span>
+                      </div>
+                      <div className="text-xs text-gray-500 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {order.date || 'Today'} {order.time || ''}</div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => onTransition('tracking')} className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition">Track Status</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'profile' && (
+          <section className="pt-6 pb-20">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Your Profile</h2>
+            <div className="rounded-3xl bg-white p-8 shadow-sm border border-gray-100 flex flex-col items-center text-center">
+              <div className="h-24 w-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-5 ring-4 ring-white shadow-md">
+                <UserRound className="h-10 w-10" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">{citizenName || 'PunchX Citizen'}</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-8 text-left">
+                <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
+                  <div className="flex items-center gap-2 mb-1"><MapPin className="h-4 w-4 text-gray-400" /><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Service Location</span></div>
+                  <div className="text-sm font-semibold text-gray-800 ml-6">{citizenAddress || 'Not specified'}</div>
+                </div>
+                <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
+                  <div className="flex items-center gap-2 mb-1"><ShieldCheck className="h-4 w-4 text-emerald-500" /><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Account Status</span></div>
+                  <div className="text-sm font-semibold text-gray-800 ml-6">Verified Citizen</div>
+                </div>
+              </div>
+              
+              <div className="w-full max-w-2xl mt-6 space-y-3">
+                <button onClick={() => onTransition('customer-setup')} className="w-full flex items-center justify-between rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><MapPin className="h-4 w-4" /></div>
+                    <span className="text-sm font-bold text-gray-700">Update Address</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </button>
+                <button onClick={onOpenProfile} className="w-full flex items-center justify-between rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center"><UserRound className="h-4 w-4" /></div>
+                    <span className="text-sm font-bold text-gray-700">Manage Account</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* ── SEARCH MODAL ── */}
@@ -487,6 +573,21 @@ export default function CitizenHomeCatalog({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-50 grid h-[68px] grid-cols-3 border-t border-gray-100 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'home' ? 'text-blue-600' : 'text-gray-500'}`}>
+          <HomeIcon className="h-5 w-5" />
+          <span className="text-[10px] font-bold">Home</span>
+        </button>
+        <button onClick={() => setActiveTab('bookings')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'bookings' ? 'text-blue-600' : 'text-gray-500'}`}>
+          <CalendarDays className="h-5 w-5" />
+          <span className="text-[10px] font-bold">Bookings</span>
+        </button>
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'}`}>
+          <UserRound className="h-5 w-5" />
+          <span className="text-[10px] font-bold">Profile</span>
+        </button>
+      </nav>
     </div>
   );
 }
