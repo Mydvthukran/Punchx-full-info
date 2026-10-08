@@ -3,7 +3,6 @@ import { AppScreen, OrderRecord } from '../types';
 import { auth, db } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
 import {
-import {
   collection,
   doc,
   onSnapshot,
@@ -328,7 +327,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
                     <div key={job.id} className="flex justify-between items-center border-b border-slate-100 pb-3 last:border-0 last:pb-0">
                       <div>
                         <div className="font-semibold text-sm">{job.category || 'Service'}</div>
-                        <div className="text-xs text-slate-500">{new Date(job.completedAt || job.updatedAt || '').toLocaleDateString()}</div>
+                        <div className="text-xs text-slate-500">{job.date || 'Recent'}</div>
                       </div>
                       <div className="font-bold text-emerald-600">+₹{job.totalAmountToPay ?? job.price ?? 0}</div>
                     </div>

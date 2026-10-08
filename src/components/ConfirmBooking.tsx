@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronRight, Home, MapPin,
 import { AppScreen, Worker } from '../types';
 import { calculatePunchXPricing, formatINR } from '../config/punchxCommerce';
 import { DEMO_PROFESSIONALS } from '../data/demoProfessionals';
+import { fetchApprovedProfessionals } from '../services/professionalDirectory';
 
 interface ConfirmBookingProps {
   onTransition: (target: AppScreen) => void;
