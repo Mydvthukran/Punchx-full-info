@@ -54,8 +54,8 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
    <header className="wx-header"><button className="wx-menu" onClick={()=>setMobile(true)}><Menu/></button><div><span className="wx-eyebrow">PUNCHX / PARTNER OPERATIONS</span><h1>{tab==='home'?'Good evening, '+name+' 👋':menu.find(function(m:any){return m[0]===tab})?.[1]}</h1></div><div className="wx-head-actions"><button className={'wx-status '+(online?'is-online':'')} onClick={()=>{setOnline(!online);showNotification?.(online?'You are now offline':'You are now online and eligible for new orders')}}><i></i>{online?'ONLINE':'OFFLINE'}</button><button className="wx-bell" onClick={()=>nav('notifications')}><Bell size={20}/><b>3</b></button><button className="wx-profile-chip" onClick={()=>nav('profile')}><span>RD</span><strong>{name}</strong><ChevronRight size={15}/></button></div></header>
    <main className="wx-content">
     {tab==='home'&&<HomeView online={online} today={today} completed={completed} pending={pending} cancelled={cancelled} todayEarn={todayEarn} orders={orders} open={setSelected} advance={advance} action={action} nav={nav}/>}
-    {tab==='orders'&&<OrdersView data={filtered} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} open={setSelected}/>}
-    {tab==='earnings'&&<EarningsView today={todayEarn} withdraw={()=>setWithdraw(true)}/>}
+    {tab==='orders'&&<OrdersView filtered={filtered} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} onOpen={setSelected}/>}
+    {tab==='schedule'&&<ScheduleView/>}{tab==='earnings'&&<EarningsView todayEarn={todayEarn} onWithdraw={()=>setWithdraw(true)}/>} {tab==='performance'&&<PerformanceView/>}{tab==='training'&&<TrainingView/>}{tab==='inventory'&&<InventoryView/>}
     {tab==='profile'&&<ProfileView/>}
     {tab==='notifications'&&<NotificationsView/>}
     {tab==='incentives'&&<IncentivesView/>}
