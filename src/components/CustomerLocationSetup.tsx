@@ -11,6 +11,7 @@ import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, fetchRegisteredLocationServices, RegisteredService } from '../lib/location';
+import DobPicker from './DobPicker';
 
 interface CustomerLocationSetupProps {
   onTransition: (target: AppScreen) => void;
@@ -422,18 +423,14 @@ export default function CustomerLocationSetup({
                   Min. 18 years
                 </span>
               </div>
-              <div className="relative flex items-center w-full">
-                <Calendar className="absolute left-3.5 w-4 h-4 text-[#c5a059] pointer-events-none" />
-                <input
-                  id="customer-dob-input"
-                  type="date"
-                  max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  required
-                  className="w-full bg-[#09152e] border border-zinc-700/80 focus:border-[#c5a059] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:ring-1 focus:ring-[#c5a059] [color-scheme:dark]"
-                />
-              </div>
+              <DobPicker
+                id="customer-dob-input"
+                value={dob}
+                onChange={setDob}
+                required
+                placeholder="YYYY-MM-DD"
+                inputClassName="w-full bg-[#09152e] border border-zinc-700/80 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:ring-1 focus:ring-[#c5a059]"
+              />
             </div>
           </div>
 

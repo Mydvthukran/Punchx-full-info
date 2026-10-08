@@ -16,6 +16,7 @@ import {
   fetchRegisteredCustomersForWorkerLocation
 } from '../lib/location';
 import ServiceCategoryModal from './ServiceCategoryModal';
+import DobPicker from './DobPicker';
 import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface WorkerLocationSetupProps {
@@ -361,18 +362,14 @@ export default function WorkerLocationSetup({
               <label className="block text-xs font-mono uppercase tracking-wider text-zinc-300 font-semibold">
                 Date of Birth (NamoID) <span className="text-[#c5a059]">*</span>
               </label>
-              <div className="relative flex items-center w-full">
-                <Calendar className="absolute left-3.5 w-4 h-4 text-[#c5a059]" />
-                <input
-                  id="worker-dob-input"
-                  type="date"
-                  max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                  value={dob}
-                  onChange={(e) => setDob(e.target.value)}
-                  required
-                  className="w-full bg-[#09152e] border border-zinc-700/80 focus:border-[#c5a059] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:ring-1 focus:ring-[#c5a059] [color-scheme:dark]"
-                />
-              </div>
+              <DobPicker
+                id="worker-dob-input"
+                value={dob}
+                onChange={setDob}
+                required
+                placeholder="YYYY-MM-DD"
+                inputClassName="w-full bg-[#09152e] border border-zinc-700/80 focus:border-[#c5a059] rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 outline-none transition-all focus:ring-1 focus:ring-[#c5a059]"
+              />
             </div>
           </div>
 

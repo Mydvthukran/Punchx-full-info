@@ -11,6 +11,7 @@ import {
   Grid, CheckCircle2, Plus, Search
 } from 'lucide-react';
 import ServiceCategoryModal from './ServiceCategoryModal';
+import DobPicker from './DobPicker';
 import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface WorkerSignupProps {
@@ -262,13 +263,12 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
               <label className="text-xs font-mono font-bold uppercase text-[#e9c176] flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" /> Date of Birth (NamoID)
               </label>
-              <input
+              <DobPicker
                 id="signup-worker-dob"
-                type="date"
-                max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                 value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-600 outline-none transition-colors [color-scheme:dark]"
+                onChange={setDob}
+                placeholder="YYYY-MM-DD"
+                inputClassName="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white placeholder-zinc-600 outline-none transition-colors"
               />
             </div>
           </div>
