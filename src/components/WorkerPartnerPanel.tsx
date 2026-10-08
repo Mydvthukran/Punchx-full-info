@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
+import { db } from '../lib/firebase';
+import { collection, doc, onSnapshot, runTransaction, updateDoc } from 'firebase/firestore';
 import './worker-partner-panel.css';
 
 type Tab = 'home'|'orders'|'schedule'|'earnings'|'performance'|'training'|'inventory'|'profile'|'notifications'|'incentives'|'support'|'settings';
 type Status = 'NEW'|'ACCEPTED'|'TRAVELLING'|'ARRIVED'|'SERVICE_STARTED'|'COMPLETED'|'CANCELLED';
-type Order = { id:string; customer:string; service:string; address:string; distance:number; time:string; date:string; duration:string; price:number; earning:number; status:Status; payment:string; avatar:string };
+type Order = { id:string; customer:string; service:string; address:string; distance:number; time:string; date:string; duration:string; price:number; earning:number; status:Status; payment:string; avatar:string; raw?:OrderRecord };
 
 const seed:Order[] = [
  {id:'PX10245',customer:'Amit Sharma',service:'AC Repair',address:'Salt Lake, Kolkata',distance:3.2,time:'3:30 PM',date:'Today',duration:'1h 30m',price:600,earning:450,status:'NEW',payment:'Paid',avatar:'AS'},
@@ -21,25 +23,89 @@ const week=[1200,1850,900,2100,1650,2450,1300];
 const money=(n:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
 
 export default function WorkerPartnerPanel({onTransition,showNotification}:{onTransition?:(s:any)=>void;showNotification?:(m:string)=>void}) {
- const {userProfile}=useAuth() as any;
+ const {currentUser,userProfile}=useAuth() as any;
+ const uid=currentUser?.uid || userProfile?.uid || '';
  const [tab,setTab]=useState<Tab>('home');
  const [online,setOnline]=useState(true);
- const [orders,setOrders]=useState(seed);
+ const [orders,setOrders]=useState<Order[]>([]);
  const [selected,setSelected]=useState<Order|null>(null);
  const [query,setQuery]=useState('');
  const [filter,setFilter]=useState('ALL');
  const [mobile,setMobile]=useState(false);
  const [withdraw,setWithdraw]=useState(false);
- const name=userProfile?.name||'Rahul Das';
- const today=orders.filter(function(o){return o.date==='Today'});
+ const [loading,setLoading]=useState(true);
+ const name=userProfile?.name||'Professional';
+ const workerCategories=useMemo(function(){
+   const raw=userProfile?.workerCategories || userProfile?.categories || [];
+   return Array.from(new Set([...(Array.isArray(raw)?raw:[]),userProfile?.workerSkill,userProfile?.skill].map(normalise).filter(Boolean)));
+ },[userProfile]);
+ const workerArea=normalise(userProfile?.area);
+ const workerSector=normalise(userProfile?.sector);
+ const mapStatus=function(s?:string):Status{
+   if(['Done','COMPLETED'].includes(s||'')) return 'COMPLETED';
+   if(['Cancelled','CANCELLED'].includes(s||'')) return 'CANCELLED';
+   if(['IN_SERVICE'].includes(s||'')) return 'SERVICE_STARTED';
+   if(['ARRIVED'].includes(s||'')) return 'ARRIVED';
+   if(['EN_ROUTE'].includes(s||'')) return 'TRAVELLING';
+   if(['ACCEPTED','In-Progress','In Progress'].includes(s||'')) return 'ACCEPTED';
+   return 'NEW';
+ };
+ useEffect(function(){
+   if(!uid){setLoading(false);return;}
+   const unsub=onSnapshot(collection(db,'orders'),function(snap){
+     const nextOrders=snap.docs.map(function(d){return {id:d.id,...d.data()} as OrderRecord}).filter(function(o){
+       if(o.workerId===uid) return true;
+       if(o.workerId || !pending(o.status)) return false;
+       if(o.isPersonalSelection || o.dispatchMode==='PERSONAL_SELECT') return false;
+       const cat=normalise(o.category);
+       const catOk=!workerCategories.length || workerCategories.some(function(x){return cat.includes(x)||x.includes(cat)});
+       if(!catOk) return false;
+       const oa=normalise(o.area), os=normalise(o.sector);
+       if(oa||os) return (!workerArea || !oa || oa===workerArea) || (!!workerSector && !!os && workerSector===os);
+       return true;
+     }).sort(function(a,b){
+       const at=new Date(a.createdAt||'').getTime() || a.createdTimestamp || 0;
+       const bt=new Date(b.createdAt||'').getTime() || b.createdTimestamp || 0;
+       return bt-at;
+     }).map(function(o):Order{
+       return {id:o.id,customer:o.customerName||'Customer',service:o.category||'Service',address:o.customerAddress||o.area||o.sector||'Location available in details',distance:0,time:o.time||'Time pending',date:o.date||'Upcoming',duration:o.emergencyETA?'Emergency':'Scheduled',price:Number(o.totalAmountToPay??o.price??0),earning:Number(o.professionalPayout??o.price??0),status:mapStatus(o.status),payment:o.paymentStatus||o.paymentMethod||'Platform',avatar:(o.customerName||'CU').slice(0,2).toUpperCase(),raw:o};
+     });
+     setOrders(nextOrders);
+     setLoading(false);
+   },function(){setLoading(false);showNotification?.('Unable to sync live jobs right now.');});
+   return function(){unsub();};
+ },[uid,workerCategories.join('|'),workerArea,workerSector]);
+ const today=orders.filter(function(o){return o.date==='Today' || o.date===new Date().toLocaleDateString('en-CA')});
  const completed=today.filter(function(o){return o.status==='COMPLETED'}).length;
- const pending=today.filter(function(o){return o.status!=='COMPLETED'&&o.status!=='CANCELLED'}).length;
+ const pendingCount=today.filter(function(o){return o.status!=='COMPLETED'&&o.status!=='CANCELLED'}).length;
  const cancelled=today.filter(function(o){return o.status==='CANCELLED'}).length;
  const todayEarn=today.filter(function(o){return o.status==='COMPLETED'}).reduce(function(s,o){return s+o.earning},0);
- const filtered=useMemo(function(){return orders.filter(function(o){return (filter==='ALL'||o.status===filter)&&(o.id+' '+o.customer+' '+o.service+' '+o.address).toLowerCase().includes(query.toLowerCase())})},[orders,filter,query]);
+ const filtered=useMemo(function(){return orders.filter(function(o){return (filter==='ALL'||(filter==='NEW'&&o.status==='NEW')||(filter==='ACCEPTED'&&o.status==='ACCEPTED')||(filter==='TRAVELLING'&&o.status==='TRAVELLING')||(filter==='ARRIVED'&&o.status==='ARRIVED')||(filter==='SERVICE_STARTED'&&o.status==='SERVICE_STARTED')||(filter==='COMPLETED'&&o.status==='COMPLETED')||(filter==='CANCELLED'&&o.status==='CANCELLED'))&&(o.id+' '+o.customer+' '+o.service+' '+o.address).toLowerCase().includes(query.toLowerCase())})},[orders,filter,query]);
  const nav=function(t:Tab){setTab(t);setSelected(null);setMobile(false)};
- const advance=function(o:Order){var n=next[o.status];if(!n)return;setOrders(function(xs){return xs.map(function(x){return x.id===o.id?Object.assign({},x,{status:n}):x})});showNotification?.(n==='COMPLETED'?'✓ Order '+o.id+' completed. '+money(o.earning)+' added to earnings.':'Order '+o.id+': '+labels[n])};
- const action=function(s:Status){return s==='NEW'?'Accept order':s==='ACCEPTED'?'Start travel':s==='TRAVELLING'?'Arrived':s==='ARRIVED'?'Start service':'Complete order'};
+ const action=function(s:Status){return s==='NEW'?'Accept order':s==='ACCEPTED'?'Start travel':s==='TRAVELLING'?'Arrived':s==='ARRIVED'?'Start service':s==='SERVICE_STARTED'?'Complete order':'Completed'};
+ const advance=async function(o:Order){
+   if(!o.raw){return;}
+   const raw=o.raw;
+   try{
+     if(o.status==='NEW'){
+       if(!uid){return;}
+       await runTransaction(db,async function(tx){
+         const ref=doc(db,'orders',raw.id); const snap=await tx.get(ref);
+         if(!snap.exists()) throw new Error('Booking no longer exists.');
+         const current=snap.data() as any;
+         if(!pending(current.status) || (current.workerId && current.workerId!==uid)) throw new Error('This job was already accepted.');
+         tx.update(ref,{workerId:uid,workerName:userProfile?.name||'Verified Professional',workerPhone:userProfile?.phone||'',status:'In-Progress',acceptedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+       });
+       showNotification?.('✅ Job accepted. The customer assignment is now active.');
+     } else {
+       const backendStatus:any=o.status==='ACCEPTED'?'EN_ROUTE':o.status==='TRAVELLING'?'ARRIVED':o.status==='ARRIVED'?'IN_SERVICE':o.status==='SERVICE_STARTED'?'Done':null;
+       if(!backendStatus) return;
+       await updateDoc(doc(db,'orders',raw.id),{status:backendStatus,updatedAt:new Date().toISOString(),...(backendStatus==='Done'?{completedAt:new Date().toISOString(),workerOutForWork:false}:{})});
+       showNotification?.(backendStatus==='Done'?'✅ Service completed and recorded.':'Order '+o.id+' updated to '+statusText(backendStatus)+'.');
+     }
+     setSelected(null);
+   }catch(e:any){showNotification?.('⚠️ '+(e?.message||'Could not update this booking.'));}
+ };
  const menu=[['home','Home',Home],['orders','Orders',ClipboardList],['schedule','Schedule',CalendarDays],['earnings','Earnings',Wallet],['performance','Performance',TrendingUp],['training','Training',ShieldCheck],['inventory','Inventory',BriefcaseBusiness],['profile','Profile',UserRound],['notifications','Notifications',Bell],['incentives','Incentives',Gift],['support','Support',LifeBuoy],['settings','Settings',Settings]] as any[];
 
  return <div className="wx-app">
@@ -53,7 +119,7 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
   <div className="wx-main">
    <header className="wx-header"><button className="wx-menu" onClick={()=>setMobile(true)}><Menu/></button><div><span className="wx-eyebrow">PUNCHX / PARTNER OPERATIONS</span><h1>{tab==='home'?'Good evening, '+name+' 👋':menu.find(function(m:any){return m[0]===tab})?.[1]}</h1></div><div className="wx-head-actions"><button className={'wx-status '+(online?'is-online':'')} onClick={()=>{setOnline(!online);showNotification?.(online?'You are now offline':'You are now online and eligible for new orders')}}><i></i>{online?'ONLINE':'OFFLINE'}</button><button className="wx-bell" onClick={()=>nav('notifications')}><Bell size={20}/><b>3</b></button><button className="wx-profile-chip" onClick={()=>nav('profile')}><span>RD</span><strong>{name}</strong><ChevronRight size={15}/></button></div></header>
    <main className="wx-content">
-    {tab==='home'&&<HomeView online={online} today={today} completed={completed} pending={pending} cancelled={cancelled} todayEarn={todayEarn} orders={orders} open={setSelected} advance={advance} action={action} nav={nav}/>}
+    {tab==='home'&&<HomeView online={online} today={today} completed={completed} pending={pendingCount} cancelled={cancelled} todayEarn={todayEarn} orders={orders} open={setSelected} advance={advance} action={action} nav={nav}/>}
     {tab==='orders'&&<OrdersView filtered={filtered} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} onOpen={setSelected}/>}
     {tab==='schedule'&&<ScheduleView/>}{tab==='earnings'&&<EarningsView todayEarn={todayEarn} onWithdraw={()=>setWithdraw(true)}/>} {tab==='performance'&&<PerformanceView/>}{tab==='training'&&<TrainingView/>}{tab==='inventory'&&<InventoryView/>}
     {tab==='profile'&&<ProfileView/>}
