@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { db } from '../lib/firebase';
@@ -20,6 +20,7 @@ const next:Record<Status,Status|null> = {NEW:'ACCEPTED',ACCEPTED:'TRAVELLING',TR
 const labels:Record<Status,string> = {NEW:'New',ACCEPTED:'Accepted',TRAVELLING:'Travelling',ARRIVED:'Arrived',SERVICE_STARTED:'Service started',COMPLETED:'Completed',CANCELLED:'Cancelled'};
 const week=[1200,1850,900,2100,1650,2450,1300];
 
+const pending=(s?:string)=>!s || ['Pending','PAID','DISPATCHING'].includes(s);
 const money=(n:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
 
 export default function WorkerPartnerPanel({onTransition,showNotification}:{onTransition?:(s:any)=>void;showNotification?:(m:string)=>void}) {
