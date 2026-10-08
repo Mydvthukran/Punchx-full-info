@@ -24,7 +24,7 @@ const ProviderDetails = lazy(() => import('./components/ProviderDetails'));
 const ConfirmBooking = lazy(() => import('./components/ConfirmBooking'));
 const ChoosePayment = lazy(() => import('./components/ChoosePayment'));
 const LiveTracking = lazy(() => import('./components/LiveTracking'));
-const WorkerDashboard = lazy(() => import('./components/WorkerDashboard'));
+const WorkerDashboard = lazy(() => import('./components/WorkerPartnerPanel'));
 
 const WorkerSignup = lazy(() => import('./components/WorkerSignup'));
 const WorkerOtpPass = lazy(() => import('./components/WorkerOtpPass'));
