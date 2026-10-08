@@ -3,6 +3,7 @@ import { AppScreen, OrderRecord } from '../types';
 import { auth, db } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
 import {
+import {
   collection,
   doc,
   onSnapshot,
@@ -10,7 +11,7 @@ import {
   runTransaction,
   updateDoc,
 } from 'firebase/firestore';
-import { CheckCircle2, Clock3, MapPin, Phone, Power, RefreshCw, XCircle, Navigation, BriefcaseBusiness } from 'lucide-react';
+import { CheckCircle2, Clock3, MapPin, Phone, Power, RefreshCw, XCircle, Navigation, BriefcaseBusiness, Home, Wallet, UserRound, ArrowRight } from 'lucide-react';
 import PostClientReviewModal from './PostClientReviewModal';
 import WorkerDragoAssistant from './WorkerDragoAssistant';
 
@@ -35,6 +36,7 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   const [selected, setSelected] = useState<OrderRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [reviewOrder, setReviewOrder] = useState<OrderRecord | null>(null);
+  const [activeTab, setActiveTab] = useState<'home' | 'earnings' | 'profile'>('home');
   const seenJobs = useRef<Set<string>>(new Set());
   const watchRef = useRef<number | null>(null);
 
@@ -257,12 +259,17 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
   const completedCount = jobs.filter(j => j.workerId === uid && j.status === 'Done').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 md:pb-0">
       <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
           <div>
             <div className="flex items-center gap-2 font-bold text-xl">PUNCHX <span className="text-sm font-medium text-slate-500">Professional</span></div>
             <div className="text-xs text-slate-500">{userProfile?.name || 'Verified Professional'}</div>
+          </div>
+          <div className="hidden md:flex items-center gap-6 mr-auto ml-10">
+            <button onClick={() => setActiveTab('home')} className={`text-sm font-bold ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-500'}`}>Home</button>
+            <button onClick={() => setActiveTab('earnings')} className={`text-sm font-bold ${activeTab === 'earnings' ? 'text-blue-600' : 'text-slate-500'}`}>Earnings</button>
+            <button onClick={() => setActiveTab('profile')} className={`text-sm font-bold ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-500'}`}>Profile</button>
           </div>
           <button onClick={() => setOnline(v => !v)} className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${online ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
             <Power size={16} /> {online ? 'ON DUTY' : 'OFF DUTY'}
@@ -271,7 +278,9 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       </header>
 
       <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {activeTab === 'home' && (
+          <>
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat icon={<BriefcaseBusiness size={18} />} label="New jobs" value={jobs.filter(j => isPending(j.status) && !j.workerId).length} />
           <Stat icon={<Clock3 size={18} />} label="Active" value={activeCount} />
           <Stat icon={<CheckCircle2 size={18} />} label="Completed" value={completedCount} />
@@ -298,7 +307,73 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
             {visibleJobs.map(job => <JobCard key={job.id} job={job} uid={uid} busy={busyId === job.id} onOpen={() => setSelected(job)} />)}
           </div>
         )}
+          </>
+        )}
+
+        {activeTab === 'earnings' && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Earnings</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Stat icon={<Wallet size={18} />} label="Today's Earnings" value={`₹${jobs.filter(j => j.workerId === uid && j.status === 'Done' && new Date(j.completedAt!).toDateString() === new Date().toDateString()).reduce((acc, j) => acc + (j.totalAmountToPay ?? j.price ?? 0), 0)}`} />
+              <Stat icon={<CheckCircle2 size={18} />} label="Total Earnings" value={`₹${jobs.filter(j => j.workerId === uid && j.status === 'Done').reduce((acc, j) => acc + (j.totalAmountToPay ?? j.price ?? 0), 0)}`} />
+              <Stat icon={<BriefcaseBusiness size={18} />} label="Jobs Completed" value={completedCount} />
+            </div>
+            <div className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+              <h3 className="font-bold text-lg mb-4">Recent Payouts</h3>
+              {jobs.filter(j => j.workerId === uid && j.status === 'Done').length === 0 ? (
+                <div className="text-slate-500 text-sm text-center py-4">No completed jobs yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {jobs.filter(j => j.workerId === uid && j.status === 'Done').slice(0, 5).map(job => (
+                    <div key={job.id} className="flex justify-between items-center border-b border-slate-100 pb-3 last:border-0 last:pb-0">
+                      <div>
+                        <div className="font-semibold text-sm">{job.category || 'Service'}</div>
+                        <div className="text-xs text-slate-500">{new Date(job.completedAt || job.updatedAt || '').toLocaleDateString()}</div>
+                      </div>
+                      <div className="font-bold text-emerald-600">+₹{job.totalAmountToPay ?? job.price ?? 0}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">Professional Profile</h2>
+            <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200 flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                <UserRound size={32} />
+              </div>
+              <h3 className="text-xl font-bold">{userProfile?.name || 'Verified Professional'}</h3>
+              <p className="text-slate-500">{userProfile?.phone || 'No phone provided'}</p>
+              
+              <div className="grid grid-cols-2 gap-4 w-full mt-6 text-left">
+                <Info label="Service Area" value={userProfile?.area || 'Anywhere'} />
+                <Info label="Sector" value={userProfile?.sector || 'All sectors'} />
+                <Info label="Primary Skill" value={userProfile?.skill || userProfile?.workerSkill || 'General Service'} />
+                <Info label="Status" value={online ? 'On Duty' : 'Off Duty'} />
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-50 grid h-[68px] grid-cols-3 border-t border-slate-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
+        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-500'}`}>
+          <Home size={20} />
+          <span className="text-[10px] font-bold">Home</span>
+        </button>
+        <button onClick={() => setActiveTab('earnings')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'earnings' ? 'text-blue-600' : 'text-slate-500'}`}>
+          <Wallet size={20} />
+          <span className="text-[10px] font-bold">Earnings</span>
+        </button>
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-500'}`}>
+          <UserRound size={20} />
+          <span className="text-[10px] font-bold">Profile</span>
+        </button>
+      </nav>
 
       <WorkerDragoAssistant jobs={jobs} selectedJob={selected} />
 
