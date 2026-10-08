@@ -83,6 +83,25 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
  const todayEarn=today.filter(function(o){return o.status==='COMPLETED'}).reduce(function(s,o){return s+o.earning},0);
  const filtered=useMemo(function(){return orders.filter(function(o){return (filter==='ALL'||(filter==='NEW'&&o.status==='NEW')||(filter==='ACCEPTED'&&o.status==='ACCEPTED')||(filter==='TRAVELLING'&&o.status==='TRAVELLING')||(filter==='ARRIVED'&&o.status==='ARRIVED')||(filter==='SERVICE_STARTED'&&o.status==='SERVICE_STARTED')||(filter==='COMPLETED'&&o.status==='COMPLETED')||(filter==='CANCELLED'&&o.status==='CANCELLED'))&&(o.id+' '+o.customer+' '+o.service+' '+o.address).toLowerCase().includes(query.toLowerCase())})},[orders,filter,query]);
  const nav=function(t:Tab){setTab(t);setSelected(null);setMobile(false)};
+ const locationWatch=useRef<number|null>(null);
+ useEffect(function(){
+   const activeOrder=orders.find(function(o){return o.raw && ['TRAVELLING','ARRIVED','SERVICE_STARTED'].includes(o.status)});
+   if(!activeOrder?.raw || !online || !navigator.geolocation){
+     if(locationWatch.current!==null && navigator.geolocation) navigator.geolocation.clearWatch(locationWatch.current);
+     locationWatch.current=null;
+     return;
+   }
+   locationWatch.current=navigator.geolocation.watchPosition(async function(pos){
+     try{
+       await updateDoc(doc(db,'orders',activeOrder.raw!.id),{
+         workerLocation:{lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy||null,heading:pos.coords.heading??null,speed:pos.coords.speed??null,updatedAt:new Date().toISOString()},
+         workerOutForWork:true,updatedAt:new Date().toISOString()
+       });
+     }catch{}
+   },function(){}, {enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+   return function(){if(locationWatch.current!==null && navigator.geolocation) navigator.geolocation.clearWatch(locationWatch.current);locationWatch.current=null;};
+ },[orders.map(function(o){return o.id+o.status;}).join('|'),online]);
+
  const action=function(s:Status){return s==='NEW'?'Accept order':s==='ACCEPTED'?'Start travel':s==='TRAVELLING'?'Arrived':s==='ARRIVED'?'Start service':s==='SERVICE_STARTED'?'Complete order':'Completed'};
  const advance=async function(o:Order){
    if(!o.raw){return;}
