@@ -53,7 +53,11 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
  });
  const [savingServiceAreas,setSavingServiceAreas]=useState(false);
  const name=userProfile?.name||'Professional';
- useEffect(function(){if(typeof userProfile?.workerAvailability==='boolean')setOnline(userProfile.workerAvailability);},[userProfile?.workerAvailability]);
+ useEffect(function(){
+   if(typeof userProfile?.workerAvailability==='boolean'){setOnline(userProfile.workerAvailability);return;}
+   if(typeof userProfile?.isOnline==='boolean'){setOnline(userProfile.isOnline);return;}
+   if(typeof userProfile?.workerStatus==='string')setOnline(userProfile.workerStatus.toUpperCase()==='ONLINE');
+ },[userProfile?.workerAvailability,userProfile?.isOnline,userProfile?.workerStatus]);
  useEffect(function(){
    if(!uid||typeof navigator==='undefined'||!navigator.geolocation)return;
    let cancelled=false; let watchId:number|null=null; let lastReverse=0;
@@ -173,16 +177,46 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
    }catch(error){showNotification?.('Could not save service areas. Please try again.');}
    finally{setSavingServiceAreas(false);}
  };
+ const availabilityWriteRef=useRef(false);
+ const [availabilitySaving,setAvailabilitySaving]=useState(false);
  const persistAvailability=async function(nextOnline:boolean){
+   if(availabilityWriteRef.current || nextOnline===online)return;
+   availabilityWriteRef.current=true;
+   setAvailabilitySaving(true);
    const previous=online;
    setOnline(nextOnline);
+   const updatedAt=new Date().toISOString();
+   const availability={workerAvailability:nextOnline,isOnline:nextOnline,workerStatus:nextOnline?'ONLINE':'OFFLINE',availabilityUpdatedAt:updatedAt,updatedAt};
    try{
      if(!uid)throw new Error('Account ID unavailable.');
-     await updateDoc(doc(db,'users',uid),{workerAvailability:nextOnline,isOnline:nextOnline,workerStatus:nextOnline?'ONLINE':'OFFLINE',updatedAt:new Date().toISOString()});
+     // Use the Firebase Auth UID for Firestore ownership checks; NamoID profile IDs
+     // are not always the same identifier in older sessions.
+     const targetUid=auth.currentUser?.uid||uid;
+     const userRef=doc(db,'users',targetUid);
+     try{
+       await updateDoc(userRef,availability);
+     }catch(error:any){
+       if(error?.code!=='not-found')throw error;
+       // A verified worker may have a cached session before the user document exists.
+       await setDoc(userRef,{uid:targetUid,role:'worker',...availability},{merge:true});
+     }
+     // Worker-owned application fields are explicitly permitted by firestore.rules.
+     const applicationId=String(userProfile?.applicationId||targetUid);
+     await setDoc(doc(db,'workerApplications',applicationId),{uid:targetUid,...availability},{merge:true});
+     try{
+       const cached=localStorage.getItem('punchx_namoid_profile');
+       const profile=cached?JSON.parse(cached):(userProfile||{});
+       localStorage.setItem('punchx_namoid_profile',JSON.stringify({...profile,...availability,uid:targetUid}));
+     }catch{}
+     try{await refreshProfile?.();}catch{}
      showNotification?.(nextOnline?'You are now online and eligible for instant / SOS requests':'You are now offline for instant / SOS requests; later bookings remain visible');
-   }catch(e){
+   }catch(e:any){
      setOnline(previous);
-     showNotification?.('Unable to save availability. Please try again.');
+     console.error('Worker availability update failed:',e);
+     showNotification?.('Unable to save availability. Check your connection and try again.');
+   }finally{
+     availabilityWriteRef.current=false;
+     setAvailabilitySaving(false);
    }
  };
  const nav=function(t:Tab){setTab(t);setSelected(null);setMobile(false);window.scrollTo({top:0,behavior:'smooth'});};
@@ -253,16 +287,16 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
    <button className="wx-logout" onClick={handleLogout} disabled={loggingOut} aria-busy={loggingOut}><LogOut size={18}/>{loggingOut?'Logging out…':'Logout'}</button>
   </aside>
   <div className="wx-main">
-   <header className="wx-header"><div className="wx-header-left"><button className="wx-menu" onClick={()=>setMobile(true)} aria-label="Open partner menu"><Menu/></button><div className="wx-mobile-brand"><img src={PUNCHX_LOGO} alt="PunchX" /></div></div><div className="wx-header-title"><span className="wx-eyebrow">PUNCHX / PARTNER OPERATIONS</span><h1>{tab==='home'?'Good evening, '+name+' 👋':menu.find(function(m:any){return m[0]===tab})?.[1]}</h1></div><div className="wx-head-actions"><button className={'wx-status '+(online?'is-online':'')} onClick={()=>persistAvailability(!online)}><i></i>{online?'ONLINE':'OFFLINE'}</button><button className="wx-bell" onClick={()=>nav('notifications')} aria-label="Notifications"><Bell size={20}/></button><button className="wx-profile-chip" onClick={()=>nav('profile')} aria-label="Open profile"><span>{String(name||"P").slice(0,2).toUpperCase()}</span><strong>{name}</strong><ChevronRight size={15}/></button></div></header>
+   <header className="wx-header"><div className="wx-header-left"><button className="wx-menu" onClick={()=>setMobile(true)} aria-label="Open partner menu"><Menu/></button><div className="wx-mobile-brand"><img src={PUNCHX_LOGO} alt="PunchX" /></div></div><div className="wx-header-title"><span className="wx-eyebrow">PUNCHX / PARTNER OPERATIONS</span><h1>{tab==='home'?'Good evening, '+name+' 👋':menu.find(function(m:any){return m[0]===tab})?.[1]}</h1></div><div className="wx-head-actions"><button className={'wx-status '+(online?'is-online':'')} onClick={()=>persistAvailability(!online)} disabled={availabilitySaving} aria-busy={availabilitySaving}><i></i>{availabilitySaving?'SAVING…':online?'ONLINE':'OFFLINE'}</button><button className="wx-bell" onClick={()=>nav('notifications')} aria-label="Notifications"><Bell size={20}/></button><button className="wx-profile-chip" onClick={()=>nav('profile')} aria-label="Open profile"><span>{String(name||"P").slice(0,2).toUpperCase()}</span><strong>{name}</strong><ChevronRight size={15}/></button></div></header>
    <main className="wx-content">
-    {tab==='home'&&<HomeView area={geo?.area||userProfile?.area||workerArea} geo={geo} geoLoading={geoLoading} geoError={geoError} online={online} toggleOnline={()=>persistAvailability(!online)} today={today} completed={completed} pending={pendingCount} cancelled={cancelled} todayEarn={todayEarn} orders={orders} open={setSelected} advance={advance} action={action} nav={nav} serviceAreas={workerServiceAreas} serviceAreasDraft={serviceAreasDraft} setServiceAreasDraft={setServiceAreasDraft} saveServiceAreas={saveServiceAreas} savingServiceAreas={savingServiceAreas}/>}
+    {tab==='home'&&<HomeView area={geo?.area||userProfile?.area||workerArea} geo={geo} geoLoading={geoLoading} geoError={geoError} online={online} toggleOnline={()=>persistAvailability(!online)} today={today} completed={completed} pending={pendingCount} cancelled={cancelled} todayEarn={todayEarn} orders={orders} open={setSelected} advance={advance} action={action} nav={nav} serviceAreas={workerServiceAreas} serviceAreasDraft={serviceAreasDraft} setServiceAreasDraft={setServiceAreasDraft} saveServiceAreas={saveServiceAreas} savingServiceAreas={savingServiceAreas} availabilitySaving={availabilitySaving}/>}
     {tab==='orders'&&<OrdersView filtered={filtered} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} onOpen={setSelected}/>}
     {tab==='schedule'&&<ScheduleView/>}{tab==='earnings'&&<EarningsView orders={orders} reportPeriod={reportPeriod} setReportPeriod={setReportPeriod}/>} {tab==='performance'&&<PerformanceView orders={orders} userProfile={userProfile} reportPeriod={reportPeriod} setReportPeriod={setReportPeriod}/>}{tab==='training'&&<TrainingView userProfile={userProfile}/>}{tab==='inventory'&&<InventoryView userProfile={userProfile}/>}
     {tab==='profile'&&<ProfileView userProfile={userProfile} uid={uid} refreshProfile={refreshProfile} showNotification={showNotification}/>}
     {tab==='notifications'&&<NotificationsView orders={orders}/>}
     {tab==='incentives'&&<IncentivesView/>}
     {tab==='support'&&<SupportView nav={nav}/>}
-    {tab==='settings'&&<SettingsView online={online} setOnline={setOnline} persistAvailability={persistAvailability} nav={nav} onTransition={onTransition}/>}
+    {tab==='settings'&&<SettingsView online={online} persistAvailability={persistAvailability} availabilitySaving={availabilitySaving} nav={nav} onTransition={onTransition}/>}
    </main>
    <footer className="wx-mobile-nav" aria-label="Worker panel navigation">{menu.slice(0,5).map(function(m:any){var I=m[2];return <button key={m[0]} className={tab===m[0]?'active':''} onClick={()=>nav(m[0])}><I size={18}/><span>{m[1]}</span></button>})}</footer>
    <WorkerWebsiteFooter tab={tab} nav={nav} onTransition={onTransition} onLogout={handleLogout} loggingOut={loggingOut} />
@@ -340,7 +374,7 @@ function HomeView(p:any){
    </div>
    <div className="wx-geofence-actions">
     <span className={'wx-live-location '+(p.geo?'ready':'')}>{p.geo?'LIVE':'LOCATION NEEDED'}</span>
-    <button className={'wx-online-toggle '+(p.online?'online':'offline')} onClick={p.toggleOnline}><i></i>{p.online?'Go offline':'Come online'}</button>
+    <button className={'wx-online-toggle '+(p.online?'online':'offline')} onClick={p.toggleOnline} disabled={p.availabilitySaving} aria-busy={p.availabilitySaving}><i></i>{p.availabilitySaving?'Saving…':p.online?'Go offline':'Come online'}</button>
     <small>{p.online?'Online: eligible for instant / SOS requests.':'Offline: instant / SOS requests are not offered; later bookings remain visible.'}</small>
    </div>
   </section>
@@ -766,7 +800,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification}:{userProf
 function NotificationsView({orders}:{orders:Order[]}){const recent=orders.slice(0,20);return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">UPDATES</span><h2>Notifications</h2><p>Only live booking events are shown here.</p></div></div><section className="wx-card wx-notes">{recent.map(o=><div key={o.id}><div className="wx-note-icon"><ClipboardList/></div><div><b>Booking #{o.id}</b><p>{o.service} · {statusLabel[o.status]||o.status} · {o.customer}</p><small>{o.date}{o.time?' · '+o.time:''}</small></div><ChevronRight/></div>)}{!recent.length&&<div className="wx-empty"><Bell/><b>No notifications</b><span>New PunchX booking events will appear here.</span></div>}</section></div>}
 function IncentivesView(){return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">EARN MORE</span><h2>Incentives & bonuses</h2><p>Only verified PunchX campaigns are displayed.</p></div></div><section className="wx-card"><div className="wx-empty"><Gift/><b>No active incentives available</b><span>No verified incentive campaign is available for this account.</span></div></section></div>}
 function SupportView({nav}:{nav:(t:Tab)=>void}){const cards=[['Order issue','Open Orders and inspect a live booking',ClipboardList,'orders'],['Payment issue','Open Earnings for verified payout records',Banknote,'earnings'],['Customer report','Use a live order to review customer details',CircleAlert,'orders'],['Technical issue','Open Settings and location controls',Settings,'settings'],['Email support','punchxservice@gmail.com',MessageCircle,'mail'],['Emergency assistance','Use verified PunchX support channels',LifeBuoy,'support']];return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">PARTNER CARE</span><h2>Help & support</h2><p>Order, payment, customer and technical support.</p></div><a className="wx-primary" href="mailto:punchxservice@gmail.com"><LifeBuoy size={16}/> Contact support</a></div><div className="wx-support-grid">{cards.map(function(x:any){var I=x[2];return <button className="wx-card wx-support-card" key={x[0]} onClick={()=>x[3]==='mail'?window.location.href='mailto:punchxservice@gmail.com':nav(x[3])}><I/><div><b>{x[0]}</b><span>{x[1]}</span></div><ChevronRight/></button>})}</div></div>}
-function SettingsView(p:any){const nav=p.nav as (t:Tab)=>void;return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">CONTROL CENTER</span><h2>Settings</h2><p>Account, notifications, privacy and availability.</p></div></div>{[['Account','Edit your personal profile and account details','profile'],['Notifications','Review live PunchX booking events','notifications'],['Privacy & location','Review location permissions and live service-zone status','home'],['App preferences','Language, theme and privacy documents','privacy'],['Account status','Deactivation is handled through verified PunchX support','support']].map(function(x:any){return <section className="wx-card wx-setting" key={x[0]}><div><b>{x[0]}</b><span>{x[1]}</span></div><button className={x[0]==='Account status'?'wx-secondary':'wx-secondary'} onClick={()=>x[2]==='privacy'?p.onTransition?.('privacy-policy'):nav(x[2])}>Open</button></section>})}<section className="wx-card wx-setting"><div><b>Availability</b><span>{p.online?'Online — eligible for new orders':'Offline — no new orders'}</span></div><button className={'wx-toggle-btn '+(p.online?'on':'')} onClick={()=>p.persistAvailability(!p.online)}>{p.online?'ONLINE':'OFFLINE'}</button></section></div>}
+function SettingsView(p:any){const nav=p.nav as (t:Tab)=>void;return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">CONTROL CENTER</span><h2>Settings</h2><p>Account, notifications, privacy and availability.</p></div></div>{[['Account','Edit your personal profile and account details','profile'],['Notifications','Review live PunchX booking events','notifications'],['Privacy & location','Review location permissions and live service-zone status','home'],['App preferences','Language, theme and privacy documents','privacy'],['Account status','Deactivation is handled through verified PunchX support','support']].map(function(x:any){return <section className="wx-card wx-setting" key={x[0]}><div><b>{x[0]}</b><span>{x[1]}</span></div><button className={x[0]==='Account status'?'wx-secondary':'wx-secondary'} onClick={()=>x[2]==='privacy'?p.onTransition?.('privacy-policy'):nav(x[2])}>Open</button></section>})}<section className="wx-card wx-setting"><div><b>Availability</b><span>{p.online?'Online — eligible for new orders':'Offline — no new orders'}</span></div><button className={'wx-toggle-btn '+(p.online?'on':'')} onClick={()=>p.persistAvailability(!p.online)} disabled={p.availabilitySaving} aria-busy={p.availabilitySaving}>{p.availabilitySaving?'SAVING…':p.online?'ONLINE':'OFFLINE'}</button></section></div>}
 
 function OrderModal(p:any){var o=p.order;return <div className="wx-overlay"><div className="wx-modal wx-order-modal"><button className="wx-modal-x" onClick={p.close}><X/></button><div className="wx-modal-top"><span className={'wx-badge '+o.status.toLowerCase()}>{labels[o.status]}</span><span>ORDER #{o.id}</span></div><div className="wx-customer"><div className="wx-avatar large">{o.avatar}</div><div><h2>{o.customer}</h2><p>{o.service}</p></div></div><div className="wx-modal-grid"><div><MapPin/><span>Address</span><b>{o.address}</b><small>{o.distance!==null?o.distance+" km away":"Distance unavailable"}</small></div><div><CalendarDays/><span>Booking</span><b>{o.date} · {o.time}</b><small>{o.duration}</small></div><div><Banknote/><span>Customer total</span><b>{o.price!==null?money(o.price):'Unavailable'}</b><small>Payment: {o.payment}</small></div><div><Wallet/><span>Your earning</span><b>{o.earning!==null?money(o.earning):'Payout unavailable'}</b><small>Verified professional payout only</small></div></div><div className="wx-status-line">{['ACCEPTED','TRAVELLING','ARRIVED','SERVICE_STARTED','COMPLETED'].map(function(s,i){return <React.Fragment key={s}><span className={['ACCEPTED','TRAVELLING','ARRIVED','SERVICE_STARTED','COMPLETED'].indexOf(o.status)>=i?'done':''}>{i+1}</span>{i<4&&<i/>}</React.Fragment>})}</div><div className="wx-status-labels"><span>Accepted</span><span>Travel</span><span>Arrived</span><span>Service</span><span>Done</span></div>
 {(o.raw?.issueDescription||o.raw?.serviceProof||o.raw?.additionalWorkRequests?.length||o.raw?.warrantyClaimStatus)&&<section className="wx-job-detail-card">

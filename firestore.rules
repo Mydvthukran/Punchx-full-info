@@ -103,11 +103,21 @@ service cloud.firestore {
               'serviceRadiusKm',
               'isOnline',
               'workerStatus',
+              'workerAvailability',
+              'availabilityUpdatedAt',
+              'district',
+              'state',
+              'postalCode',
+              'geofenceArea',
+              'geofenceAreas',
+              'serviceAreas',
+              'serviceAreaMode',
+              'serviceAreaUpdatedAt',
+              'geofenceUpdatedAt',
               'workerSkill',
               'workerCategories',
               'customSkill',
               'workerExperience',
-              'workerAvailability',
               'categories',
               'skill',
               'isProfileCompleted',
@@ -151,8 +161,11 @@ service cloud.firestore {
           'otpVerified'
         ]);
 
-      // Only admins can approve/reject applications.
-      allow update: if isAdmin()
+      // Admins manage approval fields. The application owner may update only
+      // operational profile data such as service areas, live location and availability.
+      // The owner cannot change uid, status, review, approval or OTP fields.
+      allow update: if (
+        isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly([
             'status',
@@ -163,7 +176,34 @@ service cloud.firestore {
             'approvedAt',
             'rejectedAt',
             'rejectionReason'
-          ]);
+          ])
+      ) || (
+        signedIn()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'location',
+          'address',
+          'area',
+          'city',
+          'district',
+          'state',
+          'postalCode',
+          'sector',
+          'geofenceArea',
+          'geofenceAreas',
+          'serviceAreas',
+          'serviceAreaMode',
+          'serviceAreaUpdatedAt',
+          'geofenceUpdatedAt',
+          'workerAvailability',
+          'isOnline',
+          'workerStatus',
+          'availabilityUpdatedAt',
+          'updatedAt'
+        ])
+      );
 
       allow delete: if false;
     }
