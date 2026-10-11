@@ -308,3 +308,95 @@ input, textarea, select { min-width:0; max-width:100%; }
   #root main button, #root main a, #punchx-website-navbar button,
   #punchx-website-navbar a { white-space:normal; }
 }
+
+/* PunchX responsive hardening: constrain real surfaces while preserving intentional
+   horizontal scrollers such as category carousels and provider chips. */
+#punchx-website-navbar { isolation:isolate; }
+#punchx-website-navbar [role="menu"],
+#punchx-website-navbar [role="dialog"] {
+  box-sizing:border-box;
+  max-width:calc(100vw - 24px);
+}
+#punchx-website-navbar .absolute.right-0 {
+  width:min(18rem,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+}
+#citizen-account-bar,
+#citizen-account-bar > * { min-width:0; max-width:100%; }
+#citizen-account-bar [class*="truncate"] { min-width:0; max-width:100%; }
+#worker-signup-screen,
+#worker-otp-pass-screen,
+#worker-setup-screen,
+#customer-setup-screen,
+#home-dashboard-root,
+#providers-list-root,
+#provider-details-root,
+#booking-container,
+#payment-screen-container {
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+}
+#worker-signup-screen input,
+#worker-signup-screen select,
+#worker-signup-screen textarea,
+#worker-otp-pass-screen input,
+#worker-setup-screen input,
+#customer-setup-screen input,
+#customer-setup-screen textarea {
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+#worker-signup-screen [class*="grid"],
+#worker-setup-screen [class*="grid"],
+#customer-setup-screen [class*="grid"] { min-width:0; }
+#worker-signup-screen [class*="flex"] > *,
+#worker-setup-screen [class*="flex"] > *,
+#customer-setup-screen [class*="flex"] > * { min-width:0; }
+#global-prestige-toast { box-sizing:border-box; max-width:calc(100vw - 24px); }
+#drago-chat-body { min-width:0; }
+#drago-chat-body > * { min-width:0; max-width:100%; }
+#drago-message-input { min-width:0; width:100%; }
+
+@media (max-width:767px) {
+  #punchx-website-navbar { position:sticky; top:0; }
+  #punchx-website-navbar > div { gap:clamp(4px,1.8vw,10px); }
+  #punchx-website-navbar > div > button[aria-label="PunchX Home"] { min-width:0; flex:0 1 auto; }
+  #punchx-website-navbar > div > button[aria-label="Notifications"] { flex:0 0 40px; }
+  #punchx-website-navbar [role="menu"],
+  #punchx-website-navbar [role="dialog"],
+  #punchx-website-navbar .absolute.right-0 {
+    left:auto;
+    right:8px;
+    width:calc(100vw - 16px);
+    max-width:calc(100vw - 16px);
+  }
+  #home-dashboard-root main,
+  #providers-list-root main,
+  #provider-details-root main,
+  #booking-container main,
+  #payment-screen-container main { padding-left:12px; padding-right:12px; }
+  #citizen-account-bar { overflow-wrap:anywhere; }
+  #citizen-account-bar button { max-width:100%; }
+  #root [role="dialog"][aria-modal="true"] {
+    width:calc(100vw - 24px) !important;
+    max-width:calc(100vw - 24px) !important;
+    max-height:calc(100dvh - 24px);
+    overflow-y:auto;
+    overflow-x:clip;
+  }
+  #root .fixed.inset-0.flex.items-center.justify-center {
+    padding:12px;
+  }
+  #root footer { min-width:0; }
+}
+
+@media (max-width:359px) {
+  #punchx-website-navbar > div { padding-left:8px; padding-right:8px; }
+  #punchx-website-navbar button { padding-left:8px; padding-right:8px; }
+  #citizen-account-bar { padding:12px; }
+  #root [role="dialog"][aria-modal="true"] { width:calc(100vw - 16px) !important; max-width:calc(100vw - 16px) !important; }
+}
+
