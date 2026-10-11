@@ -40,34 +40,49 @@ const AuthCallback = lazy(() => import('./components/AuthCallback'));
 function AppMain() {
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
 
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
-    const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
+  const screenRoutes: Partial<Record<AppScreen, string>> = {
+    splash: '/', landing: '/landing', 'panel-select': '/panel-select', auth: '/login',
+    'auth-callback': '/auth/callback', otp: '/verify-otp', 'customer-setup': '/customer/setup',
+    'worker-setup': '/worker/setup', 'worker-signup': '/worker-signup',
+    'worker-otp-pass': '/worker/verify', 'worker-pending-approval': '/worker/pending',
+    home: '/home', 'services-categories': '/services', catalogue: '/catalogue',
+    providers: '/providers', 'provider-details': '/provider-details', booking: '/booking',
+    payment: '/payment', tracking: '/tracking', 'worker-dashboard': '/worker/dashboard',
+    'admin-dashboard': '/admin/dashboard', 'privacy-policy': '/privacy-policy',
+    'terms-and-conditions': '/terms-and-conditions', founder: '/founder',
+  };
+  const resolveScreenFromLocation = (): AppScreen | null => {
+    const path = window.location.pathname.toLowerCase().replace(/\\/+$/, '') || '/';
     const search = window.location.search.toLowerCase();
-    if (rawPath === '/auth/callback' || search.includes('code=') || search.includes('state=')) return 'auth-callback';
-    if (rawPath === '/catalogue' || rawPath === '/price-catalogue' || rawPath === '/pricing') return 'catalogue';
-    if (rawPath === '/privacy-policy' || rawPath === '/privacy' || search.includes('/privacy-policy') || search.includes('/privacy')) return 'privacy-policy';
-    if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service' || search.includes('/terms-and-conditions') || search.includes('/terms')) return 'terms-and-conditions';
-    if (rawPath === '/worker-signup' || search.includes('/worker-signup')) return 'worker-signup';
-    if (rawPath === '/founder' || rawPath === '/leadership' || rawPath === '/founders' || search.includes('/founder') || search.includes('/founders') || search.includes('/leadership')) return 'founder';
-    return 'splash';
-  });
+    if (path === '/auth/callback' || search.includes('code=') || search.includes('state=')) return 'auth-callback';
+    const aliases: Record<string, AppScreen> = {
+      '/price-catalogue': 'catalogue', '/pricing': 'catalogue', '/privacy': 'privacy-policy',
+      '/terms': 'terms-and-conditions', '/terms-of-service': 'terms-and-conditions',
+      '/leadership': 'founder', '/founders': 'founder', '/specialists': 'providers',
+      '/worker-signup': 'worker-signup', '/login': 'auth', '/verify-otp': 'otp',
+    };
+    if (aliases[path]) return aliases[path];
+    const entry = Object.entries(screenRoutes).find(([, route]) => route === path);
+    return entry ? entry[0] as AppScreen : null;
+  };
+
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => resolveScreenFromLocation() || 'splash');
 
   useEffect(() => {
     const handlePopState = () => {
-      const rawPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
-      const search = window.location.search.toLowerCase();
-      if (rawPath === '/catalogue' || rawPath === '/price-catalogue' || rawPath === '/pricing') setCurrentScreen('catalogue');
-      else if (rawPath === '/privacy-policy' || rawPath === '/privacy' || search.includes('/privacy-policy') || search.includes('/privacy')) setCurrentScreen('privacy-policy');
-      else if (rawPath === '/terms-and-conditions' || rawPath === '/terms' || rawPath === '/terms-of-service' || search.includes('/terms-and-conditions') || search.includes('/terms')) setCurrentScreen('terms-and-conditions');
-      else if (rawPath === '/worker-signup' || search.includes('/worker-signup')) setCurrentScreen('worker-signup');
-      else if (rawPath === '/founder' || rawPath === '/leadership' || rawPath === '/founders' || search.includes('/founder') || search.includes('/founders') || search.includes('/leadership')) setCurrentScreen('founder');
-      else if (rawPath === '' || rawPath === '/') {
-        if (currentScreen === 'privacy-policy' || currentScreen === 'terms-and-conditions' || currentScreen === 'founder' || currentScreen === 'worker-signup' || currentScreen === 'catalogue') setCurrentScreen(currentUser ? 'home' : 'panel-select');
+      const nextScreen = resolveScreenFromLocation();
+      if (nextScreen) {
+        setCurrentScreen(nextScreen);
+        return;
       }
+      // Unknown URLs use a deliberate, loop-free fallback instead of leaving
+      // the screen and browser URL out of sync.
+      window.history.replaceState({ screen: 'splash' }, '', '/');
+      setCurrentScreen('splash');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [currentUser, currentScreen]);
+  }, []);
 
   useEffect(() => {
     const handleLogoutEvent = () => setCurrentScreen('panel-select');
@@ -224,16 +239,15 @@ function AppMain() {
         else resolvedTarget = 'home';
       } else if (target === 'home' && !currentUser) resolvedTarget = 'panel-select';
 
-      if (resolvedTarget === 'catalogue') { window.history.pushState({}, '', '/catalogue'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else if (resolvedTarget === 'privacy-policy') { window.history.pushState({}, '', '/privacy-policy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else if (resolvedTarget === 'terms-and-conditions') { window.history.pushState({}, '', '/terms-and-conditions'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else if (resolvedTarget === 'worker-signup') { window.history.pushState({}, '', '/worker-signup'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else if (resolvedTarget === 'founder') { window.history.pushState({}, '', '/founder'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else {
-        const currentPath = window.location.pathname.toLowerCase().replace(/\/$/, '');
-        if (['/privacy-policy','/terms-and-conditions','/terms','/privacy','/worker-signup','/founder','/leadership','/founders','/catalogue','/price-catalogue','/pricing'].includes(currentPath)) window.history.pushState({}, '', '/');
+      const destination = screenRoutes[resolvedTarget] || '/';
+      const currentPath = window.location.pathname.toLowerCase().replace(/\\/+$/, '') || '/';
+      if (currentPath !== destination) {
+        // Every in-app screen gets a history entry so Back returns to the
+        // immediately preceding step rather than jumping to the first page.
+        window.history.pushState({ screen: resolvedTarget }, '', destination);
       }
       setCurrentScreen(resolvedTarget);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (navError) { console.error('Navigation transition error:', navError); showToast('⚠️ Navigation error occurred. Please try again.'); }
   };
 
