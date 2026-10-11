@@ -69,8 +69,15 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
        const next={lat,lng,area:resolved.area||'Local area',city:resolved.city||'',district:resolved.district||'',state:resolved.state||'',postalCode:resolved.postalCode||'',sector:resolved.sector||'',updatedAt:new Date().toISOString()};
        setGeo(next);setGeoError('');
        const payload={location:{lat,lng},address:resolved.address,area:next.area,city:next.city,district:next.district,state:next.state,postalCode:next.postalCode,sector:next.sector,geofenceUpdatedAt:next.updatedAt,updatedAt:next.updatedAt};
-       await setDoc(doc(db,'users',uid),payload,{merge:true});
-       await setDoc(doc(db,'workerApplications',String(userProfile?.applicationId||uid)),payload,{merge:true});
+       const targetUid=auth.currentUser?.uid||uid;
+       await setDoc(doc(db,'users',targetUid),{uid:targetUid,...payload},{merge:true});
+       try{
+         await setDoc(doc(db,'workerApplications',String(userProfile?.applicationId||targetUid)),{uid:targetUid,...payload},{merge:true});
+       }catch(applicationError){
+         // The user profile is the authoritative live-location record. Older or
+         // missing application documents must not make a successful GPS update look failed.
+         console.warn('Worker application location sync skipped:',applicationError);
+       }
      }catch(error){if(!cancelled)setGeoError('Live location could not be resolved right now.');}
    };
    const detect=async function(){
@@ -170,8 +177,15 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
    const updatedAt=new Date().toISOString();
    try{
      const patch={serviceAreas:areas,geofenceAreas:areas,geofenceArea:areas.join('; '),serviceAreaMode:'india-named-areas',serviceAreaUpdatedAt:updatedAt,updatedAt};
-     await setDoc(doc(db,'users',uid),patch,{merge:true});
-     await setDoc(doc(db,'workerApplications',String(userProfile?.applicationId||uid)),patch,{merge:true});
+     const targetUid=auth.currentUser?.uid||uid;
+     await setDoc(doc(db,'users',targetUid),{uid:targetUid,...patch},{merge:true});
+     try{
+       await setDoc(doc(db,'workerApplications',String(userProfile?.applicationId||targetUid)),{uid:targetUid,...patch},{merge:true});
+     }catch(applicationError){
+       // The user document is authoritative for the worker panel. Keep saving
+       // successful even if a legacy application record is missing or immutable.
+       console.warn('Worker application service-area sync skipped:',applicationError);
+     }
      await refreshProfile?.();
      showNotification?.('Service-area boundaries saved. New jobs will match only these named areas.');
    }catch(error){showNotification?.('Could not save service areas. Please try again.');}
@@ -202,7 +216,13 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
      }
      // Worker-owned application fields are explicitly permitted by firestore.rules.
      const applicationId=String(userProfile?.applicationId||targetUid);
-     await setDoc(doc(db,'workerApplications',applicationId),{uid:targetUid,...availability},{merge:true});
+     try{
+       await setDoc(doc(db,'workerApplications',applicationId),{uid:targetUid,...availability},{merge:true});
+     }catch(applicationError){
+       // Availability is authoritative on users/{uid}; a legacy application
+       // record should not roll back the worker's online/offline toggle.
+       console.warn('Worker application availability sync skipped:',applicationError);
+     }
      try{
        const cached=localStorage.getItem('punchx_namoid_profile');
        const profile=cached?JSON.parse(cached):(userProfile||{});
