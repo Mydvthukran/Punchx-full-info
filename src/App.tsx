@@ -161,8 +161,13 @@ function AppMain() {
   }, [currentUser, userProfile]);
 
   useEffect(() => {
-    const protectedScreens: AppScreen[] = ['home', 'customer-setup', 'worker-setup', 'worker-dashboard', 'admin-dashboard', 'tracking', 'booking', 'payment', 'providers', 'provider-details'];
-    if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen)) {
+    const protectedScreens: AppScreen[] = ['home', 'customer-setup', 'worker-dashboard', 'admin-dashboard', 'tracking', 'booking', 'payment', 'providers', 'provider-details'];
+    // Keep worker onboarding in order before dashboard access: signup -> OTP/password
+    // verification -> location/service setup -> worker dashboard.
+    let workerOnboardingApproved = false;
+    try { workerOnboardingApproved = localStorage.getItem('punchx_worker_approved') === 'true'; } catch {}
+    const workerDashboardHasOnboardingAccess = currentScreen === 'worker-dashboard' && workerOnboardingApproved;
+    if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen) && !workerDashboardHasOnboardingAccess) {
       showToast('🔒 Active session required. Redirecting to portal select...');
       setCurrentScreen('panel-select');
     }

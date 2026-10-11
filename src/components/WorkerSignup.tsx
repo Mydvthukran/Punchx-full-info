@@ -191,7 +191,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       '✓ Specialist registered & auto-approved! Proceeding to Service Hub setup.'
     );
 
-    onTransition('worker-setup');
+    onTransition('worker-otp-pass');
   };
 
   return (
