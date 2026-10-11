@@ -52,7 +52,7 @@ function AppMain() {
     'terms-and-conditions': '/terms-and-conditions', founder: '/founder',
   };
   const resolveScreenFromLocation = (): AppScreen | null => {
-    const path = window.location.pathname.toLowerCase().replace(/\\/+$/, '') || '/';
+    const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
     const search = window.location.search.toLowerCase();
     if (path === '/auth/callback' || search.includes('code=') || search.includes('state=')) return 'auth-callback';
     const aliases: Record<string, AppScreen> = {
@@ -184,6 +184,7 @@ function AppMain() {
     const workerDashboardHasOnboardingAccess = currentScreen === 'worker-dashboard' && workerOnboardingApproved;
     if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen) && !workerDashboardHasOnboardingAccess) {
       showToast('🔒 Active session required. Redirecting to portal select...');
+      window.history.replaceState({ screen: 'panel-select' }, '', screenRoutes['panel-select'] || '/');
       setCurrentScreen('panel-select');
     }
 
@@ -196,12 +197,15 @@ function AppMain() {
     if (!isLoadingProfile && currentUser && !onboardingScreens.includes(currentScreen) && (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select')) {
       if (userProfile?.role === 'admin') {
         setActivePanelRole('admin');
+        window.history.replaceState({ screen: 'admin-dashboard' }, '', screenRoutes['admin-dashboard'] || '/');
         setCurrentScreen('admin-dashboard');
       } else if (activePanelRole === 'worker' || userProfile?.role === 'worker') {
         setActivePanelRole('worker');
+        window.history.replaceState({ screen: 'worker-dashboard' }, '', screenRoutes['worker-dashboard'] || '/');
         setCurrentScreen('worker-dashboard');
       } else {
         setActivePanelRole('customer');
+        window.history.replaceState({ screen: 'home' }, '', screenRoutes.home || '/');
         setCurrentScreen('home');
       }
     }
@@ -240,7 +244,7 @@ function AppMain() {
       } else if (target === 'home' && !currentUser) resolvedTarget = 'panel-select';
 
       const destination = screenRoutes[resolvedTarget] || '/';
-      const currentPath = window.location.pathname.toLowerCase().replace(/\\/+$/, '') || '/';
+      const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
       if (currentPath !== destination) {
         // Every in-app screen gets a history entry so Back returns to the
         // immediately preceding step rather than jumping to the first page.
