@@ -207,10 +207,8 @@ function AppMain() {
   const handleTransition = (target: AppScreen) => {
     try {
       let resolvedTarget = target;
-      // Auto-bypass OTP and Admin Review screens
-      if (resolvedTarget === 'worker-otp-pass') resolvedTarget = 'worker-setup';
-      if (resolvedTarget === 'worker-pending-approval') resolvedTarget = 'worker-dashboard';
-      if (resolvedTarget === 'otp') resolvedTarget = activePanelRole === 'worker' ? 'worker-dashboard' : 'home';
+      // Keep the onboarding and booking journey sequential: each screen is
+      // shown only when the preceding step explicitly transitions to it.
 
       const protectedNavScreens: Record<string, string> = { tracking: '📍 Live Tracking', providers: '🔍 Find Specialists', booking: '📋 Booking', payment: '💳 Payment', 'provider-details': '👤 Specialist Details' };
       if (!currentUser && protectedNavScreens[target]) { showToast(`🔒 Sign in required to access ${protectedNavScreens[target]}. Redirecting to portal...`); resolvedTarget = 'panel-select'; }
@@ -281,7 +279,7 @@ function AppMain() {
             >
               {currentScreen === 'auth-callback' && <NamoIDAuthShell>{authContent}</NamoIDAuthShell>}
           {currentScreen === 'splash' && <Splash onTransition={handleTransition} />}
-          {currentScreen === 'panel-select' && <PanelSelect onSelectPanel={(panel, action) => { setActivePanelRole(panel); if (panel === 'worker' && action === 'signup') setCurrentScreen('worker-signup'); else setCurrentScreen('auth'); }} showNotification={showToast} />}
+          {currentScreen === 'panel-select' && <PanelSelect onSelectPanel={(panel, action) => { setActivePanelRole(panel); if (panel === 'worker' && action === 'signup') handleTransition('worker-signup'); else handleTransition('auth'); }} showNotification={showToast} />}
           {currentScreen === 'worker-signup' && <WorkerSignup onTransition={handleTransition} showNotification={showToast} setWorkerApplicationData={setWorkerApplication} />}
           {currentScreen === 'worker-otp-pass' && <WorkerOtpPass onTransition={handleTransition} showNotification={showToast} workerApplication={workerApplication} setWorkerApplicationData={setWorkerApplication} />}
           {currentScreen === 'worker-pending-approval' && <WorkerPendingApproval onTransition={handleTransition} showNotification={showToast} workerApplication={workerApplication} setWorkerApplicationData={setWorkerApplication} />}

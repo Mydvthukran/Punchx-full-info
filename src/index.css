@@ -213,3 +213,42 @@ table { max-width:100%; }
 @media (prefers-reduced-motion:reduce) {
   *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
+
+
+/* Mobile viewport containment: prevent drawers, navigation, and long labels
+   from escaping the visible page on narrow devices. */
+html, body, #root { min-height:100%; }
+body { overflow-x:hidden; }
+#punchx-website-navbar { width:100%; max-width:100vw; }
+#punchx-website-navbar > div { min-width:0; max-width:100%; }
+#punchx-website-navbar button,
+#punchx-website-navbar a { min-width:0; }
+#punchx-website-navbar [role="menu"],
+#punchx-website-navbar [role="dialog"],
+#punchx-website-navbar [data-state="open"] { max-width:calc(100vw - 16px); }
+@media (max-width:767px) {
+  #root, #root > *, #root main, #root main > * { min-width:0; width:100%; max-width:100%; }
+  #root main { overflow-x:clip; }
+  #punchx-website-navbar { padding-left:0; padding-right:0; }
+  #punchx-website-navbar > div { gap:clamp(4px,1.5vw,10px); padding-left:10px; padding-right:10px; }
+  #punchx-website-navbar img { max-width:100%; }
+  #punchx-website-navbar button { overflow-wrap:anywhere; }
+  [data-radix-popper-content-wrapper] { max-width:calc(100vw - 16px) !important; }
+  [role="dialog"], [aria-modal="true"] {
+    box-sizing:border-box !important;
+    left:auto;
+    right:auto;
+    max-width:calc(100vw - 16px) !important;
+    overflow-x:hidden;
+    overflow-y:auto;
+  }
+  .fixed.inset-y-0.left-0, .fixed.inset-y-0.right-0,
+  .fixed.left-0.top-0, .fixed.right-0.top-0 {
+    box-sizing:border-box;
+    width:min(100vw - 16px, 360px);
+    max-width:calc(100vw - 16px);
+  }
+  main * { overflow-wrap:anywhere; }
+  main img, main video, main canvas, main iframe { max-width:100%; }
+  main .flex, main .grid { min-width:0; }
+}
