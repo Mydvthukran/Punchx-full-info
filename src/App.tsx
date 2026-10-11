@@ -41,11 +41,11 @@ function AppMain() {
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
 
   const screenRoutes: Partial<Record<AppScreen, string>> = {
-    splash: '/', landing: '/landing', 'panel-select': '/panel-select', auth: '/login',
+    splash: '/', 'panel-select': '/panel-select', auth: '/login',
     'auth-callback': '/auth/callback', otp: '/verify-otp', 'customer-setup': '/customer/setup',
     'worker-setup': '/worker/setup', 'worker-signup': '/worker-signup',
     'worker-otp-pass': '/worker/verify', 'worker-pending-approval': '/worker/pending',
-    home: '/home', 'services-categories': '/services', catalogue: '/catalogue',
+    home: '/home', catalogue: '/catalogue',
     providers: '/providers', 'provider-details': '/provider-details', booking: '/booking',
     payment: '/payment', tracking: '/tracking', 'worker-dashboard': '/worker/dashboard',
     'admin-dashboard': '/admin/dashboard', 'privacy-policy': '/privacy-policy',
@@ -58,7 +58,7 @@ function AppMain() {
     const aliases: Record<string, AppScreen> = {
       '/price-catalogue': 'catalogue', '/pricing': 'catalogue', '/privacy': 'privacy-policy',
       '/terms': 'terms-and-conditions', '/terms-of-service': 'terms-and-conditions',
-      '/leadership': 'founder', '/founders': 'founder', '/specialists': 'providers',
+      '/leadership': 'founder', '/founders': 'founder', '/specialists': 'providers', '/services': 'providers', '/landing': 'splash',
       '/worker-signup': 'worker-signup', '/login': 'auth', '/verify-otp': 'otp',
     };
     if (aliases[path]) return aliases[path];
