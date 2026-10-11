@@ -172,7 +172,8 @@ function AppMain() {
       setActivePanelRole('worker');
     }
 
-    if (!isLoadingProfile && currentUser && (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select')) {
+    const onboardingScreens: AppScreen[] = ['worker-signup', 'worker-otp-pass', 'worker-setup', 'worker-pending-approval', 'customer-setup'];
+    if (!isLoadingProfile && currentUser && !onboardingScreens.includes(currentScreen) && (currentScreen === 'auth' || currentScreen === 'otp' || currentScreen === 'panel-select')) {
       if (userProfile?.role === 'admin') {
         setActivePanelRole('admin');
         setCurrentScreen('admin-dashboard');

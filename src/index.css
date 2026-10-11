@@ -172,7 +172,6 @@ h1,h2,h3,h4,h5,h6,p,span,label,small,strong,em,li,td,th { overflow-wrap:anywhere
 pre,code { white-space:pre-wrap; overflow-wrap:anywhere; }
 table { max-width:100%; }
 .flex > *, .inline-flex > *, .grid > * { min-width:0; }
-[class*="min-w-"] { min-width:0; }
 [class*="w-screen"] { width:100%; max-width:100vw; }
 [class*="max-w-"] { max-width:min(100%,100vw); }
 
@@ -251,4 +250,22 @@ body { overflow-x:hidden; }
   main * { overflow-wrap:anywhere; }
   main img, main video, main canvas, main iframe { max-width:100%; }
   main .flex, main .grid { min-width:0; }
+}
+
+
+/* Mobile viewport containment without overriding intentional min-width utilities. */
+html, body, #root { width:100%; max-width:100%; }
+body { overflow-x:hidden; }
+#root { overflow-x:clip; }
+#root > div, #root main, #root main > div { min-width:0; max-width:100%; }
+#root main img, #root main video, #root main iframe, #root main canvas { max-width:100%; }
+#root main h1, #root main h2, #root main h3, #root main p, #root main label, #root main button, #root main a { overflow-wrap:anywhere; }
+#root main .flex > *, #root main .grid > * { min-width:0; }
+#root main input, #root main textarea, #root main select { min-width:0; max-width:100%; }
+@media (max-width:767px) {
+  #root main { overflow-x:clip; }
+  #punchx-website-navbar > div { width:100%; min-width:0; }
+  #worker-signup-screen, #worker-otp-pass-screen, #worker-setup-screen, #customer-setup-screen, #booking-container, #payment-screen-container, #providers-list-root, #provider-details-root { width:100%; max-width:100vw; min-width:0; overflow-x:clip; }
+  [role=dialog], [aria-modal=true] { box-sizing:border-box !important; width:calc(100vw - 24px) !important; max-width:calc(100vw - 24px) !important; }
+  .fixed.inset-y-0.left-0, .fixed.inset-y-0.right-0, .fixed.left-0.top-0, .fixed.right-0.top-0 { width:min(360px, calc(100vw - 16px)); max-width:calc(100vw - 16px); }
 }

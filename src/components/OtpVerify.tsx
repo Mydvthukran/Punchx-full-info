@@ -152,7 +152,7 @@ export default function OtpVerify({
     
     setLoading(false);
     if (activePanelRole === 'worker') {
-      onTransition('worker-dashboard');
+      onTransition('worker-setup');
     } else if (activePanelRole === 'admin') {
       onTransition('admin-dashboard');
     } else {
