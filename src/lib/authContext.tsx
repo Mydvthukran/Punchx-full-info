@@ -221,7 +221,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       setCurrentUser(identity);
       localStorage.setItem('punchx_namoid_identity', JSON.stringify(identity));
 
-      return await fetchOrCreateProfile(identity, role || activeRole, resolvedUid);
+      const profile = await fetchOrCreateProfile(identity, role || activeRole, resolvedUid);
+
+      // Require an authenticated Firebase UID before declaring sign-in fully persisted.
+      // This records repeat sign-ins without collecting passwords or authentication tokens.
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) {
+        throw new Error('Firebase authentication is not ready. Please retry signing in.');
+      }
+      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+      const idToken = await firebaseUser.getIdToken();
+      const loginMethod = identity.email ? 'namoid-email' : (identity.phone_number ? 'namoid-phone' : 'namoid');
+      const sessionResponse = await fetch(`${backendBase}/api/auth/session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          loginMethod,
+          role: role === 'worker' ? 'worker' : 'citizen',
+          name: profile.name || identity.name || '',
+          email: identity.email || '',
+          phone: identity.phone_number || '',
+          profile: {
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone,
+            photoURL: profile.photoURL || '',
+            dob: profile.dob || '',
+            birthdate: profile.birthdate || '',
+            address: profile.address || '',
+            landmark: profile.landmark || '',
+            area: profile.area || '',
+            sector: profile.sector || '',
+            city: profile.city || '',
+            isProfileCompleted: Boolean(profile.isProfileCompleted),
+          },
+        }),
+      });
+      const sessionResult = await sessionResponse.json().catch(() => ({}));
+      if (!sessionResponse.ok || sessionResult.success !== true) {
+        throw new Error(sessionResult.error || 'Firebase could not save your sign-in history. Please retry.');
+      }
+      return profile;
     } catch (profileErr) {
       console.error('Profile setup failed:', profileErr);
       setCurrentUser(null);
