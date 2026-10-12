@@ -8,7 +8,7 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { initializeApp, cert, applicationDefault, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 // ─── Firebase Admin Setup ───
 try {
@@ -215,6 +215,78 @@ async function startServer() {
       dbHealthy: isDbHealthy,
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // ─── AUTHENTICATED USER SESSION AUDIT ───
+  // Records each successful sign-in without ever storing passwords, ID tokens, or access tokens.
+  app.post("/api/auth/session", requireFirebaseUser, async (req, res) => {
+    try {
+      const authUser = (req as any).user;
+      const uid = String(authUser.uid || "");
+      if (!uid) return res.status(401).json({ success: false, error: "Authenticated user ID is missing" });
+
+      const databaseId = process.env.FIREBASE_DATABASE_ID
+        || process.env.VITE_FIREBASE_DATABASE_ID
+        || "ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38";
+      const firestore = getFirestore(undefined, databaseId);
+      const userRef = firestore.collection("users").doc(uid);
+      const loginHistoryRef = userRef.collection("loginHistory").doc();
+      const nowIso = new Date().toISOString();
+      const suppliedMethod = String(req.body?.loginMethod || "").toLowerCase();
+      const loginMethod = ["namoid-email", "namoid-phone", "namoid"].includes(suppliedMethod)
+        ? suppliedMethod
+        : (authUser.email ? "namoid-email" : (authUser.phone_number ? "namoid-phone" : "namoid"));
+      const email = String(authUser.email || req.body?.email || "").trim().slice(0, 320);
+      const phone = String(authUser.phone_number || req.body?.phone || "").trim().slice(0, 40);
+      const displayName = String(req.body?.name || authUser.name || authUser.email?.split("@")[0] || "PunchX Member").trim().slice(0, 160);
+      const requestedRole = req.body?.role === "worker" ? "worker" : "citizen";
+
+      await firestore.runTransaction(async (transaction) => {
+        const existingSnap = await transaction.get(userRef);
+        const existing = existingSnap.exists ? existingSnap.data() || {} : {};
+        const createdAt = existing.createdAt || FieldValue.serverTimestamp();
+        const nextRole = existing.role === "admin" ? "admin"
+          : (existing.role === "worker" && existing.status === "APPROVED" ? "worker"
+          : (existing.role || requestedRole));
+        const loginCount = Number(existing.loginCount || 0) + 1;
+
+        transaction.set(userRef, {
+          uid,
+          name: existing.name || displayName,
+          email: existing.email || email,
+          phone: existing.phone || phone,
+          role: nextRole,
+          createdAt,
+          updatedAt: FieldValue.serverTimestamp(),
+          lastLoginAt: FieldValue.serverTimestamp(),
+          lastSeen: FieldValue.serverTimestamp(),
+          lastLoginAtIso: nowIso,
+          loginCount,
+          lastLoginMethod: loginMethod,
+          lastLoginIdentifierType: loginMethod === "namoid-email" ? "email" : loginMethod === "namoid-phone" ? "phone" : "NamoID",
+          authProvider: "NamoID",
+        }, { merge: true });
+
+        transaction.set(loginHistoryRef, {
+          id: loginHistoryRef.id,
+          uid,
+          role: nextRole,
+          loginMethod,
+          identifierType: loginMethod === "namoid-email" ? "email" : loginMethod === "namoid-phone" ? "phone" : "NamoID",
+          email: email || null,
+          phone: phone || null,
+          timestamp: FieldValue.serverTimestamp(),
+          timestampIso: nowIso,
+          userAgent: String(req.headers["user-agent"] || "").slice(0, 500),
+          // Deliberately no password, OTP, Firebase token, or NamoID token is stored.
+        });
+      });
+
+      return res.json({ success: true, uid, recordedAt: nowIso });
+    } catch (err: any) {
+      logger.error("Auth session audit failed; login metadata was not saved:", err);
+      return res.status(500).json({ success: false, error: "Unable to save sign-in history to Firebase. Please retry signing in." });
+    }
   });
 
   // ─── USER PROFILE CRUD APIS ───
