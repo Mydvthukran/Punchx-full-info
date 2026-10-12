@@ -132,22 +132,51 @@ function AppMain() {
     if (!currentUser || activePanelRole !== 'customer' || !navigator.geolocation) return;
     let active = true;
     let watchId: number | null = null;
+    let lastGeofenceCheckAt = 0;
     const startWatching = () => {
       if (!active || watchId !== null) return;
-      watchId = navigator.geolocation.watchPosition((position) => {
+      watchId = navigator.geolocation.watchPosition(async (position) => {
         if (!active) return;
+        const { latitude: lat, longitude: lng, accuracy } = position.coords;
+        // Don't claim a precise fence match from a weak GPS fix.
+        if (!Number.isFinite(accuracy) || accuracy > 100) return;
+        let previous: Record<string, any> = {};
         try {
-          const previous = JSON.parse(localStorage.getItem('punchx_user_location') || '{}');
+          previous = JSON.parse(localStorage.getItem('punchx_user_location') || '{}');
           localStorage.setItem('punchx_user_location', JSON.stringify({
-            ...previous,
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: new Date().toISOString(),
-            source: 'browser-gps'
+            ...previous, lat, lng, accuracy, gpsVerified: true,
+            timestamp: new Date().toISOString(), source: 'browser-gps'
           }));
         } catch (error) {
           console.warn('Could not save latest GPS position locally:', error);
+        }
+
+        // Re-evaluate service geofence at most once per minute while the page is active.
+        const now = Date.now();
+        if (now - lastGeofenceCheckAt >= 60000) {
+          lastGeofenceCheckAt = now;
+          try {
+            const response = await fetch('/api/location-services', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat, lng, address: previous.address || userProfile?.address || '' })
+            });
+            const result = response.ok ? await response.json() : null;
+            if (active && result?.geofence) {
+              const updated = {
+                ...JSON.parse(localStorage.getItem('punchx_user_location') || '{}'),
+                geofence: result.geofence,
+                coverageStatus: result.coverageStatus,
+                gpsVerified: true,
+                accuracy,
+                timestamp: new Date().toISOString()
+              };
+              localStorage.setItem('punchx_user_location', JSON.stringify(updated));
+              window.dispatchEvent(new CustomEvent('punchx_geofence_updated', { detail: result.geofence }));
+            }
+          } catch (error) {
+            console.warn('PunchX geofence refresh failed:', error);
+          }
         }
       }, (error) => {
         // Permission denial is respected. The user can enable location in device/browser settings.
