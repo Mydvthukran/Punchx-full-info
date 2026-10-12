@@ -293,7 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       console.error('Profile setup failed:', profileErr);
       setCurrentUser(null);
       localStorage.removeItem('punchx_namoid_identity');
-      throw new Error('Unable to complete profile setup');
+      throw new Error(profileErr instanceof Error ? profileErr.message : 'Unable to complete profile setup');
     }
   };
 
