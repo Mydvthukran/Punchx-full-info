@@ -240,7 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       // problem does not get hidden behind a generic sign-in notice.
       try {
           const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
-        const tokenRes = await fetch(`${backendBase}/api/auth/namoid-token`, {
+        const tokenRes = await fetch(`${backendBase}/api/namoid-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken, identity, role }),
