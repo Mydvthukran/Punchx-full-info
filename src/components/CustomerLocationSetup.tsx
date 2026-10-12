@@ -7,7 +7,7 @@ import {
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Paintbrush, Hammer, Bug, Truck, Tv, Info
 } from 'lucide-react';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, fetchRegisteredLocationServices, RegisteredService } from '../lib/location';
@@ -285,7 +285,12 @@ export default function CustomerLocationSetup({
     }
 
     // Save to Firestore users collection
-    const activeUid = currentUser?.sub || `cust_${Date.now()}`;
+    const activeUid = auth.currentUser?.uid || userProfile?.uid;
+    if (!activeUid) {
+      setIsSubmitting(false);
+      setErrorMessage('Your secure sign-in session is missing. Please sign in again before saving your profile.');
+      return;
+    }
     const userPayload = {
       uid: activeUid,
       name: name.trim(),
@@ -298,7 +303,7 @@ export default function CustomerLocationSetup({
       city: resolvedCity,
       sector: resolvedSector,
       location: { lat: coords.lat, lng: coords.lng },
-      role: 'citizen' as const,
+      role: (userProfile?.role || 'citizen') as 'citizen' | 'worker' | 'admin',
       phone: authMethod === 'phone' ? authTarget : (currentUser?.phone_number || ''),
       email: authMethod === 'gmail' ? authTarget : (currentUser?.email || ''),
       isProfileCompleted: true,
@@ -306,6 +311,8 @@ export default function CustomerLocationSetup({
     };
 
     try {
+      // Use the Firebase Authentication UID as the Firestore document ID.
+      // Do not report success when Firestore rejects or cannot complete the write.
       await setDoc(doc(db, 'users', activeUid), userPayload, { merge: true });
       if (updateUserProfile) {
         await updateUserProfile({
@@ -317,7 +324,10 @@ export default function CustomerLocationSetup({
         });
       }
     } catch (dbErr) {
-      console.warn("Firestore customer profile save error:", dbErr);
+      console.error("Firestore customer profile save failed:", dbErr);
+      setIsSubmitting(false);
+      setErrorMessage('Your profile could not be saved to Firebase. Check your connection and try again.');
+      return;
     }
 
     setIsSubmitting(false);
