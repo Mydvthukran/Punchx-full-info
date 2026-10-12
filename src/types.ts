@@ -211,8 +211,8 @@ export interface OrderRecord {
   serviceName?: string;
   serviceId?: string | null;
   serviceItems?: Array<{ id?: string; serviceId?: string; serviceName?: string; category?: string; subcategory?: string; description?: string; price?: number | null; duration?: string; quantity?: number }>;
-  residentialAddress?: Record<string, unknown>;
-  addressCoordinates?: { lat: number; lng: number };
+  residentialAddress?: Record<string, unknown> | null;
+  addressCoordinates?: { lat: number; lng: number } | null;
   geofenceArea?: string;
   geofenceCity?: string;
   serviceAreaMatch?: string | null;
