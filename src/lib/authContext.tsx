@@ -5,7 +5,6 @@ import {
   onAuthStateChanged,
   signInWithCredential,
   signInWithCustomToken,
-  signInAnonymously,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -266,18 +265,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
         }
       }
 
-      // 3. Try Anonymous Auth fallback
-      if (!auth.currentUser) {
-        try {
-          const userCred = await signInAnonymously(auth);
-          firebaseUid = userCred.user.uid;
-        } catch (anonErr) {
-          console.warn('Firebase anonymous auth notice:', anonErr);
-        }
-      }
-
+      // Never silently replace a returning customer/professional with a fresh anonymous UID.
+      // That splits their profile, bookings, and login history across unrelated Firebase accounts.
       if (auth.currentUser) {
         firebaseUid = auth.currentUser.uid;
+      } else {
+        throw new Error('PUNCHX could not link this sign-in to a persistent Firebase account. Please retry signing in; your data has not been saved under a temporary account.');
       }
     }
 
