@@ -242,7 +242,7 @@ export default function WorkerLocationSetup({
         throw new Error('Your Firebase sign-in session is missing. Please sign in again.');
       }
       const token = await firebaseUser.getIdToken();
-      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
       const applicationResponse = await fetch(`${backendBase}/api/worker-applications`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
