@@ -5,7 +5,8 @@ import { auth, db } from '../lib/firebase';
 import { OrderRecord } from '../types';
 import { collection, doc, onSnapshot, runTransaction, updateDoc, setDoc, query as firestoreQuery, where } from 'firebase/firestore';
 import PUNCHX_LOGO from '../assets/logo';
-import { getAccurateCurrentPosition, reverseGeocodeCoords, buildPunchXCustomerAreaLabels, isServiceAreaMatch } from '../lib/location';
+import { getAccurateCurrentPosition, reverseGeocodeCoords, buildPunchXCustomerAreaLabels, isServiceAreaMatch, fetchGoogleMapsConfig, GoogleMapsConfig } from '../lib/location';
+import { APIProvider, Map as GoogleMap, useMap } from '@vis.gl/react-google-maps';
 import './worker-partner-panel.css';
 
 type Tab = 'home'|'orders'|'schedule'|'earnings'|'performance'|'training'|'inventory'|'profile'|'notifications'|'incentives'|'support'|'settings';
@@ -47,11 +48,12 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
  });
  const [geoLoading,setGeoLoading]=useState(false);
  const [geoError,setGeoError]=useState('');
- const [serviceAreasDraft,setServiceAreasDraft]=useState<string>(()=>{
-   const saved=Array.isArray(userProfile?.serviceAreas)?userProfile.serviceAreas:Array.isArray(userProfile?.geofenceAreas)?userProfile.geofenceAreas:[];
-   return saved.length?saved.join('\n'):[userProfile?.area,userProfile?.sector].filter(Boolean).join('\n');
- });
- const [savingServiceAreas,setSavingServiceAreas]=useState(false);
+ const [mapsConfig,setMapsConfig]=useState<GoogleMapsConfig|null>(null);
+ useEffect(function(){
+   let active=true;
+   fetchGoogleMapsConfig().then(function(config){if(active)setMapsConfig(config);}).catch(function(error){console.warn('Google Maps configuration unavailable:',error);});
+   return function(){active=false;};
+ },[]);
  const name=userProfile?.name||'Professional';
  useEffect(function(){
    if(typeof userProfile?.workerAvailability==='boolean'){setOnline(userProfile.workerAvailability);return;}
@@ -102,7 +104,6 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
    const configured=Array.isArray(userProfile?.serviceAreas)?userProfile.serviceAreas:Array.isArray(userProfile?.geofenceAreas)?userProfile.geofenceAreas:[];
    return configured.map((x:any)=>String(x).trim()).filter(Boolean).length?configured.map((x:any)=>String(x).trim()).filter(Boolean):[userProfile?.area,userProfile?.sector].map((x:any)=>String(x||'').trim()).filter(Boolean);
  },[userProfile]);
- useEffect(function(){setServiceAreasDraft(workerServiceAreas.join('\n'));},[workerServiceAreas.join('|')]);
  const mapStatus=function(s?:string):Status{
    if(['Done','COMPLETED'].includes(s||'')) return 'COMPLETED';
    if(['Cancelled','CANCELLED'].includes(s||'')) return 'CANCELLED';
@@ -166,31 +167,6 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
  const todayPayouts=today.filter(function(o){return o.status==='COMPLETED'&&o.earning!==null});
  const todayEarn=todayPayouts.length?todayPayouts.reduce(function(s,o){return s+(o.earning||0)},0):null;
  const filtered=useMemo(function(){return orders.filter(function(o){return (filter==='ALL'||(filter==='NEW'&&o.status==='NEW')||(filter==='ACCEPTED'&&o.status==='ACCEPTED')||(filter==='TRAVELLING'&&o.status==='TRAVELLING')||(filter==='ARRIVED'&&o.status==='ARRIVED')||(filter==='SERVICE_STARTED'&&o.status==='SERVICE_STARTED')||(filter==='COMPLETED'&&o.status==='COMPLETED')||(filter==='CANCELLED'&&o.status==='CANCELLED'))&&(o.id+' '+o.customer+' '+o.service+' '+o.address).toLowerCase().includes(query.toLowerCase())})},[orders,filter,query]);
- const saveServiceAreas=async function(){
-   if(!uid||savingServiceAreas)return;
-   const areas=Array.from(new Set(serviceAreasDraft.split(/[\n;]+/).map(x=>x.trim()).filter(Boolean)));
-   if(!areas.length){showNotification?.('Enter at least one service-area rule before saving.');return;}
-   const invalidPin=areas.find(x=>/^(pin(?:\s*code|code)?)\s*:/i.test(x)&&!/^pin(?:\s*code|code)?\s*:\s*\d{6}$/i.test(x));
-   if(invalidPin){showNotification?.('Use a valid six-digit PIN, for example: PIN: 700001.');return;}
-   if(areas.length>100){showNotification?.('You can configure up to 100 service-area rules.');return;}
-   setSavingServiceAreas(true);
-   const updatedAt=new Date().toISOString();
-   try{
-     const patch={serviceAreas:areas,geofenceAreas:areas,geofenceArea:areas.join('; '),serviceAreaMode:'india-named-areas',serviceAreaUpdatedAt:updatedAt,updatedAt};
-     const targetUid=auth.currentUser?.uid||uid;
-     await setDoc(doc(db,'users',targetUid),{uid:targetUid,...patch},{merge:true});
-     try{
-       await setDoc(doc(db,'workerApplications',String(userProfile?.applicationId||targetUid)),{uid:targetUid,...patch},{merge:true});
-     }catch(applicationError){
-       // The user document is authoritative for the worker panel. Keep saving
-       // successful even if a legacy application record is missing or immutable.
-       console.warn('Worker application service-area sync skipped:',applicationError);
-     }
-     await refreshProfile?.();
-     showNotification?.('Service-area boundaries saved. New jobs will match only these named areas.');
-   }catch(error){showNotification?.('Could not save service areas. Please try again.');}
-   finally{setSavingServiceAreas(false);}
- };
  const availabilityWriteRef=useRef(false);
  const [availabilitySaving,setAvailabilitySaving]=useState(false);
  const persistAvailability=async function(nextOnline:boolean){
@@ -199,46 +175,35 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
    setAvailabilitySaving(true);
    const previous=online;
    setOnline(nextOnline);
-   const updatedAt=new Date().toISOString();
-   const availability={workerAvailability:nextOnline,isOnline:nextOnline,workerStatus:nextOnline?'ONLINE':'OFFLINE',availabilityUpdatedAt:updatedAt,updatedAt};
    try{
-     if(!uid)throw new Error('Account ID unavailable.');
-     // Use the Firebase Auth UID for Firestore ownership checks; NamoID profile IDs
-     // are not always the same identifier in older sessions.
      const targetUid=auth.currentUser?.uid||uid;
-     const userRef=doc(db,'users',targetUid);
-     try{
-       await updateDoc(userRef,availability);
-     }catch(error:any){
-       if(error?.code!=='not-found')throw error;
-       // A verified worker may have a cached session before the user document exists.
-       await setDoc(userRef,{uid:targetUid,role:'worker',...availability},{merge:true});
+     if(!targetUid||!auth.currentUser)throw new Error('Your secure sign-in session is not ready. Please sign in again.');
+     const token=await auth.currentUser.getIdToken();
+     const backendBase=import.meta.env.VITE_BACKEND_URL||'';
+     const response=await fetch(`${backendBase}/api/workers/availability`,{
+       method:'PATCH',
+       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+       body:JSON.stringify({online:nextOnline})
+     });
+     const result=await response.json().catch(()=>({}));
+     if(!response.ok||result?.success!==true){
+       throw new Error(result?.error||'The server could not save your availability.');
      }
-     // Keep the worker's operational profile and application status aligned.
-     const applicationId=String(userProfile?.applicationId||targetUid);
-     try{
-       await setDoc(doc(db,'workerApplications',applicationId),{uid:targetUid,...availability},{merge:true});
-     }catch(applicationError){
-       console.warn('Worker application availability sync skipped:',applicationError);
-     }
-     // Some discovery/profile flows read the dedicated workers collection.
-     try{
-       await setDoc(doc(db,'workers',targetUid),{uid:targetUid,...availability},{merge:true});
-     }catch(workerRecordError){
-       console.warn('Worker directory availability sync skipped:',workerRecordError);
-     }
+     const updatedAt=result.availabilityUpdatedAt||new Date().toISOString();
      try{
        const cached=localStorage.getItem('punchx_namoid_profile');
        const profile=cached?JSON.parse(cached):(userProfile||{});
-       localStorage.setItem('punchx_namoid_profile',JSON.stringify({...profile,...availability,uid:targetUid}));
+       localStorage.setItem('punchx_namoid_profile',JSON.stringify({
+         ...profile,workerAvailability:nextOnline,isOnline:nextOnline,
+         workerStatus:nextOnline?'ONLINE':'OFFLINE',availabilityUpdatedAt:updatedAt,updatedAt,uid:targetUid
+       }));
      }catch{}
-     try{await refreshProfile?.();}catch{}
-     showNotification?.(nextOnline?'You are now ONLINE. Availability has been saved.':'You are now OFFLINE. Availability has been saved.');
-   }catch(e:any){
+     try{await refreshProfile?.();}catch(error){console.warn('Worker profile refresh skipped:',error);}
+     showNotification?.(nextOnline?'You are now ONLINE. Your availability has been saved.':'You are now OFFLINE. Your availability has been saved.');
+   }catch(error:any){
      setOnline(previous);
-     console.error('Worker availability update failed:',e);
-     const reason=e?.code==='permission-denied'?'Firebase denied the status update (check account ownership and Firestore rules).':e?.code==='unavailable'?'Firebase is temporarily unavailable. Please retry.':'Check your sign-in session and internet connection, then retry.';
-     showNotification?.('Could not save your online/offline status. '+reason);
+     console.error('Worker availability update failed:',error);
+     showNotification?.(error?.message||'Could not save availability. Check your connection and try again.');
    }finally{
      availabilityWriteRef.current=false;
      setAvailabilitySaving(false);
@@ -330,6 +295,60 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
  </div>
 }
 
+function LiveServiceAreaMap({geo,serviceAreas,mapsConfig}:{geo:any;serviceAreas:string[];mapsConfig:GoogleMapsConfig|null}){
+ const hasLiveLocation=typeof geo?.lat==='number'&&typeof geo?.lng==='number';
+ const hasMapsKey=Boolean(mapsConfig?.hasKey&&mapsConfig?.apiKey);
+ const center=hasLiveLocation?{lat:geo.lat,lng:geo.lng}:(mapsConfig?.defaultCenter||{lat:22.9734,lng:78.6569});
+ const mapId=mapsConfig?.mapId&&mapsConfig.mapId!=='PUNCHX_MAP_ID'?mapsConfig.mapId:undefined;
+ return <section className="wx-card wx-live-boundary-card">
+  <div className="wx-card-head wx-live-boundary-head">
+   <div><span className="wx-section-label">LIVE SERVICE AREA</span><h3>Google Maps coverage view</h3><p>{geo?.area||geo?.city||'Waiting for your current locality'} · {hasLiveLocation?'Live GPS position':'Waiting for location permission'}</p></div>
+   <span className={'wx-live-location '+(hasLiveLocation?'ready':'')}>{hasLiveLocation?'LIVE LOCATION':'LOCATION NEEDED'}</span>
+  </div>
+  {hasMapsKey?<div className="wx-live-map-frame">
+    <APIProvider apiKey={mapsConfig!.apiKey}>
+     <GoogleMap className="wx-live-google-map" defaultCenter={center} defaultZoom={hasLiveLocation?13:5} center={center} mapId={mapId} gestureHandling="greedy" fullscreenControl={false} streetViewControl={false} mapTypeControl={false}>
+      <LiveBoundaryOverlay geo={geo}/>
+     </GoogleMap>
+    </APIProvider>
+   </div>:<div className="wx-live-map-unavailable"><MapPin size={24}/><b>Google Maps is not configured</b><span>The map API key is not available for this website origin. Configure the Google Maps Platform key to display the live map.</span></div>}
+  <div className="wx-live-boundary-meta">
+   <div><span>Current area</span><strong>{geo?.area||geo?.city||'Not detected'}</strong></div>
+   <div><span>GPS coordinates</span><strong>{hasLiveLocation?`${geo.lat.toFixed(5)}, ${geo.lng.toFixed(5)}`:'Unavailable'}</strong></div>
+  </div>
+  {serviceAreas?.length>0&&<div className="wx-live-area-tags"><span>Configured coverage</span><div>{serviceAreas.map(function(area:string){return <span key={area}>{area}</span>})}</div></div>}
+  <p className="wx-live-boundary-note">The map follows your live GPS position. The outlined area uses Google Maps locality bounds when available; it is a map reference, not a guarantee of service eligibility.</p>
+ </section>;
+}
+
+function LiveBoundaryOverlay({geo}:{geo:any}){
+ const map=useMap();
+ useEffect(function(){
+  const maps=(window as any).google?.maps;
+  if(!map||!maps||typeof geo?.lat!=='number'||typeof geo?.lng!=='number')return;
+  let active=true;
+  let marker:any=null;
+  let boundary:any=null;
+  const position={lat:geo.lat,lng:geo.lng};
+  map.setCenter(position);
+  map.setZoom(13);
+  marker=new maps.Marker({map,position,title:'Your live PunchX worker location',zIndex:1000});
+  const geocoder=new maps.Geocoder();
+  geocoder.geocode({location:position},function(results:any[],status:string){
+   if(!active||status!=='OK'||!results?.length)return;
+   const chosen=results.find(function(result:any){
+    return Array.isArray(result.types)&&result.types.some(function(type:string){return ['locality','administrative_area_level_3','administrative_area_level_2','sublocality','postal_town'].includes(type);})&&(result.geometry?.bounds||result.geometry?.viewport);
+   })||results.find(function(result:any){return result.geometry?.bounds||result.geometry?.viewport;});
+   const bounds=chosen?.geometry?.bounds||chosen?.geometry?.viewport;
+   if(!bounds||!active)return;
+   boundary=new maps.Rectangle({map,bounds,strokeColor:'#2563eb',strokeOpacity:0.95,strokeWeight:2,fillColor:'#3b82f6',fillOpacity:0.12,clickable:false,zIndex:2});
+   map.fitBounds(bounds,40);
+  });
+  return function(){active=false;if(marker)marker.setMap(null);if(boundary)boundary.setMap(null);};
+ },[map,geo?.lat,geo?.lng]);
+ return null;
+}
+
 function WorkerWebsiteFooter({tab,nav,onTransition,onLogout,loggingOut}:{tab:Tab;nav:(t:Tab)=>void;onTransition?:(s:any)=>void;onLogout:()=>Promise<void>;loggingOut:boolean}){
  return <footer className="wx-site-footer">
   <div className="wx-site-footer-glow wx-site-footer-glow-right"></div>
@@ -403,11 +422,7 @@ function HomeView(p:any){
     <small>{p.online?'Online: eligible for instant / SOS requests.':'Offline: instant / SOS requests are not offered; later bookings remain visible.'}</small>
    </div>
   </section>
-  <section className="wx-card wx-service-area-editor">
-   <div className="wx-card-head"><div><span className="wx-section-label">SERVICE AREA BOUNDARY</span><h3>Choose the localities you cover</h3><p>Set coverage anywhere in India. Add one rule per line; jobs match these areas, not a circular distance.</p><p className="wx-area-format-help">Examples: <b>LOCALITY: Mayapur</b>, <b>CITY: Kolkata, West Bengal</b>, <b>DISTRICT: Nadia, West Bengal</b>, <b>STATE: West Bengal</b>, <b>PIN: 700001</b>.</p></div></div>
-   <label className="wx-service-area-label">Covered areas<textarea value={p.serviceAreasDraft||''} onChange={function(e:any){p.setServiceAreasDraft(e.target.value)}} rows={5} placeholder={'LOCALITY: Mayapur\nCITY: Kolkata, West Bengal\nDISTRICT: Nadia, West Bengal\nPIN: 741302'} /></label>
-   <div className="wx-service-area-foot"><span>{p.serviceAreas?.length||0} named area(s) · no circular radius</span><button className="wx-primary" onClick={p.saveServiceAreas} disabled={p.savingServiceAreas}>{p.savingServiceAreas?'Saving areas…':'Save service areas'} <Save size={15}/></button></div>
-  </section>
+  <LiveServiceAreaMap geo={geo} serviceAreas={workerServiceAreas} mapsConfig={mapsConfig}/>
   <div className="wx-stats"><Stat label="Today’s orders" value={p.today.length} icon={ClipboardList}/><Stat label="Completed" value={p.completed} icon={CheckCircle2}/><Stat label="Pending" value={p.pending} icon={Clock3}/><Stat label="Cancelled" value={p.cancelled} icon={CircleAlert}/><Stat label="Working hours" value="—" icon={BriefcaseBusiness}/><Stat label="Avg. order" value={p.today.filter((o:any)=>o.earning!==null).length?money(p.today.filter((o:any)=>o.earning!==null).reduce((s:number,o:any)=>s+(o.earning||0),0)/p.today.filter((o:any)=>o.earning!==null).length):"—"} icon={TrendingUp}/></div>
   <div className="wx-grid-main">
    <section className="wx-card wx-active-card"><div className="wx-card-head"><div><span className="wx-section-label">PRIORITY</span><h3>Active order</h3></div>{active&&<span className={'wx-badge '+active.status.toLowerCase()}>{labels[active.status]}</span>}</div>{active?<OrderCompact order={active} open={()=>p.open(active)} advance={()=>p.advance(active)} action={p.action(active.status)}/>:<div className="wx-empty"><CheckCircle2 size={32}/><b>No active orders</b><span>You’re all caught up. Check upcoming bookings for your next visit.</span><button onClick={()=>p.nav('orders')}>View orders <ChevronRight size={15}/></button></div>}</section>
