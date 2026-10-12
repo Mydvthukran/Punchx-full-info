@@ -239,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       // Preserve the backend's diagnostic response so a deployment/configuration
       // problem does not get hidden behind a generic sign-in notice.
       try {
-        const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+          const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
         const tokenRes = await fetch(`${backendBase}/api/auth/namoid-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
