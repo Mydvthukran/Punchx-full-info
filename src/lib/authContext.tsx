@@ -232,28 +232,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
   const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
     let firebaseUid: string | null = null;
+    let tokenExchangeError = '';
 
     if (auth) {
-      // 1. Try backend Custom Token endpoint
+      // 1. Exchange the verified NamoID sign-in for a Firebase custom token.
+      // Preserve the backend's diagnostic response so a deployment/configuration
+      // problem does not get hidden behind a generic sign-in notice.
       try {
-        const backendBase = import.meta.env.VITE_BACKEND_URL || '';
+        const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
         const tokenRes = await fetch(`${backendBase}/api/auth/namoid-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken, identity, role }),
         });
-        if (tokenRes.ok) {
-          const data = await tokenRes.json();
-          if (data.customToken) {
-            const userCred = await signInWithCustomToken(auth, data.customToken);
-            firebaseUid = userCred.user.uid;
-          }
+        const data = await tokenRes.json().catch(() => ({}));
+        if (!tokenRes.ok) {
+          tokenExchangeError = String(data.error || `Firebase token exchange failed (HTTP ${tokenRes.status}).`);
+        } else if (data.customToken) {
+          const userCred = await signInWithCustomToken(auth, data.customToken);
+          firebaseUid = userCred.user.uid;
+        } else {
+          tokenExchangeError = String(data.error || 'The authentication server did not return a Firebase custom token.');
         }
       } catch (customTokErr) {
+        tokenExchangeError = customTokErr instanceof Error
+          ? customTokErr.message
+          : 'Could not reach the Firebase authentication server.';
         console.warn('Custom token auth notice:', customTokErr);
       }
 
-      // 2. Try OIDC provider credential
+      // 2. If the provider supplies a Firebase-compatible OIDC ID token, try
+      // that route as a fallback.
       if (!auth.currentUser && idToken) {
         try {
           const provider = new OAuthProvider('oidc.namoid');
@@ -262,6 +271,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
           firebaseUid = userCred.user.uid;
         } catch (oidcErr) {
           console.warn('Firebase OIDC credential auth notice:', oidcErr);
+          if (!tokenExchangeError) {
+            tokenExchangeError = oidcErr instanceof Error ? oidcErr.message : 'Firebase OIDC sign-in failed.';
+          }
         }
       }
 
@@ -270,7 +282,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       if (auth.currentUser) {
         firebaseUid = auth.currentUser.uid;
       } else {
-        throw new Error('PUNCHX could not link this sign-in to a persistent Firebase account. Please retry signing in; your data has not been saved under a temporary account.');
+        throw new Error(tokenExchangeError
+          ? `PunchX could not finish Firebase sign-in: ${tokenExchangeError}`
+          : 'PunchX could not link this sign-in to a persistent Firebase account. Check the Firebase custom-token endpoint and NamoID provider configuration, then retry.');
       }
     }
 
