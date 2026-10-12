@@ -19,7 +19,7 @@ interface AuthContextType {
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  loginWithNamoID: (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => Promise<UserProfile | null>;
+  loginWithNamoID: (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string, accessToken?: string) => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
