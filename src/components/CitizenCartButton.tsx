@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ShoppingCart, X, Plus, Minus, Trash2, ArrowRight, Package } from 'lucide-react';
 
 type CartLine = {
@@ -51,7 +51,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
 
   const changeQuantity = (id: string, delta: number) => {
     const next = cart.map(item => item.id === id
-      ? { ...item, quantity: Math.max(1, Math.min(99, Number(item.quantity || 1) + delta)), price: Math.round((Number(item.price || 0) / Math.max(1, Number(item.quantity || 1))) * Math.max(1, Math.min(99, Number(item.quantity || 1) + delta))) }
+      ? { ...item, quantity: Math.max(1, Math.min(99, Number(item.quantity || 1) + delta)), price: Math.round((Number(item.price || 0) / Math.max(1, Number(item.quantity || 1))) * Math.max(1, Math.min(99, Number(item.quantity || 1) + delta))), priceMin: typeof item.priceMin === 'number' ? Math.round((item.priceMin / Math.max(1, Number(item.quantity || 1))) * Math.max(1, Math.min(99, Number(item.quantity || 1) + delta))) : item.priceMin, priceMax: typeof item.priceMax === 'number' ? Math.round((item.priceMax / Math.max(1, Number(item.quantity || 1))) * Math.max(1, Math.min(99, Number(item.quantity || 1) + delta))) : item.priceMax }
       : item);
     setCart(next);
     try { localStorage.setItem('punchx_cart', JSON.stringify(next)); } catch {}
