@@ -508,7 +508,7 @@ async function startServer() {
         workerName: resolvedWorkerName,
         workerPhone: String(workerProfile?.phone || workerApplication?.phone || orderData.workerPhone || ""),
         workerEmail: String(workerProfile?.email || workerApplication?.email || orderData.workerEmail || ""),
-        workerCategory: String(workerProfile?.workerSkill || workerProfile?.skill || workerApplication?.skill || orderData.category || ""),
+        workerCategory: String(workerProfile?.workerSkill || workerApplication?.skill || orderData.category || ""),
         workerAddress: String(workerProfile?.address || workerApplication?.address || ""),
         workerArea: String(workerProfile?.area || workerApplication?.area || ""),
         workerProfileSnapshot: workerProfile ? {
@@ -516,8 +516,8 @@ async function startServer() {
           name: workerProfile?.name || workerApplication?.legalName || resolvedWorkerName,
           phone: workerProfile?.phone || workerApplication?.phone || "",
           email: workerProfile?.email || workerApplication?.email || "",
-          skill: workerProfile?.workerSkill || workerProfile?.skill || workerApplication?.skill || "",
-          categories: workerProfile?.workerCategories || workerProfile?.categories || workerApplication?.categories || [],
+          skill: workerProfile?.workerSkill || workerApplication?.skill || "",
+          categories: workerProfile?.workerCategories || workerApplication?.categories || [],
           area: workerProfile?.area || workerApplication?.area || "",
           city: workerProfile?.city || workerApplication?.city || "",
         } : (workerApplication ? {
