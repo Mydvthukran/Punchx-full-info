@@ -9,8 +9,9 @@ type PendingBooking={cart?:Array<{id?:string;serviceId?:string;serviceName?:stri
 const load=():PendingBooking=>{try{return JSON.parse(localStorage.getItem('punchx_pending_booking')||'{}');}catch{return{};}};
 
 function getCustomerReferenceId(uid:string){
+  const expected=`PXC-${uid.slice(-8).toUpperCase()}`;
   const existing=localStorage.getItem('punchx_customer_id');
-  const customerId=existing||`PXC-${uid.slice(-8).toUpperCase()}`;
+  const customerId=existing===expected?existing:expected;
   localStorage.setItem('punchx_customer_id',customerId);
   return customerId;
 }
