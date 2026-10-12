@@ -437,7 +437,7 @@ function HomeView(p:any){
    </div>
    <div className="wx-geofence-actions">
     <span className={'wx-live-location '+(p.geo?'ready':'')}>{p.geo?'LIVE':'LOCATION NEEDED'}</span>
-    <button className={'wx-online-toggle '+(p.online?'online':'offline')} onClick={p.toggleOnline} disabled={p.availabilitySaving} aria-busy={p.availabilitySaving}><i></i>{p.availabilitySaving?'Saving…':p.online?'Go offline':'Come online'}</button>
+    <button className={'wx-online-toggle '+(p.online?'online':'offline')} onClick={p.toggleOnline} disabled={p.availabilitySaving} aria-busy={p.availabilitySaving}><i></i>{p.availabilitySaving?'Saving…':p.online?'Go Off':'Come Online'}</button>
     <small>{p.online?'Online: eligible for instant / SOS requests.':'Offline: instant / SOS requests are not offered; later bookings remain visible.'}</small>
    </div>
   </section>
