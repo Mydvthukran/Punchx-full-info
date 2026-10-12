@@ -126,6 +126,56 @@ function AppMain() {
     }
   }, [userProfile, isLoadingProfile, currentUser]);
 
+  // Keep customer GPS refreshed automatically while PunchX is open. Browser/device
+  // location permission is required; coordinates remain local until a service flow uses them.
+  useEffect(() => {
+    if (!currentUser || activePanelRole !== 'customer' || !navigator.geolocation) return;
+    let active = true;
+    let watchId: number | null = null;
+    const startWatching = () => {
+      if (!active || watchId !== null) return;
+      watchId = navigator.geolocation.watchPosition((position) => {
+        if (!active) return;
+        try {
+          const previous = JSON.parse(localStorage.getItem('punchx_user_location') || '{}');
+          localStorage.setItem('punchx_user_location', JSON.stringify({
+            ...previous,
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString(),
+            source: 'browser-gps'
+          }));
+        } catch (error) {
+          console.warn('Could not save latest GPS position locally:', error);
+        }
+      }, (error) => {
+        // Permission denial is respected. The user can enable location in device/browser settings.
+        if (error.code !== error.PERMISSION_DENIED) console.warn('PunchX GPS update unavailable:', error.message);
+      }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+    };
+    if (navigator.permissions?.query) {
+      navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((permission) => {
+        if (!active) return;
+        if (permission.state === 'granted' || permission.state === 'prompt') startWatching();
+        permission.onchange = () => {
+          if (!active) return;
+          if (permission.state === 'granted') startWatching();
+          if (permission.state === 'denied' && watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+          }
+        };
+      }).catch(startWatching);
+    } else {
+      startWatching();
+    }
+    return () => {
+      active = false;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [currentUser, activePanelRole]);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     window.setTimeout(() => setToastMessage(prev => prev === message ? null : prev), 4500);
