@@ -305,27 +305,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
   };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
-    const firebaseUid = auth.currentUser?.uid;
-    const payload = { ...updates, updatedAt: new Date().toISOString() };
-
-    // Always update the local signed-in profile immediately. Persist to Firestore
-    // when a Firebase UID is available, while keeping a usable local fallback.
-    setUserProfile((prev) => {
-      const next = prev ? { ...prev, ...payload } : null;
-      if (next) {
-        try { localStorage.setItem('punchx_namoid_profile', JSON.stringify(next)); } catch {}
-      }
-      return next;
-    });
-
-    if (!firebaseUid) return;
-
-    try {
-      const userDocRef = doc(db, 'users', firebaseUid);
-      await setDoc(userDocRef, payload, { merge: true });
-    } catch (error) {
-      console.error('Error updating user profile in Firestore; local profile retained:', error);
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      throw new Error('Your Firebase sign-in session is missing. Please sign in again before saving profile changes.');
     }
+
+    const firebaseUid = firebaseUser.uid;
+    const payload = { ...updates, updatedAt: new Date().toISOString() };
+    const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+    const idToken = await firebaseUser.getIdToken();
+    const response = await fetch(`${backendBase}/api/users/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success !== true || !result.user) {
+      throw new Error(result.error || 'Firebase could not confirm your profile update. Please retry.');
+    }
+
+    const savedProfile = { ...(userProfile || {}), ...result.user, uid: firebaseUid } as UserProfile;
+    setUserProfile(savedProfile);
+    try { localStorage.setItem('punchx_namoid_profile', JSON.stringify(savedProfile)); } catch {}
   };
 
   const logout = async () => {
