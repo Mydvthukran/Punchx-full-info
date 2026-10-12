@@ -85,7 +85,7 @@ export default function WebsiteNavbar({
   return (
     <>
       <header id="punchx-website-navbar" className="sticky top-0 z-[80] w-full border-b border-black/5 bg-white/90 backdrop-blur-2xl">
-        <div className="mx-auto flex h-[68px] max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:h-[76px] lg:px-8">
+        <div className="mx-auto flex w-full h-[68px] max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:h-[76px] lg:px-8">
           <button
             aria-label="Open navigation"
             onClick={() => setMobileOpen(v => !v)}
