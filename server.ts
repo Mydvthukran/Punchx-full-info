@@ -985,9 +985,13 @@ async function startServer() {
       };
 
       await userRef.set(profilePatch, { merge: true });
-      await dbAdapter.upsertUser(profilePatch as any);
+      try {
+        await dbAdapter.upsertUser(profilePatch as any);
+      } catch (profileSyncError) {
+        logger.warn("Worker availability Firestore write succeeded; optional database profile sync skipped:", profileSyncError);
+      }
 
-      if (workerApp?.id) {
+      if (workerApp?.id && workerApp.uid === uid) {
         await Promise.allSettled([
           firestore.collection("workerApplications").doc(String(workerApp.id)).set({ uid, ...availability }, { merge: true }),
           firestore.collection("worker_applications").doc(String(workerApp.id)).set({ uid, ...availability }, { merge: true })
