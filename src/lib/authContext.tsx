@@ -232,29 +232,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     const firebaseUid = auth.currentUser?.uid;
+    const payload = { ...updates, updatedAt: new Date().toISOString() };
+
+    // Always update the local signed-in profile immediately. Persist to Firestore
+    // when a Firebase UID is available, while keeping a usable local fallback.
+    setUserProfile((prev) => {
+      const next = prev ? { ...prev, ...payload } : null;
+      if (next) {
+        try { localStorage.setItem('punchx_namoid_profile', JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
 
     if (!firebaseUid) return;
 
     try {
       const userDocRef = doc(db, 'users', firebaseUid);
-
-      const payload = {
-        ...updates,
-        updatedAt: new Date().toISOString()
-      };
-      await updateDoc(userDocRef, payload);
-      setUserProfile((prev) => {
-        const next = prev ? { ...prev, ...payload } : null;
-        if (next) localStorage.setItem('punchx_namoid_profile', JSON.stringify(next));
-        return next;
-      });
+      await setDoc(userDocRef, payload, { merge: true });
     } catch (error) {
-      console.error('Error updating user profile:', error);
-      setUserProfile((prev) => {
-        const next = prev ? { ...prev, ...updates } : null;
-        if (next) localStorage.setItem('punchx_namoid_profile', JSON.stringify(next));
-        return next;
-      });
+      console.error('Error updating user profile in Firestore; local profile retained:', error);
     }
   };
 
