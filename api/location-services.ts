@@ -73,6 +73,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     let { lat, lng, address, landmark } = req.body || {};
+    // Geofence decisions must use coordinates from a device GPS fix, never a typed-address
+    // geocode or an IP/default fallback. The client supplies these coordinates explicitly.
+    if (!validPoint({ lat, lng })) {
+      return res.status(400).json({ success: false, error: 'A valid device GPS fix is required for geofence verification.' });
+    }
+    lat = Number(lat);
+    lng = Number(lng);
     const mapsKey = process.env.GOOGLE_MAPS_PLATFORM_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
     let fullAddress = address || "";
     let area = "";
