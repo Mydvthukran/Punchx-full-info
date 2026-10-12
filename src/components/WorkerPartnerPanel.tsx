@@ -143,7 +143,7 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
        const bt=new Date(b.createdAt||'').getTime() || b.createdTimestamp || 0;
        return bt-at;
      }).map(function(o):Order{
-       return {id:o.id,customer:o.customerName||'Customer information unavailable',service:o.category||'Service unavailable',address:o.customerAddress||o.area||o.sector||'Address unavailable',distance:Number.isFinite(Number((o as any).distanceKm))&&Number((o as any).distanceKm)>0?Number((o as any).distanceKm):null,time:o.time||'Time unavailable',date:o.date||'Upcoming',duration:o.emergencyETA?'Emergency':'Scheduled',price:o.totalAmountToPay!=null||o.price!=null?Number(o.totalAmountToPay??o.price):null,earning:o.professionalPayout!=null?Number(o.professionalPayout):null,status:mapStatus(o.status),payment:o.paymentStatus||o.paymentMethod||'Payment status unavailable',avatar:(o.customerName||'CU').slice(0,2).toUpperCase(),raw:o};
+       return {id:o.id,customer:o.customerName||'Customer information unavailable',service:o.serviceName||o.category||'Service unavailable',address:o.customerAddress||o.area||o.sector||'Address unavailable',distance:Number.isFinite(Number((o as any).distanceKm))&&Number((o as any).distanceKm)>0?Number((o as any).distanceKm):null,time:o.time||'Time unavailable',date:o.date||'Upcoming',duration:o.emergencyETA?'Emergency':'Scheduled',price:o.totalAmountToPay!=null||o.price!=null?Number(o.totalAmountToPay??o.price):null,earning:o.professionalPayout!=null?Number(o.professionalPayout):null,status:mapStatus(o.status),payment:o.paymentStatus||o.paymentMethod||'Payment status unavailable',avatar:(o.customerName||'CU').slice(0,2).toUpperCase(),raw:o};
      });
      setOrders(nextOrders);
    };
