@@ -324,10 +324,14 @@ async function startServer() {
       const allowedFields = [
         "name", "email", "phone", "photoURL", "avatar", "dob", "birthdate",
         "isProfileCompleted", "address", "streetAddress", "landmark", "area",
-        "sector", "city", "bio", "location", "geofenceRadiusKm", "geofenceArea",
-        "serviceAreas", "geofenceAreas", "serviceAreaUpdatedAt", "geofenceUpdatedAt",
-        "workerSkill", "workerCategories", "workerExperience", "visitingFee",
-        "minimumVisitingFee", "maximumVisitingFee", "applicationId",
+        "sector", "city", "district", "state", "postalCode", "bio", "location",
+        "geofenceRadiusKm", "geofenceArea", "geofenceAreas", "serviceAreas",
+        "serviceAreaMode", "serviceAreaUpdatedAt", "geofenceUpdatedAt",
+        "workerSkill", "workerCategories", "workerExperience", "experienceYears",
+        "skill", "categories", "customSkill", "visitingFee", "minimumVisitingFee",
+        "maximumVisitingFee", "applicationId", "workerAvailability", "isOnline",
+        "workerStatus", "availabilityUpdatedAt", "termsAccepted", "serviceRadius",
+        "serviceRadiusKm",
       ];
       const safeUpdates: Record<string, any> = {};
       for (const field of allowedFields) {
