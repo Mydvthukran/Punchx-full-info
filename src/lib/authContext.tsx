@@ -239,20 +239,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       // Preserve the backend's diagnostic response so a deployment/configuration
       // problem does not get hidden behind a generic sign-in notice.
       try {
-          const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
-        const tokenRes = await fetch(`${backendBase}/api/namoid-token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken, identity, role }),
-        });
-        const data = await tokenRes.json().catch(() => ({}));
-        if (!tokenRes.ok) {
-          tokenExchangeError = String(data.error || `Firebase token exchange failed (HTTP ${tokenRes.status}).`);
-        } else if (data.customToken) {
-          const userCred = await signInWithCustomToken(auth, data.customToken);
-          firebaseUid = userCred.user.uid;
-        } else {
-          tokenExchangeError = String(data.error || 'The authentication server did not return a Firebase custom token.');
+        const configuredBackend = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/+$/, '');
+        // Prefer the same-origin Vercel function. VITE_BACKEND_URL may point to
+        // an older API host which returns 404 even while the app is deployed.
+        const endpoints = Array.from(new Set([
+          `${window.location.origin}/api/namoid-token`,
+          `${window.location.origin}/api/auth/namoid-token`,
+          ...(configuredBackend ? [
+            `${configuredBackend}/api/namoid-token`,
+            `${configuredBackend}/api/auth/namoid-token`,
+          ] : []),
+        ]));
+        let lastStatus = 0;
+        let lastMessage = '';
+        for (const endpoint of endpoints) {
+          try {
+            const tokenRes = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken, identity, role }),
+            });
+            const data = await tokenRes.json().catch(() => ({}));
+            if (tokenRes.ok && data.customToken) {
+              const userCred = await signInWithCustomToken(auth, data.customToken);
+              firebaseUid = userCred.user.uid;
+              tokenExchangeError = '';
+              break;
+            }
+            lastStatus = tokenRes.status;
+            lastMessage = String(data.error || `Firebase token exchange failed (HTTP ${tokenRes.status}).`);
+            // Try the next endpoint only when this path is not deployed.
+            if (tokenRes.status !== 404) {
+              tokenExchangeError = lastMessage;
+              break;
+            }
+          } catch (endpointError) {
+            lastMessage = endpointError instanceof Error ? endpointError.message : 'Could not reach the authentication endpoint.';
+          }
+        }
+        if (!firebaseUid) {
+          tokenExchangeError = lastMessage || (lastStatus
+            ? `Firebase token exchange failed (HTTP ${lastStatus}).`
+            : 'Could not reach the Firebase authentication endpoint.');
         }
       } catch (customTokErr) {
         tokenExchangeError = customTokErr instanceof Error
