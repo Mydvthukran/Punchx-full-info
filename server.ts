@@ -246,7 +246,10 @@ async function startServer() {
       const safeProfile: Record<string, any> = {};
       for (const field of profileFields) {
         const value = submittedProfile[field];
-        if (value !== undefined && value !== null) safeProfile[field] = value;
+        if (value === undefined || value === null || value === "") continue;
+        if (Array.isArray(value) && value.length === 0) continue;
+        if (field === "isProfileCompleted" && value === false) continue;
+        safeProfile[field] = value;
       }
 
       await firestore.runTransaction(async (transaction) => {
@@ -315,13 +318,38 @@ async function startServer() {
 
   app.post("/api/users/profile", requireFirebaseUser, async (req, res) => {
     try {
-      const uid = (req as any).user.uid;
-      const profileData = req.body;
-      const updated = await dbAdapter.upsertUser({ ...profileData, uid });
+      const uid = String((req as any).user.uid || "");
+      const profileData = req.body && typeof req.body === "object" ? req.body : {};
+      const existing = await dbAdapter.getUser(uid);
+      const allowedFields = [
+        "name", "email", "phone", "photoURL", "avatar", "dob", "birthdate",
+        "isProfileCompleted", "address", "streetAddress", "landmark", "area",
+        "sector", "city", "bio", "location", "geofenceRadiusKm", "geofenceArea",
+        "serviceAreas", "geofenceAreas", "serviceAreaUpdatedAt", "geofenceUpdatedAt",
+        "workerSkill", "workerCategories", "workerExperience", "visitingFee",
+        "minimumVisitingFee", "maximumVisitingFee", "applicationId",
+      ];
+      const safeUpdates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        const value = profileData[field];
+        if (value === undefined || value === null) continue;
+        if (typeof value === "string" && !value.trim()) continue;
+        if (Array.isArray(value) && value.length === 0) continue;
+        safeUpdates[field] = value;
+      }
+      // Never accept role, approval status, UID, or audit counters from a client.
+      const updated = await dbAdapter.upsertUser({
+        ...(existing || { uid, role: "citizen" }),
+        ...safeUpdates,
+        uid,
+        role: existing?.role || "citizen",
+        status: existing?.status,
+        createdAt: existing?.createdAt,
+      } as any);
       return res.json({ success: true, user: updated });
     } catch (err: any) {
-      logger.error("Upsert user error:", err);
-      return res.status(500).json({ success: false, error: "Failed to update user profile" });
+      logger.error("Upsert user error; profile was not persisted:", err);
+      return res.status(500).json({ success: false, error: "Failed to save profile to Firebase. Please retry." });
     }
   });
 
