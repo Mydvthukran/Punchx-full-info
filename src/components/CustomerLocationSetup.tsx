@@ -96,7 +96,8 @@ export default function CustomerLocationSetup({
   const [resolvedCity, setResolvedCity] = useState('Kolkata');
   const [registeredServices, setRegisteredServices] = useState<RegisteredService[]>([]);
   const [coverageStatus, setCoverageStatus] = useState('Checking registered services in your area...');
-  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+  const [hasGpsFix, setHasGpsFix] = useState(false);
 
   // Sync state if NamoID profile loads asynchronously
   useEffect(() => {
@@ -129,13 +130,18 @@ export default function CustomerLocationSetup({
     lat?: number,
     lng?: number
   ) => {
+    // Do not geofence from a typed address, IP lookup, or placeholder coordinates.
+    const fixLat = typeof lat === 'number' ? lat : coords.lat;
+    const fixLng = typeof lng === 'number' ? lng : coords.lng;
+    if (!hasGpsFix && !(typeof lat === 'number' && typeof lng === 'number')) return;
+    if (!Number.isFinite(fixLat) || !Number.isFinite(fixLng) || (fixLat === 0 && fixLng === 0)) return;
     setIsResolvingBackend(true);
     try {
       const resp = await fetchRegisteredLocationServices({
-        address: targetAddress || address || 'Indiranagar 100ft Road, Kolkata',
+        address: targetAddress || address,
         landmark: targetLandmark || landmark,
-        lat: lat || coords.lat,
-        lng: lng || coords.lng
+        lat: fixLat,
+        lng: fixLng
       });
 
       if (resp && resp.success) {
@@ -155,19 +161,16 @@ export default function CustomerLocationSetup({
     }
   }, [address, landmark, coords.lat, coords.lng]);
 
-  // Initial lookup on mount
-  useEffect(() => {
-    resolveServicesFromBackend(address || 'Indiranagar, Kolkata', landmark);
-  }, []);
+  // No serviceability lookup until a real device GPS fix is acquired.
 
   // Debounced lookup when user types manual address or landmark
   useEffect(() => {
-    if (!address || address.trim().length < 3) return;
+    if (!hasGpsFix || !address || address.trim().length < 3) return;
     const timer = setTimeout(() => {
       resolveServicesFromBackend(address, landmark);
     }, 700);
     return () => clearTimeout(timer);
-  }, [address, landmark]);
+  }, [address, landmark, hasGpsFix]);
 
   // GPS Auto Detection Trigger
   const handleAutoDetectGps = async () => {
@@ -180,6 +183,7 @@ export default function CustomerLocationSetup({
       if (loc && loc.address) {
         setAddress(loc.address);
         setCoords({ lat: loc.lat, lng: loc.lng });
+        setHasGpsFix(true);
         setResolvedArea(loc.area);
         setResolvedCity(loc.city);
         setResolvedSector(loc.sector);
@@ -233,6 +237,12 @@ export default function CustomerLocationSetup({
       return;
     }
 
+    // A real device GPS fix is required before calculating serviceability or submitting location.
+    if (!hasGpsFix || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng) || (coords.lat === 0 && coords.lng === 0)) {
+      setErrorMessage('Please detect your current GPS location before continuing so PunchX can verify the service boundary accurately.');
+      return;
+    }
+
     // 3. Address Validation
     if (!address.trim()) {
       setErrorMessage('Please enter your house / street / locality address.');
@@ -261,6 +271,8 @@ export default function CustomerLocationSetup({
       localStorage.setItem('punchx_user_location', JSON.stringify({
         lat: coords.lat,
         lng: coords.lng,
+        gpsVerified: true,
+        gpsAccuracyRequirementMeters: 100,
         address: finalFormattedAddress,
         area: resolvedArea,
         city: resolvedCity,
