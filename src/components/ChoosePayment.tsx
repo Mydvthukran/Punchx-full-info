@@ -5,7 +5,7 @@ import { calculatePunchXPricing, formatINR } from '../config/punchxCommerce';
 import { AppScreen, Worker } from '../types';
 
 interface ChoosePaymentProps { onTransition:(target:AppScreen)=>void; selectedWorker:Worker|null; promoApplied:boolean; hasUsedBonus?:boolean; onOrderFinalized?:()=>void; onApplyPromo:(code:string)=>void; showNotification?:(msg:string)=>void; }
-type PendingBooking={serviceId?:string;serviceName?:string;category?:string;description?:string;price?:number|null;address?:string;date?:string;time?:string;workerId?:string|null;workerName?:string|null;workerIsDemo?:boolean;isPersonalSelection?:boolean;bookingTiming?:'instant'|'later';hasWarrantyGuarantee?:boolean;warrantyFee?:number;customerTotal?:number;note?:string;};
+type PendingBooking={cart?:Array<{id?:string;serviceId?:string;serviceName?:string;category?:string;subcategory?:string;description?:string;price?:number;duration?:string;quantity?:number}>;serviceId?:string;serviceName?:string;category?:string;description?:string;price?:number|null;address?:string;date?:string;time?:string;workerId?:string|null;workerName?:string|null;workerIsDemo?:boolean;isPersonalSelection?:boolean;bookingTiming?:'instant'|'later';hasWarrantyGuarantee?:boolean;warrantyFee?:number;customerTotal?:number;note?:string;residentialAddress?:Record<string,unknown>;addressCoordinates?:{lat:number;lng:number};geofenceArea?:string;geofenceCity?:string;serviceAreaMatch?:string|null;serviceAvailabilityChecked?:boolean;serviceAvailable?:boolean;};
 const load=():PendingBooking=>{try{return JSON.parse(localStorage.getItem('punchx_pending_booking')||'{}');}catch{return{};}};
 
 function getCustomerReferenceId(uid:string){
@@ -59,11 +59,19 @@ export default function ChoosePayment({onTransition,selectedWorker,onOrderFinali
           category:pending.category||'Home Services',
           serviceId:pending.serviceId||null,serviceName:pending.serviceName,
           description:pending.description||'',note:pending.note||'',
-          price:pending.price??null,totalAmountToPay:total,
+          serviceItems:(Array.isArray(pending.cart)?pending.cart:[]).map((item)=>({id:item.id||item.serviceId||'',serviceId:item.serviceId||null,serviceName:item.serviceName||'',category:item.category||pending.category||'',subcategory:item.subcategory||'',description:item.description||'',price:Number(item.price||0),duration:item.duration||'',quantity:Number(item.quantity||1)})),
+          price:pending.price??null,visitingFee:pending.price??null,totalAmountToPay:total,
           customerPlatformFee:pricing?.customerPlatformFee??0,
           warrantyFee:Number(pending.warrantyFee||0),
           hasWarrantyGuarantee:Boolean(pending.hasWarrantyGuarantee),
           warrantyExpiryDate:pending.hasWarrantyGuarantee?new Date(Date.now()+30*86400000).toISOString():null,
+          residentialAddress:pending.residentialAddress||null,
+          addressCoordinates:pending.addressCoordinates||null,
+          geofenceArea:pending.geofenceArea||'',
+          geofenceCity:pending.geofenceCity||'',
+          serviceAreaMatch:pending.serviceAreaMatch||null,
+          serviceAvailabilityChecked:Boolean(pending.serviceAvailabilityChecked),
+          serviceAvailable:Boolean(pending.serviceAvailable),
           date:pending.date,time:pending.time,workerId,workerName,
           workerIsDemo:Boolean(pending.workerIsDemo),
           isPersonalSelection:Boolean(pending.isPersonalSelection),
