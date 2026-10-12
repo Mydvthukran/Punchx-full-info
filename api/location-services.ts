@@ -235,7 +235,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.8,
         startingPrice: 179,
         slaMinutes: 12,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'Short-circuit repair, MCB panel installation, heavy cabling & UPS/Inverter'
       },
       {
@@ -247,7 +247,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.9,
         startingPrice: 159,
         slaMinutes: 18,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'High-pressure leaks, concealed line repairs, fixture replacement & drain unclog'
       },
       {
@@ -259,7 +259,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.85,
         startingPrice: 249,
         slaMinutes: 25,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'Hospital-grade sanitization, kitchen chimney degrease & bathroom restoration'
       },
       {
@@ -271,7 +271,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.75,
         startingPrice: 299,
         slaMinutes: 30,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'Interior luxury emulsion, moisture barrier waterproofing & touch-ups'
       },
       {
@@ -283,7 +283,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.8,
         startingPrice: 189,
         slaMinutes: 20,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'Smart digital lock installation, bespoke woodwork, hinges & modular kitchen repair'
       },
       {
@@ -295,7 +295,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.9,
         startingPrice: 219,
         slaMinutes: 20,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'Odorless herbal pest eradication, anti-termite and gel bait treatments'
       },
       {
@@ -307,7 +307,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.8,
         startingPrice: 199,
         slaMinutes: 15,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'Washing machines, microwave ovens, refrigerators & water purifiers'
       },
       {
@@ -319,7 +319,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         avgRating: 4.7,
         startingPrice: 499,
         slaMinutes: 45,
-        available: true,
+        available: geofence.configured && geofence.inside,
         description: 'High-care furniture packaging, express tempo dispatch & cargo handling'
       }
     ];
@@ -332,7 +332,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...srv,
         activeSpecialists: Math.max(3, srv.activeSpecialists - hash),
         sectorCoverage: sectorName,
-        landmarkNote: landmark ? `Servicing near ${landmark}` : `Full coverage across ${sectorName}`
+        landmarkNote: landmark ? `Near ${landmark}` : (geofence.configured && geofence.inside ? `Inside ${geofence.zoneName}` : "Coverage not confirmed")
       };
     });
 
@@ -340,7 +340,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       address: fullAddress,
       area: rawArea,
-      city: city || "Bengaluru",
+      city: city || "",
       sector: sectorName,
       landmark: landmark || "",
       lat: Number(lat),
