@@ -47,7 +47,7 @@ export default function ChoosePayment({onTransition,selectedWorker,onOrderFinali
       if(!firebaseUser) throw new Error('Your sign-in session expired. Please sign in again.');
       const idToken=await firebaseUser.getIdToken();
       const profile=(()=>{try{return JSON.parse(localStorage.getItem('punchx_namoid_profile')||'{}');}catch{return{};}})();
-      const backendBase=String(import.meta.env.VITE_BACKEND_URL||'').replace(/\\/$/,'');
+      const backendBase=String(import.meta.env.VITE_BACKEND_URL||'').replace(/\/$/,'');
       const response=await fetch(`${backendBase}/api/orders`,{
         method:'POST',
         headers:{'Content-Type':'application/json',Authorization:`Bearer ${idToken}`},
