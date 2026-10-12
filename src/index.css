@@ -464,3 +464,57 @@ input, textarea, select { min-width:0; max-width:100%; }
   #global-prestige-toast{left:8px;right:8px;max-width:calc(100vw - 16px);padding:10px}
   [role="dialog"],[aria-modal="true"]{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important}
 }
+
+
+/* Final shared notification/dialog positioning for customer and worker panels. */
+#global-prestige-toast{
+  position:fixed!important;
+  top:max(12px,env(safe-area-inset-top))!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  width:min(440px,calc(100vw - 24px))!important;
+  max-width:calc(100vw - 24px)!important;
+  max-height:calc(100dvh - 24px)!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  transform:translateX(-50%)!important;
+  z-index:2147483647!important;
+  overflow-wrap:anywhere!important;
+  overflow-x:clip!important;
+  overflow-y:auto!important;
+  animation:none!important;
+}
+#global-prestige-toast p{min-width:0!important;overflow-wrap:anywhere!important;word-break:normal!important}
+@media(max-width:767px){
+  #global-prestige-toast{
+    top:max(8px,env(safe-area-inset-top))!important;
+    left:50%!important;
+    right:auto!important;
+    width:calc(100vw - 20px)!important;
+    max-width:calc(100vw - 20px)!important;
+    padding:12px!important;
+    transform:translateX(-50%)!important;
+  }
+  #root .wx-overlay{
+    position:fixed!important;
+    inset:0!important;
+    box-sizing:border-box!important;
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    padding:calc(12px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom))!important;
+    overflow-x:clip!important;
+    overflow-y:auto!important;
+    z-index:2147483000!important;
+  }
+  #root .wx-overlay .wx-modal{
+    flex:0 1 auto!important;
+    width:min(680px,100%)!important;
+    max-width:100%!important;
+    max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    margin:0 auto!important;
+    overflow-x:clip!important;
+    overflow-y:auto!important;
+  }
+}
