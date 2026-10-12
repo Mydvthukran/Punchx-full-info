@@ -400,3 +400,67 @@ input, textarea, select { min-width:0; max-width:100%; }
   #root [role="dialog"][aria-modal="true"] { width:calc(100vw - 16px) !important; max-width:calc(100vw - 16px) !important; }
 }
 
+
+
+/* Final global mobile containment for dialogs, menus, banners and notifications. */
+#global-prestige-toast{
+  box-sizing:border-box;
+  width:min(440px,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+  overflow-wrap:anywhere;
+}
+#global-prestige-toast p{min-width:0;overflow-wrap:anywhere;word-break:normal}
+[role="dialog"],[aria-modal="true"]{box-sizing:border-box;min-width:0;max-width:calc(100vw - 24px)}
+@media(max-width:767px){
+  html,body,#root{width:100%;min-width:0;max-width:100%;overflow-x:clip}
+  #root main,#root header,#root footer,#root section,#root article,#root form{min-width:0;max-width:100%}
+  #global-prestige-toast{
+    top:max(10px,env(safe-area-inset-top));
+    left:12px;
+    right:12px;
+    width:auto;
+    max-width:calc(100vw - 24px);
+    transform:none;
+    padding:12px;
+    gap:8px;
+  }
+  #global-prestige-toast p{font-size:12px;line-height:1.45}
+  [role="dialog"],[aria-modal="true"]{
+    width:calc(100vw - 20px)!important;
+    max-width:calc(100vw - 20px)!important;
+    max-height:calc(100dvh - 20px)!important;
+    overflow-x:clip!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  [data-radix-popper-content-wrapper]{
+    box-sizing:border-box;
+    max-width:calc(100vw - 16px)!important;
+  }
+  .fixed.inset-0.flex.items-center.justify-center{
+    box-sizing:border-box;
+    width:100%;
+    max-width:100vw;
+    padding:10px!important;
+    overflow-y:auto;
+    overflow-x:clip;
+  }
+  .fixed.inset-0.flex.items-center.justify-center>div{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+    max-height:calc(100dvh - 20px);
+    overflow-x:clip;
+    overflow-y:auto;
+  }
+  input,textarea,select{font-size:16px}
+  button,a,[role="button"]{overflow-wrap:anywhere;touch-action:manipulation}
+  .overflow-x-auto{max-width:100%;overscroll-behavior-x:contain}
+  img,video,iframe,canvas{max-width:100%}
+}
+@media(max-width:359px){
+  #global-prestige-toast{left:8px;right:8px;max-width:calc(100vw - 16px);padding:10px}
+  [role="dialog"],[aria-modal="true"]{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important}
+}
