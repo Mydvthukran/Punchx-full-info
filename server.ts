@@ -939,6 +939,70 @@ async function startServer() {
     }
   });
 
+  // Authoritative worker availability endpoint. Uses Firebase Admin so a valid
+  // worker session is not blocked by client-side Firestore rules or stale profile IDs.
+  app.patch("/api/workers/availability", requireFirebaseUser, async (req, res) => {
+    try {
+      const uid = String((req as any).user?.uid || "");
+      const nextOnline = req.body?.online;
+      if (!uid || typeof nextOnline !== "boolean") {
+        return res.status(400).json({ success: false, error: "A valid worker session and boolean online value are required." });
+      }
+
+      const userProfile = await dbAdapter.getUser(uid);
+      const contact = {
+        phone: userProfile?.phone || (req as any).user?.phone_number,
+        email: userProfile?.email || (req as any).user?.email
+      };
+      const workerApp = await dbAdapter.getWorkerApplicationByUid(uid)
+        || ((contact.phone || contact.email) ? await dbAdapter.getWorkerApplicationByContact(contact) : null);
+
+      if (userProfile?.role !== "worker" && !workerApp) {
+        return res.status(403).json({ success: false, error: "This account is not registered as a PunchX professional." });
+      }
+
+      if (getApps().length === 0) {
+        return res.status(503).json({ success: false, error: "Worker availability service is not connected to Firebase Admin." });
+      }
+
+      const updatedAt = new Date().toISOString();
+      const availability = {
+        workerAvailability: nextOnline,
+        isOnline: nextOnline,
+        workerStatus: nextOnline ? "ONLINE" : "OFFLINE",
+        availabilityUpdatedAt: updatedAt,
+        updatedAt
+      };
+      const firestore = getFirestore();
+      const userRef = firestore.collection("users").doc(uid);
+      const currentSnapshot = await userRef.get();
+      const currentData = currentSnapshot.exists ? currentSnapshot.data() : (userProfile || {});
+      const profilePatch = {
+        ...(currentData || {}),
+        uid,
+        role: "worker",
+        ...availability
+      };
+
+      await userRef.set(profilePatch, { merge: true });
+      await dbAdapter.upsertUser(profilePatch as any);
+
+      if (workerApp?.id) {
+        await Promise.allSettled([
+          firestore.collection("workerApplications").doc(String(workerApp.id)).set({ uid, ...availability }, { merge: true }),
+          firestore.collection("worker_applications").doc(String(workerApp.id)).set({ uid, ...availability }, { merge: true })
+        ]);
+      }
+      await firestore.collection("workers").doc(uid).set({ uid, ...availability }, { merge: true });
+
+      logger.info("Worker availability updated", { uid, online: nextOnline });
+      return res.json({ success: true, online: nextOnline, availabilityUpdatedAt: updatedAt });
+    } catch (err: any) {
+      logger.error("Worker availability update error:", err);
+      return res.status(500).json({ success: false, error: "Could not save worker availability. Please retry." });
+    }
+  });
+
   app.post("/api/worker-applications", requireFirebaseUser, async (req, res) => {
     try {
       const uid = (req as any).user.uid;
