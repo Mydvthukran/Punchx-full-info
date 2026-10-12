@@ -343,8 +343,8 @@ async function startServer() {
         ...safeUpdates,
         uid,
         role: existing?.role || "citizen",
-        status: existing?.status,
-        createdAt: existing?.createdAt,
+        ...(existing?.status ? { status: existing.status } : {}),
+        ...(existing?.createdAt ? { createdAt: existing.createdAt } : {}),
       } as any);
       return res.json({ success: true, user: updated });
     } catch (err: any) {
