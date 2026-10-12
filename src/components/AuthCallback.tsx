@@ -117,12 +117,14 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
         const result = await completePunchXAuthRedirect(client, callbackUrl);
         const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
 
-        let profile;
-        if (result.tokens?.id_token) {
-          profile = await loginWithNamoID(result.identity, 'citizen', result.tokens.id_token, result.tokens.access_token);
-        } else {
-          profile = await loginWithNamoID(result.identity, 'citizen');
-        }
+        // Access tokens are required for the server to verify the identity with
+        // NamoID UserInfo. Pass it whether or not this tenant returns an ID token.
+        const profile = await loginWithNamoID(
+          result.identity,
+          'citizen',
+          result.tokens?.id_token,
+          result.tokens?.access_token,
+        );
         window.history.replaceState({}, document.title, '/');
 
         if (rawRole === 'admin') {
@@ -169,15 +171,8 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
         }
       } catch (e: any) {
         console.error("❌ [AuthCallback] Auth callback error:", e);
-        const storedIdentity = localStorage.getItem('punchx_namoid_identity');
-        if (storedIdentity) {
-          const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
-          window.history.replaceState({}, document.title, '/');
-          if (rawRole === 'admin') onTransition('admin-dashboard');
-          else if (rawRole === 'worker') onTransition('worker-signup');
-          else onTransition('home');
-          return;
-        }
+        // Never treat a cached identity as an authenticated session. Firebase
+        // must confirm the session before routing the user into a protected panel.
         setErrorMessage(e?.message || "Authentication callback could not be completed.");
       }
     }
