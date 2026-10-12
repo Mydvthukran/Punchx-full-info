@@ -195,32 +195,22 @@ Use your own development credentials and the official provider dashboards. Do no
 
 ## GPS geofencing and service coverage
 
-PunchX service availability is determined from a verified device GPS fix and server-configured geofence zones. Do not treat a typed address, IP-derived location, placeholder coordinates, or a locality name as proof that a customer is inside the service boundary. Browser geolocation permission must be granted and the reported GPS accuracy must be 100 metres or better.
+PunchX service availability uses server-side geofence zones configured through the server environment variable `PUNCHX_GEOFENCE_ZONES`. The chosen rollout is two circular zones, each with an 8 km radius: one for Nabadwip and one for Kolkata.
 
-Configure `PUNCHX_GEOFENCE_ZONES` in the server/deployment environment before enabling serviceability. It must be a JSON array of circles and/or polygons. Example (replace the example coordinates with your actual approved operating boundary):
+**Neither zone is activated by this repository change.** The centre coordinates for both operating zones have not yet been verified and approved by PunchX operations. Do not guess them or copy sample coordinates from documentation. Until verified centres are supplied and the environment variable is configured in the production server, the API must report coverage as unconfigured and must not mark services available.
 
-```json
-[
-  {
-    "name": "Nabadwip pilot zone",
-    "type": "circle",
-    "center": { "lat": 23.4067, "lng": 88.3653 },
-    "radiusKm": 4
-  },
-  {
-    "name": "Kolkata polygon zone",
-    "type": "polygon",
-    "coordinates": [
-      { "lat": 22.60, "lng": 88.30 },
-      { "lat": 22.60, "lng": 88.45 },
-      { "lat": 22.48, "lng": 88.45 },
-      { "lat": 22.48, "lng": 88.30 }
-    ]
-  }
-]
-```
+### Required server environment variable
 
-The coordinates above are examples only, not verified operational boundaries. Replace them with a boundary approved by PunchX operations before launch. If no valid zones are configured, the API reports that coverage is not configured and does not mark services as available. While the customer page is open, PunchX refreshes a sufficiently accurate GPS fix and rechecks geofence status approximately once per minute. Browsers may suspend location watching in the background; permission cannot be silently forced on.
+- `PUNCHX_GEOFENCE_ZONES` — a JSON array containing both circles. Keep it empty/unset until both centres are verified. Configure it only in the server/deployment environment, never as a `VITE_*` frontend variable.
+
+Required JSON structure after approval (the following is a schema description, not a ready-to-deploy value):
+
+- Zone 1: `name: "Nabadwip"`, `type: "circle"`, `center: { lat: verified latitude, lng: verified longitude }`, `radiusKm: 8`
+- Zone 2: `name: "Kolkata"`, `type: "circle"`, `center: { lat: verified latitude, lng: verified longitude }`, `radiusKm: 8`
+
+Before activation, operations must provide a specific, verified centre location for each city. The centre is important: an 8 km circle covers only points within 8 km of that centre, not the whole city or municipal boundary.
+
+The client-side GPS flow requires a device fix with reported accuracy of 100 metres or better. If GPS permission is denied or the fix is too imprecise, the user must retry with device location enabled; typed addresses and IP-derived positions are not a substitute for precise GPS verification. Browser location watching may pause in the background.
 
 ## Development commands
 
