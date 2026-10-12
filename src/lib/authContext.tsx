@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       // so returning customers/professionals are recorded even without a new OAuth popup.
       void (async () => {
         try {
-          const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+          const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
           const idToken = await user.getIdToken();
           const cachedProfile = (() => {
             try { return JSON.parse(localStorage.getItem('punchx_namoid_profile') || '{}'); } catch { return {}; }
@@ -305,7 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
     const firebaseUid = firebaseUser.uid;
     const payload = { ...updates, updatedAt: new Date().toISOString() };
-    const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+    const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
     const idToken = await firebaseUser.getIdToken();
     const response = await fetch(`${backendBase}/api/users/profile`, {
       method: 'POST',
