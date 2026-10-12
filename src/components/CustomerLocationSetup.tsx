@@ -7,8 +7,7 @@ import {
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Paintbrush, Hammer, Bug, Truck, Tv, Info
 } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, fetchRegisteredLocationServices, RegisteredService } from '../lib/location';
 import DobPicker from './DobPicker';
@@ -291,42 +290,32 @@ export default function CustomerLocationSetup({
       setErrorMessage('Your secure sign-in session is missing. Please sign in again before saving your profile.');
       return;
     }
-    const userPayload = {
-      uid: activeUid,
-      name: name.trim(),
-      dob: dob.trim(),
-      birthdate: dob.trim(),
-      address: finalFormattedAddress,
-      streetAddress: address.trim(),
-      landmark: landmark.trim(),
-      area: resolvedArea,
-      city: resolvedCity,
-      sector: resolvedSector,
-      location: { lat: coords.lat, lng: coords.lng },
-      role: (userProfile?.role || 'citizen') as 'citizen' | 'worker' | 'admin',
-      phone: authMethod === 'phone' ? authTarget : (currentUser?.phone_number || ''),
-      email: authMethod === 'gmail' ? authTarget : (currentUser?.email || ''),
-      isProfileCompleted: true,
-      updatedAt: new Date().toISOString()
-    };
-
     try {
-      // Use the Firebase Authentication UID as the Firestore document ID.
-      // Do not report success when Firestore rejects or cannot complete the write.
-      await setDoc(doc(db, 'users', activeUid), userPayload, { merge: true });
-      if (updateUserProfile) {
-        await updateUserProfile({
-          name: name.trim(),
-          dob: dob.trim(),
-          birthdate: dob.trim(),
-          address: finalFormattedAddress,
-          isProfileCompleted: true
-        });
+      if (!auth.currentUser || auth.currentUser.uid !== activeUid) {
+        throw new Error('Your Firebase account is not ready. Please sign in again.');
       }
+      // One authenticated backend write saves the full customer profile in the
+      // same named Firestore database used by bookings and login history.
+      await updateUserProfile({
+        name: name.trim(),
+        dob: dob.trim(),
+        birthdate: dob.trim(),
+        address: finalFormattedAddress,
+        streetAddress: address.trim(),
+        landmark: landmark.trim(),
+        area: resolvedArea,
+        city: resolvedCity,
+        sector: resolvedSector,
+        location: { lat: coords.lat, lng: coords.lng },
+        phone: authMethod === 'phone' ? authTarget : (currentUser?.phone_number || ''),
+        email: authMethod === 'gmail' ? authTarget : (currentUser?.email || ''),
+        isProfileCompleted: true,
+        updatedAt: new Date().toISOString()
+      } as any);
     } catch (dbErr) {
-      console.error("Firestore customer profile save failed:", dbErr);
+      console.error("Firebase customer profile save failed:", dbErr);
       setIsSubmitting(false);
-      setErrorMessage('Your profile could not be saved to Firebase. Check your connection and try again.');
+      setErrorMessage(dbErr instanceof Error ? dbErr.message : 'Your profile could not be saved to Firebase. Check your connection and try again.');
       return;
     }
 
