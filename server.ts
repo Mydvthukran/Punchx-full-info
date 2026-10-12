@@ -449,6 +449,7 @@ async function startServer() {
       const customerProfile = await dbAdapter.getUser(uid);
       const requestedWorkerId = String(orderData.workerId || "").trim();
       const workerProfile = requestedWorkerId ? await dbAdapter.getUser(requestedWorkerId) : null;
+      const workerApplication = requestedWorkerId ? await dbAdapter.getWorkerApplicationByUid(requestedWorkerId) : null;
       const nowIso = new Date().toISOString();
 
       // 1. Authoritative Server-Side Pricing Calculation (Never trust client prices)
@@ -468,7 +469,7 @@ async function startServer() {
       const startOtpChallenge = generateSecureOtp();
 
       const orderId = `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-      const resolvedWorkerName = workerProfile?.name || String(orderData.workerName || "").trim() || (requestedWorkerId ? "Assigned professional" : "Not assigned");
+      const resolvedWorkerName = workerProfile?.name || workerApplication?.legalName || String(orderData.workerName || "").trim() || (requestedWorkerId ? "Assigned professional" : "Not assigned");
       const createdByRole = customerProfile?.role === "worker" ? "worker" : "citizen";
       const newOrder: OrderRecord = {
         ...orderData,
@@ -505,21 +506,30 @@ async function startServer() {
         serviceAvailable: Boolean(orderData.serviceAvailable),
         workerId: requestedWorkerId || null,
         workerName: resolvedWorkerName,
-        workerPhone: String(workerProfile?.phone || orderData.workerPhone || ""),
-        workerEmail: String(workerProfile?.email || orderData.workerEmail || ""),
-        workerCategory: String(workerProfile?.workerSkill || workerProfile?.skill || orderData.category || ""),
-        workerAddress: String(workerProfile?.address || ""),
-        workerArea: String(workerProfile?.area || ""),
+        workerPhone: String(workerProfile?.phone || workerApplication?.phone || orderData.workerPhone || ""),
+        workerEmail: String(workerProfile?.email || workerApplication?.email || orderData.workerEmail || ""),
+        workerCategory: String(workerProfile?.workerSkill || workerProfile?.skill || workerApplication?.skill || orderData.category || ""),
+        workerAddress: String(workerProfile?.address || workerApplication?.address || ""),
+        workerArea: String(workerProfile?.area || workerApplication?.area || ""),
         workerProfileSnapshot: workerProfile ? {
           uid: workerProfile.uid || requestedWorkerId,
-          name: workerProfile.name || "",
-          phone: workerProfile.phone || "",
-          email: workerProfile.email || "",
-          skill: workerProfile.workerSkill || workerProfile.skill || "",
-          categories: workerProfile.workerCategories || workerProfile.categories || [],
-          area: workerProfile.area || "",
-          city: workerProfile.city || "",
-        } : null,
+          name: workerProfile?.name || workerApplication?.legalName || resolvedWorkerName,
+          phone: workerProfile?.phone || workerApplication?.phone || "",
+          email: workerProfile?.email || workerApplication?.email || "",
+          skill: workerProfile?.workerSkill || workerProfile?.skill || workerApplication?.skill || "",
+          categories: workerProfile?.workerCategories || workerProfile?.categories || workerApplication?.categories || [],
+          area: workerProfile?.area || workerApplication?.area || "",
+          city: workerProfile?.city || workerApplication?.city || "",
+        } : (workerApplication ? {
+          uid: requestedWorkerId,
+          name: workerApplication.legalName || "",
+          phone: workerApplication.phone || "",
+          email: workerApplication.email || "",
+          skill: workerApplication.skill || "",
+          categories: workerApplication.categories || [],
+          area: workerApplication.area || "",
+          city: workerApplication.city || "",
+        } : null),
         customerProfileSnapshot: {
           uid,
           name: String(customerProfile?.name || authUser.name || orderData.customerName || ""),
