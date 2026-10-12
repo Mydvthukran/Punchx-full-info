@@ -66,7 +66,18 @@ function AppMain() {
     return entry ? entry[0] as AppScreen : null;
   };
 
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => resolveScreenFromLocation() || 'splash');
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>(() => {
+    const requestedScreen = resolveScreenFromLocation();
+    // Show the branded splash once to first-time visitors, including deep links.
+    // Authentication callbacks must never be interrupted.
+    if (requestedScreen === 'auth-callback') return 'auth-callback';
+    try {
+      if (localStorage.getItem('punchx_splash_seen') !== 'true') return 'splash';
+    } catch {
+      if (!requestedScreen || requestedScreen === 'splash') return 'splash';
+    }
+    return requestedScreen || 'splash';
+  });
 
   useEffect(() => {
     const handlePopState = () => {
@@ -310,6 +321,9 @@ function AppMain() {
 
   const handleTransition = (target: AppScreen) => {
     try {
+      if (currentScreen === 'splash' && target === 'panel-select') {
+        try { localStorage.setItem('punchx_splash_seen', 'true'); } catch { /* Splash still works if storage is unavailable. */ }
+      }
       let resolvedTarget = target;
       // Keep the onboarding and booking journey sequential: each screen is
       // shown only when the preceding step explicitly transitions to it.
