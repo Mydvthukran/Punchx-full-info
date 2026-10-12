@@ -1,4 +1,7 @@
 import { getFirestore, Firestore, Query } from 'firebase-admin/firestore';
+
+// Keep server-side Admin SDK writes in the exact Firestore database used by the web client.
+const FIRESTORE_DATABASE_ID = process.env.FIREBASE_DATABASE_ID || process.env.VITE_FIREBASE_DATABASE_ID || 'ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38';
 import { IDatabaseAdapter } from './dbAdapter.js';
 import { UserProfile, WorkerApplication, OrderRecord, WarrantyClaim, ComplaintRecord, CustomerReview } from '../../types.js';
 import { logger } from '../logger.js';
@@ -24,7 +27,7 @@ export class FirebaseAdapter implements IDatabaseAdapter {
 
   private get db(): Firestore | null {
     try {
-      return getFirestore();
+      return getFirestore(undefined, FIRESTORE_DATABASE_ID);
     } catch {
       return null;
     }
@@ -32,12 +35,13 @@ export class FirebaseAdapter implements IDatabaseAdapter {
 
   async isHealthy(): Promise<boolean> {
     const firestore = this.db;
-    if (!firestore) return true;
+    if (!firestore) return false;
     try {
       await firestore.collection('users').limit(1).get();
       return true;
     } catch (e) {
-      return true;
+      logger.error('Firebase health check failed:', e);
+      return false;
     }
   }
 
@@ -58,16 +62,28 @@ export class FirebaseAdapter implements IDatabaseAdapter {
   }
 
   async upsertUser(user: UserProfile): Promise<UserProfile> {
-    this.inMemoryFallback.users.set(user.uid, user);
     const firestore = this.db;
-    if (firestore) {
-      try {
-        await firestore.collection('users').doc(user.uid).set(user, { merge: true });
-      } catch (err) {
-        logger.warn('Firebase upsertUser notice (saved in memory):', err);
-      }
+    if (!firestore) {
+      throw new Error('Firestore is not initialized; user profile was not saved.');
     }
-    return user;
+
+    try {
+      const userRef = firestore.collection('users').doc(user.uid);
+      const existing = await userRef.get();
+      const now = new Date().toISOString();
+      const record = {
+        ...user,
+        uid: user.uid,
+        createdAt: existing.exists ? ((existing.data() as any)?.createdAt || now) : (user.createdAt || now),
+        updatedAt: now,
+      };
+      await userRef.set(record, { merge: true });
+      this.inMemoryFallback.users.set(user.uid, record);
+      return record;
+    } catch (err) {
+      logger.error('Firebase upsertUser failed; profile was NOT persisted:', err);
+      throw new Error('Failed to save user profile to Firebase. Please retry.');
+    }
   }
 
   async listUsers(role?: string): Promise<UserProfile[]> {
