@@ -1129,12 +1129,19 @@ async function startServer() {
         name: appData.legalName,
         email: appData.email,
         phone: appData.phone,
+        dob: appData.dob || "",
+        address: appData.address || "",
         role: "worker",
         status: "APPROVED",
         applicationId: created.id,
         workerSkill: created.skill,
         workerCategories: created.categories,
-        visitingFee: created.visitingFee
+        workerExperience: appData.experienceYears || "",
+        visitingFee: created.visitingFee,
+        minimumVisitingFee: appData.minimumVisitingFee,
+        maximumVisitingFee: appData.maximumVisitingFee,
+        createdAt: (await dbAdapter.getUser(uid))?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
 
       logger.info(`Worker application submitted and auto-approved: ${created.id} by uid ${uid}`);
