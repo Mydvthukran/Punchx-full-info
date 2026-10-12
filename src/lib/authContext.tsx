@@ -32,8 +32,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState<boolean>(true);
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => { setFirebaseUser(user); });
-    return () => unsubscribe();
+    let disposed = false;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      if (!user) return;
+
+      // Firebase restores persisted sessions on page entry. Audit that event too,
+      // so returning customers/professionals are recorded even without a new OAuth popup.
+      void (async () => {
+        try {
+          const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+          const idToken = await user.getIdToken();
+          const cachedProfile = (() => {
+            try { return JSON.parse(localStorage.getItem('punchx_namoid_profile') || '{}'); } catch { return {}; }
+          })();
+          const cachedIdentity = (() => {
+            try { return JSON.parse(localStorage.getItem('punchx_namoid_identity') || '{}'); } catch { return {}; }
+          })();
+          const providerIds = (user.providerData || []).map((provider) => provider.providerId);
+          const loginMethod = providerIds.includes('password') ? 'firebase-email-password'
+            : providerIds.includes('phone') ? 'firebase-phone'
+            : providerIds.includes('google.com') ? 'google'
+            : providerIds.includes('oidc.namoid') ? 'namoid'
+            : user.isAnonymous ? 'anonymous'
+            : (user.email || cachedIdentity.email) ? 'namoid-email'
+            : (user.phoneNumber || cachedIdentity.phone_number) ? 'namoid-phone' : 'namoid';
+          const response = await fetch(`${backendBase}/api/auth/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({
+              loginMethod,
+              role: cachedProfile.role === 'worker' ? 'worker' : 'citizen',
+              name: cachedProfile.name || user.displayName || cachedIdentity.name || '',
+              email: user.email || cachedProfile.email || cachedIdentity.email || '',
+              phone: user.phoneNumber || cachedProfile.phone || cachedIdentity.phone_number || '',
+              profile: {
+                name: cachedProfile.name || user.displayName || cachedIdentity.name || '',
+                email: cachedProfile.email || user.email || cachedIdentity.email || '',
+                phone: cachedProfile.phone || user.phoneNumber || cachedIdentity.phone_number || '',
+                photoURL: cachedProfile.photoURL || user.photoURL || '',
+                dob: cachedProfile.dob || cachedProfile.birthdate || '',
+                birthdate: cachedProfile.birthdate || cachedProfile.dob || '',
+                address: cachedProfile.address || '',
+                landmark: cachedProfile.landmark || '',
+                area: cachedProfile.area || '',
+                sector: cachedProfile.sector || '',
+                city: cachedProfile.city || '',
+                isProfileCompleted: Boolean(cachedProfile.isProfileCompleted),
+                workerSkill: cachedProfile.workerSkill || '',
+                workerCategories: cachedProfile.workerCategories || [],
+                workerExperience: cachedProfile.workerExperience || '',
+                visitingFee: cachedProfile.visitingFee,
+                applicationId: cachedProfile.applicationId || '',
+                location: cachedProfile.location,
+                geofenceArea: cachedProfile.geofenceArea || '',
+                geofenceAreas: cachedProfile.geofenceAreas || [],
+                serviceAreas: cachedProfile.serviceAreas || [],
+              },
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || result.success !== true) {
+            throw new Error(result.error || 'Firebase could not save sign-in history.');
+          }
+        } catch (error) {
+          if (!disposed) console.error('PunchX sign-in audit failed:', error);
+        }
+      })();
+    });
+    return () => { disposed = true; unsubscribe(); };
   }, []);
 
   // Restore cached profile when a Firebase-authenticated user exists or stored profile exists.
@@ -223,46 +290,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
       const profile = await fetchOrCreateProfile(identity, role || activeRole, resolvedUid);
 
-      // Require an authenticated Firebase UID before declaring sign-in fully persisted.
-      // This records repeat sign-ins without collecting passwords or authentication tokens.
-      const firebaseUser = auth.currentUser;
-      if (!firebaseUser) {
+      // The auth-state listener records this successful sign-in and restored sessions.
+      // Never store a password, OTP, or bearer token in the profile or login history.
+      if (!auth.currentUser) {
         throw new Error('Firebase authentication is not ready. Please retry signing in.');
-      }
-      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
-      const idToken = await firebaseUser.getIdToken();
-      const loginMethod = identity.email ? 'namoid-email' : (identity.phone_number ? 'namoid-phone' : 'namoid');
-      const sessionResponse = await fetch(`${backendBase}/api/auth/session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          loginMethod,
-          role: role === 'worker' ? 'worker' : 'citizen',
-          name: profile.name || identity.name || '',
-          email: identity.email || '',
-          phone: identity.phone_number || '',
-          profile: {
-            name: profile.name,
-            email: profile.email,
-            phone: profile.phone,
-            photoURL: profile.photoURL || '',
-            dob: profile.dob || '',
-            birthdate: profile.birthdate || '',
-            address: profile.address || '',
-            landmark: profile.landmark || '',
-            area: profile.area || '',
-            sector: profile.sector || '',
-            city: profile.city || '',
-            isProfileCompleted: Boolean(profile.isProfileCompleted),
-          },
-        }),
-      });
-      const sessionResult = await sessionResponse.json().catch(() => ({}));
-      if (!sessionResponse.ok || sessionResult.success !== true) {
-        throw new Error(sessionResult.error || 'Firebase could not save your sign-in history. Please retry.');
       }
       return profile;
     } catch (profileErr) {
