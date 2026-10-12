@@ -239,7 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
       // Preserve the backend's diagnostic response so a deployment/configuration
       // problem does not get hidden behind a generic sign-in notice.
       try {
-        const configuredBackend = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/+$/, '');
+        const configuredBackend = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
         // Prefer the same-origin Vercel function. VITE_BACKEND_URL may point to
         // an older API host which returns 404 even while the app is deployed.
         const endpoints = Array.from(new Set([
