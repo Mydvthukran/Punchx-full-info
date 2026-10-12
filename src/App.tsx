@@ -40,7 +40,13 @@ const AuthCallback = lazy(() => import('./components/AuthCallback'));
 function AppMain() {
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
   // Native app wrappers pass a role-specific query parameter so each APK opens its own login.
-  const punchxAppMode = new URLSearchParams(window.location.search).get('punchxApp')?.toLowerCase();
+  const urlPunchxAppMode = new URLSearchParams(window.location.search).get('punchxApp')?.toLowerCase();
+  const punchxAppMode = urlPunchxAppMode === 'citizen' || urlPunchxAppMode === 'professional'
+    ? urlPunchxAppMode
+    : (() => { try { return localStorage.getItem('punchx_native_app_mode'); } catch { return null; } })();
+  if (urlPunchxAppMode === 'citizen' || urlPunchxAppMode === 'professional') {
+    try { localStorage.setItem('punchx_native_app_mode', urlPunchxAppMode); } catch { /* Continue without persistent storage. */ }
+  }
   const dedicatedAppRole: 'customer' | 'worker' | null = punchxAppMode === 'professional' ? 'worker' : punchxAppMode === 'citizen' ? 'customer' : null;
 
   const screenRoutes: Partial<Record<AppScreen, string>> = {
