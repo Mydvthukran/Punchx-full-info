@@ -421,7 +421,7 @@ function AppMain() {
         </Suspense>
       </main>
 
-      {currentScreen !== 'splash' && <WebsiteFooter onTransition={handleTransition} onSelectCategory={setSelectedCategory} showNotification={showToast} />}
+      {showWebsiteShell && <WebsiteFooter onTransition={handleTransition} onSelectCategory={setSelectedCategory} showNotification={showToast} />}
 
       {showAssistant && <DragoAssistant currentScreen={currentScreen} onAutoFillOtp={code => setOtpCode(code)} onApplyPromo={() => setPromoApplied(true)} onAutoFillBooking={() => setIssueDescription('AC unit short-circuited with smoke coming from compressor board. Needs priority circuit diagnostics.')} />}
 
