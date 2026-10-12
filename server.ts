@@ -408,8 +408,19 @@ async function startServer() {
 
   app.post("/api/orders", requireFirebaseUser, async (req, res) => {
     try {
-      const uid = (req as any).user.uid;
-      const orderData = req.body;
+      const authUser = (req as any).user;
+      const uid = String(authUser.uid || "");
+      const orderData = req.body || {};
+      if (!uid) return res.status(401).json({ success: false, error: "Authenticated customer ID is missing" });
+      if (!String(orderData.serviceName || "").trim() || !String(orderData.address || orderData.customerAddress || "").trim() || !String(orderData.date || "").trim() || !String(orderData.time || "").trim()) {
+        return res.status(400).json({ success: false, error: "Booking requires a service name, address, date, and time." });
+      }
+
+      // Resolve profile snapshots server-side so orders remain useful if a profile later changes.
+      const customerProfile = await dbAdapter.getUser(uid);
+      const requestedWorkerId = String(orderData.workerId || "").trim();
+      const workerProfile = requestedWorkerId ? await dbAdapter.getUser(requestedWorkerId) : null;
+      const nowIso = new Date().toISOString();
 
       // 1. Authoritative Server-Side Pricing Calculation (Never trust client prices)
       const quote = calculateAuthoritativeQuote({
@@ -427,13 +438,51 @@ async function startServer() {
       // 3. Cryptographic Start OTP Generation for Customer Verification Gate
       const startOtpChallenge = generateSecureOtp();
 
-      const orderId = orderData.id || `ORD-${Date.now()}`;
+      const orderId = `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+      const resolvedWorkerName = workerProfile?.name || String(orderData.workerName || "").trim() || (requestedWorkerId ? "Assigned professional" : "Not assigned");
+      const createdByRole = customerProfile?.role === "worker" ? "worker" : "citizen";
       const newOrder: OrderRecord = {
         ...orderData,
         id: orderId,
-        customerId: uid, // Server enforces caller UID
-        category: orderData.category || "General Service",
-        workerName: orderData.workerName || "Matching Specialist...",
+        customerId: uid, // Always bind the order to the authenticated Firebase UID.
+        customerReferenceId: String(orderData.customerReferenceId || `PXC-${uid.slice(-8).toUpperCase()}`),
+        customerName: String(customerProfile?.name || authUser.name || orderData.customerName || authUser.email?.split("@")[0] || "").trim(),
+        customerEmail: String(customerProfile?.email || authUser.email || orderData.customerEmail || "").trim(),
+        customerPhone: String(customerProfile?.phone || authUser.phone_number || orderData.customerPhone || "").trim(),
+        customerAddress: String(orderData.customerAddress || orderData.address || "").trim(),
+        category: String(orderData.category || "General Service"),
+        serviceId: orderData.serviceId || null,
+        serviceName: String(orderData.serviceName || "").trim(),
+        description: String(orderData.description || ""),
+        note: String(orderData.note || ""),
+        workerId: requestedWorkerId || null,
+        workerName: resolvedWorkerName,
+        workerPhone: String(workerProfile?.phone || orderData.workerPhone || ""),
+        workerEmail: String(workerProfile?.email || orderData.workerEmail || ""),
+        workerCategory: String(workerProfile?.workerSkill || workerProfile?.skill || orderData.category || ""),
+        workerAddress: String(workerProfile?.address || ""),
+        workerArea: String(workerProfile?.area || ""),
+        workerProfileSnapshot: workerProfile ? {
+          uid: workerProfile.uid || requestedWorkerId,
+          name: workerProfile.name || "",
+          phone: workerProfile.phone || "",
+          email: workerProfile.email || "",
+          skill: workerProfile.workerSkill || workerProfile.skill || "",
+          categories: workerProfile.workerCategories || workerProfile.categories || [],
+          area: workerProfile.area || "",
+          city: workerProfile.city || "",
+        } : null,
+        customerProfileSnapshot: {
+          uid,
+          name: String(customerProfile?.name || authUser.name || orderData.customerName || ""),
+          email: String(customerProfile?.email || authUser.email || orderData.customerEmail || ""),
+          phone: String(customerProfile?.phone || authUser.phone_number || orderData.customerPhone || ""),
+          address: String(customerProfile?.address || orderData.address || ""),
+          area: String(customerProfile?.area || ""),
+          city: String(customerProfile?.city || ""),
+        },
+        bookingCreatedByUid: uid,
+        bookingCreatedByRole: createdByRole,
         price: quote.baseVisitingFee,
         originalPrice: quote.subtotalBeforeDiscount,
         discountApplied: quote.discountApplied,
@@ -445,9 +494,22 @@ async function startServer() {
         platformCommission: quote.platformCommission,
         commissionRate: quote.commissionRate,
         professionalPayout: quote.professionalPayout,
-        date: orderData.date || new Date().toISOString().slice(0, 10),
+        date: orderData.date || nowIso.slice(0, 10),
+        time: orderData.time || "",
+        address: String(orderData.address || orderData.customerAddress || "").trim(),
         status: initialStatus,
-        createdAt: new Date().toISOString(),
+        paymentMethod: isCashOnDelivery ? "COD" : "ONLINE",
+        paymentStatus: isCashOnDelivery ? "pending" : (orderData.paymentId ? "paid" : "pending"),
+        paymentId: orderData.paymentId || null,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        bookedAt: nowIso,
+        bookingTimeline: {
+          ...(orderData.bookingTimeline || {}),
+          bookedAt: nowIso,
+          currentStage: "BOOKED",
+          stages: Array.isArray(orderData.bookingTimeline?.stages) ? orderData.bookingTimeline.stages : ["BOOKED", "PROFESSIONAL_MATCH", "ARRIVAL", "WORK_STARTED", "COMPLETION", "INVOICE", "WARRANTY", "REVIEW"],
+        },
         startOtpHash: startOtpChallenge.hash,
         startOtpSalt: startOtpChallenge.salt,
         startOtpExpiresAt: startOtpChallenge.expiresAt,
@@ -456,7 +518,7 @@ async function startServer() {
           {
             from: "NONE",
             to: initialStatus,
-            timestamp: new Date().toISOString(),
+            timestamp: nowIso,
             actorUid: uid,
             actorRole: "citizen",
             reason: "Initial booking submission",
