@@ -198,8 +198,10 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
          workerStatus:nextOnline?'ONLINE':'OFFLINE',availabilityUpdatedAt:updatedAt,updatedAt,uid:targetUid
        }));
      }catch{}
-     try{await refreshProfile?.();}catch(error){console.warn('Worker profile refresh skipped:',error);}
-     showNotification?.(nextOnline?'You are now ONLINE. Your availability has been saved.':'You are now OFFLINE. Your availability has been saved.');
+     // Keep the server-confirmed state in this panel. A profile refresh can return a
+     // stale cached profile and immediately flip the control back before Firestore listeners catch up.
+     setOnline(result.online===true);
+     showNotification?.(result.online===true?'You are now ONLINE. Your availability has been saved.':'You are now OFFLINE. Your availability has been saved.');
    }catch(error:any){
      setOnline(previous);
      console.error('Worker availability update failed:',error);
