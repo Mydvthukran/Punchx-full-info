@@ -9,6 +9,7 @@ import PUNCHX_LOGO from '../assets/logo';
 import { useAuth } from '../lib/authContext';
 import { getStoredPushNotifications } from '../lib/pushNotifications';
 import ServiceCategoryModal from './ServiceCategoryModal';
+import CitizenCartButton from './CitizenCartButton';
 import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface WebsiteNavbarProps {
@@ -164,6 +165,7 @@ export default function WebsiteNavbar({
           </nav>
 
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <CitizenCartButton onCheckout={(hasItems) => go(hasItems ? 'booking' : 'providers')} />
             <button onClick={onOpenNotificationCenter} className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#f7f7f8] text-[#5f636d] transition hover:bg-[#efeff3]" aria-label="Notifications">
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#7358d7] px-1 text-[8px] font-black text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}
