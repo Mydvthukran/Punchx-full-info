@@ -323,7 +323,7 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
 }
 
 // Resilient GPS Resolver with High Accuracy and Sufficient Timeout
-export async function getAccurateCurrentPosition(rejectOnDenied = false): Promise<{ lat: number; lng: number }> {
+export async function getAccurateCurrentPosition(rejectOnDenied = true): Promise<{ lat: number; lng: number; accuracy: number }> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       return reject(new Error('Geolocation is not supported on this device. Please enter your address manually.'));
@@ -332,17 +332,21 @@ export async function getAccurateCurrentPosition(rejectOnDenied = false): Promis
     let hasResolved = false;
 
     // Helper to resolve only once
-    const safeResolve = (coords: { lat: number; lng: number }) => {
-      if (!hasResolved) {
+    const safeResolve = (coords: { lat: number; lng: number; accuracy: number }) => {
+      if (hasResolved) return;
+      if (!Number.isFinite(coords.accuracy) || coords.accuracy > 100) {
         hasResolved = true;
-        resolve(coords);
+        reject(new Error(`GPS accuracy is about ${Math.round(coords.accuracy || 0)} m. Move to an open area and retry; PunchX needs a fix within 100 m to verify service coverage.`));
+        return;
       }
+      hasResolved = true;
+      resolve(coords);
     };
 
     // Primary: High Accuracy Hardware/Network GPS (15s timeout, 0ms max age for real fresh lock)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
       },
       (highAccErr) => {
         console.warn("High-accuracy GPS attempt note:", highAccErr?.message);
@@ -353,26 +357,13 @@ export async function getAccurateCurrentPosition(rejectOnDenied = false): Promis
         // Secondary: Standard accuracy with 8s timeout
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
           },
           async (lowAccErr) => {
             console.warn("Standard accuracy fallback notice:", lowAccErr?.message);
             
-            // Tertiary: IP Geolocation Fallback
-            try {
-              const ipRes = await fetch('https://ipapi.co/json/');
-              if (ipRes.ok) {
-                const ipData = await ipRes.json();
-                if (ipData && ipData.latitude && ipData.longitude) {
-                  return safeResolve({ lat: Number(ipData.latitude), lng: Number(ipData.longitude) });
-                }
-              }
-            } catch (ipErr) {
-              console.warn("IP fallback 1:", ipErr);
-            }
-
-            // Never fabricate Kolkata coordinates for a customer or worker elsewhere in India.
-            reject(new Error('Current location could not be determined. Please enter your address manually.'));
+            // IP-derived locations are too imprecise for geofence or booking decisions.
+            reject(new Error('Precise GPS is unavailable. Enable device location and retry in an open area.'));
           },
           { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 }
         );
@@ -388,7 +379,7 @@ export async function requestAndAutoUpdateLocation(
   targetUid?: string
 ): Promise<LocationData | null> {
   try {
-    const coords = await getAccurateCurrentPosition();
+    const coords = await getAccurateCurrentPosition(true);
     const { address, area, city, district, state, postalCode, sector } = await reverseGeocodeCoords(coords.lat, coords.lng);
 
     const locData: LocationData = {
