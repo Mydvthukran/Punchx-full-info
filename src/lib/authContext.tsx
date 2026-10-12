@@ -230,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
     }
   };
 
-  const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string) => {
+  const loginWithNamoID = async (identity: NamoIDUserInfo, role?: 'citizen' | 'worker' | 'admin', idToken?: string, accessToken?: string) => {
     let firebaseUid: string | null = null;
     let tokenExchangeError = '';
 
@@ -257,7 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
             const tokenRes = await fetch(endpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ idToken, identity, role }),
+              body: JSON.stringify({ idToken, accessToken, identity, role }),
             });
             const data = await tokenRes.json().catch(() => ({}));
             if (tokenRes.ok && data.customToken) {
