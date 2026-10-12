@@ -31,7 +31,7 @@ const isInstantOrderRecord=(o:OrderRecord)=>Boolean(o.isInstantOrder)||o.booking
 
 export default function WorkerPartnerPanel({onTransition,showNotification}:{onTransition?:(s:any)=>void;showNotification?:(m:string)=>void}) {
  const {currentUser,userProfile,refreshProfile,logout}=useAuth() as any;
- const uid=currentUser?.uid || userProfile?.uid || '';
+ const uid=auth.currentUser?.uid || userProfile?.uid || currentUser?.sub || currentUser?.id || '';
  const [tab,setTab]=useState<Tab>('home');
  const [reportPeriod,setReportPeriod]=useState<ReportPeriod>(7);
  const [online,setOnline]=useState(false);
@@ -214,14 +214,18 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
        // A verified worker may have a cached session before the user document exists.
        await setDoc(userRef,{uid:targetUid,role:'worker',...availability},{merge:true});
      }
-     // Worker-owned application fields are explicitly permitted by firestore.rules.
+     // Keep the worker's operational profile and application status aligned.
      const applicationId=String(userProfile?.applicationId||targetUid);
      try{
        await setDoc(doc(db,'workerApplications',applicationId),{uid:targetUid,...availability},{merge:true});
      }catch(applicationError){
-       // Availability is authoritative on users/{uid}; a legacy application
-       // record should not roll back the worker's online/offline toggle.
        console.warn('Worker application availability sync skipped:',applicationError);
+     }
+     // Some discovery/profile flows read the dedicated workers collection.
+     try{
+       await setDoc(doc(db,'workers',targetUid),{uid:targetUid,...availability},{merge:true});
+     }catch(workerRecordError){
+       console.warn('Worker directory availability sync skipped:',workerRecordError);
      }
      try{
        const cached=localStorage.getItem('punchx_namoid_profile');
@@ -229,11 +233,12 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
        localStorage.setItem('punchx_namoid_profile',JSON.stringify({...profile,...availability,uid:targetUid}));
      }catch{}
      try{await refreshProfile?.();}catch{}
-     showNotification?.(nextOnline?'You are now online and eligible for instant / SOS requests':'You are now offline for instant / SOS requests; later bookings remain visible');
+     showNotification?.(nextOnline?'You are now ONLINE. Availability has been saved.':'You are now OFFLINE. Availability has been saved.');
    }catch(e:any){
      setOnline(previous);
      console.error('Worker availability update failed:',e);
-     showNotification?.('Unable to save availability. Check your connection and try again.');
+     const reason=e?.code==='permission-denied'?'Firebase denied the status update (check account ownership and Firestore rules).':e?.code==='unavailable'?'Firebase is temporarily unavailable. Please retry.':'Check your sign-in session and internet connection, then retry.';
+     showNotification?.('Could not save your online/offline status. '+reason);
    }finally{
      availabilityWriteRef.current=false;
      setAvailabilitySaving(false);
