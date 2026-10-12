@@ -120,8 +120,11 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       setErrorMsg('You must review and accept the PunchX Terms & Conditions and Privacy Policy to proceed.');
       return;
     }
-    const existingUid = auth.currentUser?.uid || localStorage.getItem('punchx_applicant_uid');
-    const applicantUid = existingUid || `applicant_${crypto.randomUUID()}`;
+    const applicantUid = auth.currentUser?.uid;
+    if (!applicantUid) {
+      setErrorMsg('Your Firebase sign-in session is missing. Please sign in before submitting your worker application.');
+      return;
+    }
     try { localStorage.setItem('punchx_applicant_uid', applicantUid); } catch {}
 
     const application: WorkerApplication = {
@@ -139,40 +142,39 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       phone: phone.trim(),
       email: email.trim(),
       termsAccepted: true,
-      status: 'APPROVED',
-      appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today'
+      status: 'PENDING',
+      dob: dob.trim(),
+      appliedAt: new Date().toISOString()
     };
 
-    setWorkerApplicationData(application);
-    
-    // Save worker application to Firestore
+    // Submit through the authenticated backend so Admin SDK writes to the same
+    // named Firestore database and returns a confirmed persisted record.
+    let savedApplication: WorkerApplication;
     try {
-      await setDoc(doc(db, 'workerApplications', application.id), application, { merge: true });
-      console.log('Successfully saved worker application to Firestore:', application.id);
+      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser) throw new Error('Firebase sign-in expired. Please sign in again.');
+      const idToken = await firebaseUser.getIdToken();
+      const response = await fetch(`${backendBase}/api/worker-applications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(application),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success !== true || !result.application) {
+        throw new Error(result.error || 'Firebase did not confirm the worker application save.');
+      }
+      savedApplication = result.application as WorkerApplication;
     } catch (error) {
-      console.warn('Firestore direct save notice, persisting in local storage:', error);
+      console.error('Worker application Firebase save failed:', error);
+      setErrorMsg(error instanceof Error ? error.message : 'Unable to save your worker application to Firebase. Please retry.');
+      return;
     }
 
-    // Also attempt backend API submission if authenticated
-    try {
-      const backendBase = import.meta.env.VITE_BACKEND_URL || '';
-      let idToken = null;
-      if (auth.currentUser) {
-        idToken = await auth.currentUser.getIdToken();
-      }
-      if (idToken) {
-        await fetch(`${backendBase}/api/worker-applications`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify(application)
-        });
-      }
-    } catch (backendErr) {
-      console.warn('Backend application submit notice:', backendErr);
-    }
+    setWorkerApplicationData(savedApplication);
 
     // Local storage UI cache
     const existingApps = JSON.parse(
@@ -181,9 +183,9 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
 
     localStorage.setItem(
       'punchx_worker_applications',
-      JSON.stringify([application, ...existingApps])
+      JSON.stringify([savedApplication, ...existingApps])
     );
-    localStorage.setItem('punchx_worker_app_id', application.id);
+    localStorage.setItem('punchx_worker_app_id', savedApplication.id);
     localStorage.setItem('punchx_worker_approved', 'true');
     localStorage.setItem('punchx_worker_online_status', 'true');
 
