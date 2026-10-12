@@ -941,6 +941,8 @@ async function startServer() {
 
   // Authoritative worker availability endpoint. Uses Firebase Admin so a valid
   // worker session is not blocked by client-side Firestore rules or stale profile IDs.
+  // Authoritative worker availability endpoint. Use the same named Firestore database
+  // as the browser app so status changes are immediately visible to the worker panel.
   app.patch("/api/workers/availability", requireFirebaseUser, async (req, res) => {
     try {
       const uid = String((req as any).user?.uid || "");
@@ -949,20 +951,38 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "A valid worker session and boolean online value are required." });
       }
 
-      const userProfile = await dbAdapter.getUser(uid);
-      const contact = {
-        phone: userProfile?.phone || (req as any).user?.phone_number,
-        email: userProfile?.email || (req as any).user?.email
-      };
-      const workerApp = await dbAdapter.getWorkerApplicationByUid(uid)
-        || ((contact.phone || contact.email) ? await dbAdapter.getWorkerApplicationByContact(contact) : null);
-
-      if (userProfile?.role !== "worker" && !workerApp) {
-        return res.status(403).json({ success: false, error: "This account is not registered as a PunchX professional." });
-      }
-
       if (getApps().length === 0) {
         return res.status(503).json({ success: false, error: "Worker availability service is not connected to Firebase Admin." });
+      }
+
+      const databaseId = process.env.FIREBASE_DATABASE_ID
+        || process.env.VITE_FIREBASE_DATABASE_ID
+        || "ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38";
+      const firestore = getFirestore(undefined, databaseId);
+      const userRef = firestore.collection("users").doc(uid);
+      const currentSnapshot = await userRef.get();
+      const adapterProfile = await dbAdapter.getUser(uid);
+      const currentData = currentSnapshot.exists ? currentSnapshot.data() : (adapterProfile || {});
+
+      let workerApp: any = null;
+      for (const collectionName of ["workerApplications", "worker_applications"]) {
+        const appSnapshot = await firestore.collection(collectionName).where("uid", "==", uid).limit(1).get();
+        if (!appSnapshot.empty) {
+          workerApp = { id: appSnapshot.docs[0].id, ...(appSnapshot.docs[0].data() as any) };
+          break;
+        }
+      }
+      if (!workerApp) {
+        const contact = {
+          phone: currentData?.phone || adapterProfile?.phone || (req as any).user?.phone_number,
+          email: currentData?.email || adapterProfile?.email || (req as any).user?.email
+        };
+        workerApp = await dbAdapter.getWorkerApplicationByUid(uid)
+          || ((contact.phone || contact.email) ? await dbAdapter.getWorkerApplicationByContact(contact) : null);
+      }
+
+      if (currentData?.role !== "worker" && adapterProfile?.role !== "worker" && !workerApp) {
+        return res.status(403).json({ success: false, error: "This account is not registered as a PunchX professional." });
       }
 
       const updatedAt = new Date().toISOString();
@@ -973,10 +993,6 @@ async function startServer() {
         availabilityUpdatedAt: updatedAt,
         updatedAt
       };
-      const firestore = getFirestore();
-      const userRef = firestore.collection("users").doc(uid);
-      const currentSnapshot = await userRef.get();
-      const currentData = currentSnapshot.exists ? currentSnapshot.data() : (userProfile || {});
       const profilePatch = {
         ...(currentData || {}),
         uid,
@@ -985,10 +1001,14 @@ async function startServer() {
       };
 
       await userRef.set(profilePatch, { merge: true });
-      try {
-        await dbAdapter.upsertUser(profilePatch as any);
-      } catch (profileSyncError) {
-        logger.warn("Worker availability Firestore write succeeded; optional database profile sync skipped:", profileSyncError);
+      // Postgres can be an optional profile mirror, but the named Firestore
+      // document above remains authoritative for the web app's availability.
+      if (dbAdapter.providerName !== "firebase") {
+        try {
+          await dbAdapter.upsertUser(profilePatch as any);
+        } catch (profileSyncError) {
+          logger.warn("Worker availability Firestore write succeeded; optional database profile sync skipped:", profileSyncError);
+        }
       }
 
       if (workerApp?.id && workerApp.uid === uid) {
@@ -999,7 +1019,7 @@ async function startServer() {
       }
       await firestore.collection("workers").doc(uid).set({ uid, ...availability }, { merge: true });
 
-      logger.info("Worker availability updated", { uid, online: nextOnline });
+      logger.info("Worker availability updated", { uid, online: nextOnline, databaseId });
       return res.json({ success: true, online: nextOnline, availabilityUpdatedAt: updatedAt });
     } catch (err: any) {
       logger.error("Worker availability update error:", err);
