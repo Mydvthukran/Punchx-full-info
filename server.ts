@@ -1178,6 +1178,21 @@ async function startServer() {
         }
       }
       if (!workerApp) {
+        const applicationId = String(currentData?.applicationId || adapterProfile?.applicationId || "");
+        if (applicationId) {
+          for (const collectionName of ["workerApplications", "worker_applications"]) {
+            const appDoc = await firestore.collection(collectionName).doc(applicationId).get();
+            if (appDoc.exists) {
+              const data = appDoc.data() as any;
+              if (!data?.uid || data.uid === uid) {
+                workerApp = { id: appDoc.id, ...data, uid };
+                break;
+              }
+            }
+          }
+        }
+      }
+      if (!workerApp) {
         const contact = {
           phone: currentData?.phone || adapterProfile?.phone || (req as any).user?.phone_number,
           email: currentData?.email || adapterProfile?.email || (req as any).user?.email
