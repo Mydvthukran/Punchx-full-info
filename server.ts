@@ -240,6 +240,13 @@ async function startServer() {
       const phone = String(authUser.phone_number || req.body?.phone || "").trim().slice(0, 40);
       const displayName = String(req.body?.name || authUser.name || authUser.email?.split("@")[0] || "PunchX Member").trim().slice(0, 160);
       const requestedRole = req.body?.role === "worker" ? "worker" : "citizen";
+      const submittedProfile = req.body?.profile && typeof req.body.profile === "object" ? req.body.profile : {};
+      const profileFields = ["name", "email", "phone", "photoURL", "dob", "birthdate", "address", "streetAddress", "landmark", "area", "sector", "city", "isProfileCompleted", "workerSkill", "workerCategories", "workerExperience", "visitingFee", "applicationId", "location", "geofenceArea", "geofenceAreas", "serviceAreas"];
+      const safeProfile: Record<string, any> = {};
+      for (const field of profileFields) {
+        const value = submittedProfile[field];
+        if (value !== undefined && value !== null) safeProfile[field] = value;
+      }
 
       await firestore.runTransaction(async (transaction) => {
         const existingSnap = await transaction.get(userRef);
@@ -251,10 +258,11 @@ async function startServer() {
         const loginCount = Number(existing.loginCount || 0) + 1;
 
         transaction.set(userRef, {
+          ...safeProfile,
           uid,
-          name: existing.name || displayName,
-          email: existing.email || email,
-          phone: existing.phone || phone,
+          name: existing.name || safeProfile.name || displayName,
+          email: existing.email || email || safeProfile.email || "",
+          phone: existing.phone || phone || safeProfile.phone || "",
           role: nextRole,
           createdAt,
           updatedAt: FieldValue.serverTimestamp(),
