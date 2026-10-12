@@ -1186,8 +1186,12 @@ async function startServer() {
           || ((contact.phone || contact.email) ? await dbAdapter.getWorkerApplicationByContact(contact) : null);
       }
 
-      if (currentData?.role !== "worker" && adapterProfile?.role !== "worker" && !workerApp) {
-        return res.status(403).json({ success: false, error: "This account is not registered as a PunchX professional." });
+      const hasWorkerProfileSignals = Boolean(
+        currentData?.applicationId || currentData?.workerSkill || currentData?.workerCategories
+        || adapterProfile?.applicationId || adapterProfile?.workerSkill || adapterProfile?.workerCategories
+      );
+      if (currentData?.role !== "worker" && adapterProfile?.role !== "worker" && !workerApp && !hasWorkerProfileSignals) {
+        return res.status(403).json({ success: false, error: "This account is not registered as a PunchX professional. Complete worker registration and sign in again." });
       }
 
       const updatedAt = new Date().toISOString();
