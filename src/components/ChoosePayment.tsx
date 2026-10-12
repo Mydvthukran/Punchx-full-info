@@ -39,7 +39,7 @@ export default function ChoosePayment({onTransition,selectedWorker,onOrderFinali
     setSubmitting(true);
     try{
       const customerReferenceId=getCustomerReferenceId(uid);
-      const workerId=pending.workerId||selectedWorker?.uid||selectedWorker?.id||null;
+      const workerId=selectedWorker?.uid||pending.workerId||selectedWorker?.id||null;
       const workerName=pending.workerName||selectedWorker?.name||null;
       const paymentMethod=method==='cod'?'COD':'ONLINE';
       const firebaseUser=auth.currentUser;
