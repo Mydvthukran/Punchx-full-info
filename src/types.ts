@@ -61,6 +61,7 @@ export interface UserProfile {
   birthdate?: string;
   isProfileCompleted?: boolean;
   address?: string;
+  streetAddress?: string;
   landmark?: string;
   area?: string;
   sector?: string;
