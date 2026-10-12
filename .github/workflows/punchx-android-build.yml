@@ -1,0 +1,98 @@
+name: PunchX Android APK Builds
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/capacitor-android
+    paths:
+      - '.github/workflows/punchx-android-build.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'index.html'
+      - 'src/**'
+      - 'public/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    name: Build ${{ matrix.label }} APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Citizen
+            app_name: PunchX Citizen
+            app_id: co.in.punchxapp.citizen
+            artifact: punchx-citizen-debug-apk
+          - label: Professional
+            app_name: PunchX Professional
+            app_id: co.in.punchxapp.professional
+            artifact: punchx-professional-debug-apk
+
+    steps:
+      - name: Check out Android development branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/capacitor-android
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Install locked project dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build website assets
+        run: npm run build:pages
+
+      - name: Install Capacitor for this cloud build only
+        run: npm install --no-save --package-lock=false @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+      - name: Create app-specific Capacitor configuration
+        env:
+          APP_NAME: ${{ matrix.app_name }}
+          APP_ID: ${{ matrix.app_id }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const config = {
+            appId: process.env.APP_ID,
+            appName: process.env.APP_NAME,
+            webDir: 'dist',
+            server: {
+              url: 'https://www.punchxapp.co.in',
+              cleartext: false,
+              allowNavigation: ['www.punchxapp.co.in', 'punchxapp.co.in']
+            }
+          };
+          fs.writeFileSync('capacitor.config.json', JSON.stringify(config, null, 2) + '\n');
+          NODE
+
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
