@@ -28,7 +28,7 @@ const money = (value: number) => new Intl.NumberFormat('en-IN', {
 }).format(value);
 
 interface CitizenCartButtonProps {
-  onCheckout: () => void;
+  onCheckout: (hasItems: boolean) => void;
 }
 
 export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps) {
@@ -82,7 +82,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f1edff] text-[#7358d7]"><ShoppingCart className="h-7 w-7" /></div>
                 <h3 className="mt-4 text-base font-black text-[#20232b]">Your cart is empty</h3>
                 <p className="mt-2 text-sm leading-6 text-[#777b86]">Select a service or a product/material and it will appear here.</p>
-                <button type="button" onClick={() => { setOpen(false); onCheckout(); }} className="mt-5 rounded-xl bg-[#7358d7] px-5 py-3 text-xs font-black text-white">Browse services</button>
+                <button type="button" onClick={() => { setOpen(false); onCheckout(false); }} className="mt-5 rounded-xl bg-[#7358d7] px-5 py-3 text-xs font-black text-white">Browse services</button>
               </div>
             ) : (
               <>
@@ -114,7 +114,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                 <footer className="border-t border-[#ececf2] p-5">
                   <div className="flex items-center justify-between"><span className="text-sm font-bold text-[#656a75]">Indicative service total</span><span className="text-xl font-black text-[#17191d]">{money(total)}</span></div>
                   <p className="mt-2 text-[10px] leading-4 text-[#858995]">Final service/material price may change after professional inspection or supplier confirmation.</p>
-                  <button type="button" onClick={() => { setOpen(false); onCheckout(); }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7358d7] px-5 py-3.5 text-sm font-black text-white hover:bg-[#5b45c7]">Continue to booking <ArrowRight className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => { setOpen(false); onCheckout(true); }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7358d7] px-5 py-3.5 text-sm font-black text-white hover:bg-[#5b45c7]">Continue to booking <ArrowRight className="h-4 w-4" /></button>
                 </footer>
               </>
             )}
