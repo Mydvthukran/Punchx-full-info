@@ -6,6 +6,11 @@ import type { VercelRequest } from '@vercel/node';
 export function ensureFirebaseAdmin() {
   if (getApps().length > 0) return;
 
+  // Firebase custom tokens are only accepted by the same Firebase project as
+  // the web SDK. Catch mismatched service-account credentials explicitly.
+  const expectedProjectId = process.env.VITE_FIREBASE_PROJECT_ID?.trim()
+    || 'gen-lang-client-0120647960';
+
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
   if (encoded) {
     let serviceAccount: Record<string, unknown>;
@@ -16,7 +21,14 @@ export function ensureFirebaseAdmin() {
       // Also accept a raw JSON service-account value for easier Vercel setup.
       serviceAccount = JSON.parse(encoded);
     }
-    initializeApp({ credential: cert(serviceAccount as any) });
+    const serviceProjectId = String(serviceAccount.project_id || serviceAccount.projectId || '').trim();
+    if (!serviceProjectId) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT JSON is missing project_id.');
+    }
+    if (serviceProjectId !== expectedProjectId) {
+      throw new Error(`Firebase Admin project mismatch: service account is for "${serviceProjectId}", but PunchX web auth uses "${expectedProjectId}". Use a service account from the same Firebase project.`);
+    }
+    initializeApp({ credential: cert(serviceAccount as any), projectId: serviceProjectId });
     return;
   }
 
@@ -24,7 +36,10 @@ export function ensureFirebaseAdmin() {
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n').trim();
   if (projectId && clientEmail && privateKey) {
-    initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+    if (projectId !== expectedProjectId) {
+      throw new Error(`Firebase Admin project mismatch: credentials are for "${projectId}", but PunchX web auth uses "${expectedProjectId}". Use credentials from the same Firebase project.`);
+    }
+    initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), projectId });
     return;
   }
 
