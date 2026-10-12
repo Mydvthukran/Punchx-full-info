@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import crypto from 'node:crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { getPunchxFirestore } from '../_lib/firebaseAdmin';
 
@@ -24,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : typeof identity.id === 'string' ? identity.id.trim()
       : typeof identity.user_id === 'string' ? identity.user_id.trim() : '';
     const uid = subject || (email
-      ? `namoid_${Buffer.from(email).toString('hex').slice(0, 100)}`
+      ? `namoid_${crypto.createHash('sha256').update(email).digest('hex').slice(0, 20)}`
       : '');
 
     if (!uid) {
@@ -42,7 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : 'citizen';
 
     if (!existing.exists) {
-      const workerApps = await firestore.collection('workerApplications').where('uid', '==', uid).limit(1).get();
+      let workerApps = await firestore.collection('workerApplications').where('uid', '==', uid).limit(1).get();
+      if (workerApps.empty && email) {
+        workerApps = await firestore.collection('workerApplications').where('email', '==', email).limit(1).get();
+      }
       if (!workerApps.empty && workerApps.docs[0].data().status === 'APPROVED') role = 'worker';
     }
 
