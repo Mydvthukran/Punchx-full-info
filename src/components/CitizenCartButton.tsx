@@ -71,10 +71,10 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
         <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#7358d7] px-1 text-[9px] font-black text-white">{count > 99 ? '99+' : count}</span>
       </button>
       {open && (
-        <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-[#101828]/60 p-3 sm:p-5" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="punchx-cart-title" className="relative flex max-h-[min(82dvh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl sm:rounded-3xl">
-            <header className="flex shrink-0 items-center justify-between border-b border-[#ececf2] bg-white px-5 py-4 sm:px-6">
-              <div><h2 id="punchx-cart-title" className="text-lg font-black text-[#17191d]">Your cart</h2><p className="mt-0.5 text-xs text-[#777b86]">{count} item{count === 1 ? '' : 's'} selected</p></div>
+        <div className="fixed inset-0 z-[9990] flex h-[100dvh] w-screen items-stretch justify-center overflow-hidden bg-[#101828]/60 p-0" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="punchx-cart-title" className="relative flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-2xl">
+            <header className="flex shrink-0 items-center justify-between border-b border-[#ececf2] bg-white px-5 py-4 pt-[max(16px,env(safe-area-inset-top))] sm:px-8 sm:py-6">
+              <div><h2 id="punchx-cart-title" className="text-xl font-black text-[#17191d] sm:text-2xl">Your cart</h2><p className="mt-1 text-sm text-[#777b86]">{count} item{count === 1 ? '' : 's'} selected</p></div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close cart" className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f4f4f7]"><X className="h-4 w-4" /></button>
             </header>
             {cart.length === 0 ? (
@@ -86,7 +86,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
               </div>
             ) : (
               <>
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 pb-6 sm:space-y-4 sm:px-8 sm:py-6">
                   {cart.map((item, index) => (
                     <article key={item.id || index} className="rounded-2xl border border-[#e8e8ef] p-4">
                       <div className="flex items-start gap-3">
@@ -111,7 +111,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                     </article>
                   ))}
                 </div>
-                <footer className="shrink-0 border-t border-[#ececf2] bg-white p-4 sm:p-5">
+                <footer className="shrink-0 border-t border-[#ececf2] bg-white px-4 py-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.06)] sm:px-8 sm:py-6">
                   <div className="flex items-center justify-between"><span className="text-sm font-bold text-[#656a75]">Indicative service total</span><span className="text-xl font-black text-[#17191d]">{money(total)}</span></div>
                   <p className="mt-2 text-[10px] leading-4 text-[#858995]">Final service/material price may change after professional inspection or supplier confirmation.</p>
                   <button type="button" onClick={() => { setOpen(false); onCheckout(true); }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7358d7] px-5 py-3.5 text-sm font-black text-white hover:bg-[#5b45c7]">Continue to booking <ArrowRight className="h-4 w-4" /></button>
