@@ -233,7 +233,8 @@ async function startServer() {
       const loginHistoryRef = userRef.collection("loginHistory").doc();
       const nowIso = new Date().toISOString();
       const suppliedMethod = String(req.body?.loginMethod || "").toLowerCase();
-      const loginMethod = ["namoid-email", "namoid-phone", "namoid"].includes(suppliedMethod)
+      const allowedLoginMethods = ["namoid-email", "namoid-phone", "namoid", "firebase-email-password", "firebase-phone", "google", "anonymous"];
+      const loginMethod = allowedLoginMethods.includes(suppliedMethod)
         ? suppliedMethod
         : (authUser.email ? "namoid-email" : (authUser.phone_number ? "namoid-phone" : "namoid"));
       const email = String(authUser.email || req.body?.email || "").trim().slice(0, 320);
@@ -271,8 +272,8 @@ async function startServer() {
           lastLoginAtIso: nowIso,
           loginCount,
           lastLoginMethod: loginMethod,
-          lastLoginIdentifierType: loginMethod === "namoid-email" ? "email" : loginMethod === "namoid-phone" ? "phone" : "NamoID",
-          authProvider: "NamoID",
+          lastLoginIdentifierType: loginMethod.includes("email") ? "email" : loginMethod.includes("phone") ? "phone" : loginMethod === "google" ? "Google" : loginMethod === "anonymous" ? "anonymous" : "NamoID",
+          authProvider: loginMethod.startsWith("firebase-") ? "Firebase" : loginMethod === "google" ? "Google" : loginMethod === "anonymous" ? "Firebase Anonymous" : "NamoID",
         }, { merge: true });
 
         transaction.set(loginHistoryRef, {
@@ -280,7 +281,7 @@ async function startServer() {
           uid,
           role: nextRole,
           loginMethod,
-          identifierType: loginMethod === "namoid-email" ? "email" : loginMethod === "namoid-phone" ? "phone" : "NamoID",
+          identifierType: loginMethod.includes("email") ? "email" : loginMethod.includes("phone") ? "phone" : loginMethod === "google" ? "Google" : loginMethod === "anonymous" ? "anonymous" : "NamoID",
           email: email || null,
           phone: phone || null,
           timestamp: FieldValue.serverTimestamp(),
