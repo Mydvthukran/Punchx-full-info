@@ -193,6 +193,35 @@ Use your own development credentials and the official provider dashboards. Do no
 
 **Important:** Only a public Razorpay key ID belongs in frontend environment variables. Keep Razorpay secret keys and all server-side credentials on the server. Restrict browser API keys to the required domains and APIs.
 
+## GPS geofencing and service coverage
+
+PunchX service availability is determined from a verified device GPS fix and server-configured geofence zones. Do not treat a typed address, IP-derived location, placeholder coordinates, or a locality name as proof that a customer is inside the service boundary. Browser geolocation permission must be granted and the reported GPS accuracy must be 100 metres or better.
+
+Configure `PUNCHX_GEOFENCE_ZONES` in the server/deployment environment before enabling serviceability. It must be a JSON array of circles and/or polygons. Example (replace the example coordinates with your actual approved operating boundary):
+
+```json
+[
+  {
+    "name": "Nabadwip pilot zone",
+    "type": "circle",
+    "center": { "lat": 23.4067, "lng": 88.3653 },
+    "radiusKm": 4
+  },
+  {
+    "name": "Kolkata polygon zone",
+    "type": "polygon",
+    "coordinates": [
+      { "lat": 22.60, "lng": 88.30 },
+      { "lat": 22.60, "lng": 88.45 },
+      { "lat": 22.48, "lng": 88.45 },
+      { "lat": 22.48, "lng": 88.30 }
+    ]
+  }
+]
+```
+
+The coordinates above are examples only, not verified operational boundaries. Replace them with a boundary approved by PunchX operations before launch. If no valid zones are configured, the API reports that coverage is not configured and does not mark services as available. While the customer page is open, PunchX refreshes a sufficiently accurate GPS fix and rechecks geofence status approximately once per minute. Browsers may suspend location watching in the background; permission cannot be silently forced on.
+
 ## Development commands
 
 | Command | Purpose |
