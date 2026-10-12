@@ -151,7 +151,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     // named Firestore database and returns a confirmed persisted record.
     let savedApplication: WorkerApplication;
     try {
-      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\\/$/, '');
+      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
       const firebaseUser = auth.currentUser;
       if (!firebaseUser) throw new Error('Firebase sign-in expired. Please sign in again.');
       const idToken = await firebaseUser.getIdToken();
