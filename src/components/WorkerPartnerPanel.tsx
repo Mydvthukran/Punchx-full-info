@@ -723,7 +723,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification}:{userProf
        const token=auth.currentUser?await auth.currentUser.getIdToken():null;
        if(token){
          const backendBase=import.meta.env.VITE_BACKEND_URL||'';
-         const response=await fetch(backendBase+'/api/worker/profile',{
+         const response=await fetch(backendBase+'/api/users/profile',{
            method:'POST',
            headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
            body:JSON.stringify(payload)
@@ -736,13 +736,10 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification}:{userProf
          backendSaved=true;
        }
      }catch(backendError){
-       console.warn('Worker profile API save notice; trying Firestore owner write:',backendError);
+       throw backendError instanceof Error ? backendError : new Error('Worker profile could not be saved to Firebase.');
      }
 
-     if(!backendSaved){
-       if(!auth.currentUser) throw new Error('Your authenticated session is unavailable. Please sign in again.');
-       await setDoc(doc(db,'users',uid),payload,{merge:true});
-     }
+     if(!backendSaved) throw new Error('Firebase did not confirm the worker profile save. Please sign in again and retry.');
 
      try{await refreshProfile?.();}catch(refreshError){console.warn('Profile refresh notice after successful save:',refreshError);}
      setEditing(false);
