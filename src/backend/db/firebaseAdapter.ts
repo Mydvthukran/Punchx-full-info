@@ -1,4 +1,4 @@
-import { getFirestore, Firestore, Query } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, Query, FieldValue } from 'firebase-admin/firestore';
 
 // Keep server-side Admin SDK writes in the exact Firestore database used by the web client.
 const FIRESTORE_DATABASE_ID = process.env.FIREBASE_DATABASE_ID || process.env.VITE_FIREBASE_DATABASE_ID || 'ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38';
@@ -315,7 +315,7 @@ export class FirebaseAdapter implements IDatabaseAdapter {
       // Keep a readable ISO timestamp and a server-authoritative Firestore timestamp.
       await ref.set({
         ...record,
-        createdAtServerTimestamp: (await import('firebase-admin/firestore')).FieldValue.serverTimestamp(),
+        createdAtServerTimestamp: FieldValue.serverTimestamp(),
       }, { merge: true });
       this.inMemoryFallback.orders.set(id, record);
       return record;
