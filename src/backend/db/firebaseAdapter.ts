@@ -305,18 +305,24 @@ export class FirebaseAdapter implements IDatabaseAdapter {
   async createOrder(order: OrderRecord): Promise<OrderRecord> {
     const id = order.id || `ORD-${Date.now()}`;
     const record = { ...order, id, createdAt: order.createdAt || new Date().toISOString() };
-    this.inMemoryFallback.orders.set(id, record);
-
     const firestore = this.db;
-    if (firestore) {
-      try {
-        const ref = firestore.collection('orders').doc(id);
-        await ref.set(record, { merge: true });
-      } catch (err) {
-        logger.warn('Firebase createOrder notice (saved in memory):', err);
-      }
+    if (!firestore) {
+      throw new Error('Firestore is not initialized; order was NOT saved.');
     }
-    return record;
+
+    try {
+      const ref = firestore.collection('orders').doc(id);
+      // Keep a readable ISO timestamp and a server-authoritative Firestore timestamp.
+      await ref.set({
+        ...record,
+        createdAtServerTimestamp: (await import('firebase-admin/firestore')).FieldValue.serverTimestamp(),
+      }, { merge: true });
+      this.inMemoryFallback.orders.set(id, record);
+      return record;
+    } catch (err) {
+      logger.error('Firebase createOrder failed; order was NOT persisted:', err);
+      throw new Error('Failed to save the booking to Firebase. Please retry.');
+    }
   }
 
   async getOrder(id: string): Promise<OrderRecord | null> {
