@@ -159,7 +159,7 @@ export default function CustomerLocationSetup({
     } finally {
       setIsResolvingBackend(false);
     }
-  }, [address, landmark, coords.lat, coords.lng]);
+  }, [address, landmark, coords.lat, coords.lng, hasGpsFix]);
 
   // No serviceability lookup until a real device GPS fix is acquired.
 
