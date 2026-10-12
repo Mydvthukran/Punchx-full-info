@@ -107,22 +107,33 @@ export class FirebaseAdapter implements IDatabaseAdapter {
   // ─── WORKER APPLICATIONS ───
   async createWorkerApplication(app: WorkerApplication): Promise<WorkerApplication> {
     const id = app.id || `app_${Date.now()}`;
-    const record = { ...app, id, status: app.status || 'PENDING', appliedAt: app.appliedAt || new Date().toISOString() };
-    this.inMemoryFallback.workerApplications.set(id, record);
-
+    const existing = await this.getWorkerApplication(id);
+    const now = new Date().toISOString();
+    const record = {
+      ...app,
+      id,
+      status: app.status || 'PENDING',
+      appliedAt: app.appliedAt || now,
+      createdAt: (existing as any)?.createdAt || now,
+      updatedAt: now,
+    };
     const firestore = this.db;
-    if (firestore) {
+    if (!firestore) throw new Error('Firestore is not initialized; worker application was not saved.');
+
+    try {
+      // The canonical collection is required. The legacy collection is a best-effort mirror.
+      await firestore.collection('workerApplications').doc(id).set(record, { merge: true });
       try {
-        // Write to both workerApplications and worker_applications for full compatibility
-        await Promise.allSettled([
-          firestore.collection('workerApplications').doc(id).set(record, { merge: true }),
-          firestore.collection('worker_applications').doc(id).set(record, { merge: true })
-        ]);
-      } catch (err) {
-        logger.warn('Firebase createWorkerApplication notice (saved in memory):', err);
+        await firestore.collection('worker_applications').doc(id).set(record, { merge: true });
+      } catch (mirrorError) {
+        logger.warn('Legacy worker application mirror was not updated:', mirrorError);
       }
+      this.inMemoryFallback.workerApplications.set(id, record);
+      return record;
+    } catch (err) {
+      logger.error('Firebase createWorkerApplication failed; application was NOT persisted:', err);
+      throw new Error('Failed to save worker application to Firebase. Please retry.');
     }
-    return record;
   }
 
   async getWorkerApplication(id: string): Promise<WorkerApplication | null> {
