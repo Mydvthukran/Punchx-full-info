@@ -1159,7 +1159,8 @@ async function startServer() {
       const apps = await dbAdapter.listWorkerApplications("APPROVED");
       let onlineByUid = new Map<string, boolean>();
       try {
-        const userSnap = await getFirestore().collection("users").where("role", "==", "worker").get();
+        const databaseId = process.env.FIREBASE_DATABASE_ID || process.env.VITE_FIREBASE_DATABASE_ID || "ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38";
+        const userSnap = await getFirestore(undefined, databaseId).collection("users").where("role", "==", "worker").get();
         onlineByUid = new Map(
           userSnap.docs.map((doc) => [doc.id, doc.data()?.workerAvailability === true || doc.data()?.isOnline === true])
         );
