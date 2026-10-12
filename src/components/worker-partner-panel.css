@@ -177,10 +177,10 @@
 .wx-live-location.ready{background:#ecfdf5;color:#15803d}
 .wx-online-toggle{border:0;border-radius:11px;padding:11px 14px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:10px;font-weight:900;cursor:pointer}
 .wx-online-toggle i{width:7px;height:7px;border-radius:50%;background:#94a3b8}
-.wx-online-toggle.online{background:#dcfce7;color:#166534}
-.wx-online-toggle.online i{background:#22c55e}
-.wx-online-toggle.offline{background:#eff6ff;color:#1d4ed8}
-.wx-online-toggle.offline i{background:#2563eb}
+.wx-online-toggle.online{background:#dc2626;color:#fff;box-shadow:0 8px 20px rgba(220,38,38,.22)}
+.wx-online-toggle.online i{background:#fff;animation:wx-status-pulse 1.5s ease-in-out infinite}
+.wx-online-toggle.offline{background:#16a34a;color:#fff;box-shadow:0 8px 20px rgba(22,163,74,.22)}
+.wx-online-toggle.offline i{background:#fff;animation:wx-status-pulse 1.5s ease-in-out infinite}
 .wx-geofence-actions small{grid-column:1/-1;color:#64748b;font-size:9px;line-height:1.45}
 @media(max-width:820px){
  .wx-header{grid-template-columns:auto minmax(0,1fr) auto!important;gap:8px!important;padding:8px 12px!important}
@@ -709,3 +709,14 @@
  .wx-modal{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);padding:13px}
  .wx-modal-actions{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Animated, high-contrast worker availability action */
+@keyframes wx-status-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.55);transform:scale(1)}50%{box-shadow:0 0 0 5px rgba(255,255,255,0);transform:scale(1.12)}}
+.wx-online-toggle{min-height:46px;min-width:142px;padding:12px 18px;border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.01em;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+.wx-online-toggle:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.04)}
+.wx-online-toggle:active:not(:disabled){transform:scale(.97)}
+.wx-online-toggle:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+.wx-online-toggle:disabled{filter:saturate(.65);box-shadow:none}
+.wx-toggle-btn.on{background:#dc2626!important;color:#fff!important}
+.wx-toggle-btn:not(.on){background:#16a34a!important;color:#fff!important}
+@media(prefers-reduced-motion:reduce){.wx-online-toggle,.wx-online-toggle i{animation:none!important;transition:none!important}}
