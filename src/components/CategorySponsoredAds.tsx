@@ -29,7 +29,7 @@ function loadAds(): CategoryAd[] {
       typeof ad.title === 'string' &&
       typeof ad.description === 'string' &&
       typeof ad.targetUrl === 'string' &&
-      /^https?:\\/\\//i.test(ad.targetUrl) &&
+      /^https?:\/\//i.test(ad.targetUrl) &&
       ad.active !== false
     );
   } catch {
@@ -82,7 +82,7 @@ export default function CategorySponsoredAds({ categoryId, categoryName, subcate
       <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto p-3 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
         {visibleAds.map(ad => (
           <article key={ad.id} className="flex w-[82%] min-w-[240px] max-w-sm shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[#e8eaf0] bg-[#fbfcff] sm:w-auto sm:min-w-0 sm:max-w-none">
-            {ad.imageUrl && /^https?:\\/\\//i.test(ad.imageUrl) ? <img src={ad.imageUrl} alt="" loading="lazy" className="h-36 w-full bg-[#eef2f8] object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} /> : <div className="flex h-24 items-center gap-3 bg-gradient-to-r from-[#eff6ff] to-[#f5f3ff] px-4 text-[#315da8]"><BadgePercent className="h-8 w-8"/><span className="text-xs font-black">Special offer</span></div>}
+            {ad.imageUrl && /^https?:\/\//i.test(ad.imageUrl) ? <img src={ad.imageUrl} alt="" loading="lazy" className="h-36 w-full bg-[#eef2f8] object-cover" onError={event => { event.currentTarget.style.display = 'none'; }} /> : <div className="flex h-24 items-center gap-3 bg-gradient-to-r from-[#eff6ff] to-[#f5f3ff] px-4 text-[#315da8]"><BadgePercent className="h-8 w-8"/><span className="text-xs font-black">Special offer</span></div>}
             <div className="flex flex-1 flex-col p-3.5">
               <div className="text-[10px] font-bold text-[#64748b]">{ad.advertiser}</div>
               <h3 className="mt-1 text-sm font-black leading-5 text-[#171923]">{ad.title}</h3>
