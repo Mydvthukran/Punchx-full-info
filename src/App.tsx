@@ -39,6 +39,9 @@ const AuthCallback = lazy(() => import('./components/AuthCallback'));
 
 function AppMain() {
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
+  // Native app wrappers pass a role-specific query parameter so each APK opens its own login.
+  const punchxAppMode = new URLSearchParams(window.location.search).get('punchxApp')?.toLowerCase();
+  const dedicatedAppRole: 'customer' | 'worker' | null = punchxAppMode === 'professional' ? 'worker' : punchxAppMode === 'citizen' ? 'customer' : null;
 
   const screenRoutes: Partial<Record<AppScreen, string>> = {
     splash: '/', 'panel-select': '/panel-select', auth: '/login',
@@ -71,6 +74,7 @@ function AppMain() {
     // Show the branded splash once to first-time visitors, including deep links.
     // Authentication callbacks must never be interrupted.
     if (requestedScreen === 'auth-callback') return 'auth-callback';
+    if (dedicatedAppRole) return 'auth';
     try {
       if (localStorage.getItem('punchx_splash_seen') !== 'true') return 'splash';
     } catch {
@@ -96,12 +100,13 @@ function AppMain() {
   }, []);
 
   useEffect(() => {
-    const handleLogoutEvent = () => setCurrentScreen('panel-select');
+    const handleLogoutEvent = () => setCurrentScreen(dedicatedAppRole ? 'auth' : 'panel-select');
     window.addEventListener('punchx_logout', handleLogoutEvent);
     return () => window.removeEventListener('punchx_logout', handleLogoutEvent);
   }, []);
 
   const [activePanelRole, setActivePanelRole] = useState<'customer' | 'worker' | 'admin'>(() => {
+    if (dedicatedAppRole) return dedicatedAppRole;
     try { return (localStorage.getItem('punchx_auth_role') as 'customer' | 'worker' | 'admin') || 'customer'; } catch { return 'customer'; }
   });
   useEffect(() => { try { localStorage.setItem('punchx_auth_role', activePanelRole); } catch {} }, [activePanelRole]);
@@ -274,8 +279,9 @@ function AppMain() {
     const workerDashboardHasOnboardingAccess = currentScreen === 'worker-dashboard' && workerOnboardingApproved;
     if (!isLoadingProfile && !currentUser && protectedScreens.includes(currentScreen) && !workerDashboardHasOnboardingAccess) {
       showToast('🔒 Active session required. Redirecting to portal select...');
-      window.history.replaceState({ screen: 'panel-select' }, '', screenRoutes['panel-select'] || '/');
-      setCurrentScreen('panel-select');
+      const loginScreen: AppScreen = dedicatedAppRole ? 'auth' : 'panel-select';
+      window.history.replaceState({ screen: loginScreen }, '', screenRoutes[loginScreen] || '/');
+      setCurrentScreen(loginScreen);
     }
 
     // Strict Guard for Worker Dashboard: Admin review bypassed for testing
@@ -329,12 +335,12 @@ function AppMain() {
       // shown only when the preceding step explicitly transitions to it.
 
       const protectedNavScreens: Record<string, string> = { tracking: '📍 Live Tracking', providers: '🔍 Find Specialists', booking: '📋 Booking', payment: '💳 Payment', 'provider-details': '👤 Specialist Details' };
-      if (!currentUser && protectedNavScreens[target]) { showToast(`🔒 Sign in required to access ${protectedNavScreens[target]}. Redirecting to portal...`); resolvedTarget = 'panel-select'; }
+      if (!currentUser && protectedNavScreens[target]) { showToast(`🔒 Sign in required to access ${protectedNavScreens[target]}. Redirecting to portal...`); resolvedTarget = dedicatedAppRole ? 'auth' : 'panel-select'; }
       else if (target === 'panel-select' && currentUser) {
         if (userProfile?.role === 'admin') resolvedTarget = 'admin-dashboard';
         else if (activePanelRole === 'worker' || userProfile?.role === 'worker') resolvedTarget = 'worker-dashboard';
         else resolvedTarget = 'home';
-      } else if (target === 'home' && !currentUser) resolvedTarget = 'panel-select';
+      } else if (target === 'home' && !currentUser) resolvedTarget = dedicatedAppRole ? 'auth' : 'panel-select';
 
       const destination = screenRoutes[resolvedTarget] || '/';
       const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
