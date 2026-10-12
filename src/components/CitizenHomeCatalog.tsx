@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
-  ArrowRight, CalendarDays, CheckCircle2, ChevronRight, Clock, Home as HomeIcon,
+  ArrowRight, Megaphone, CalendarDays, CheckCircle2, ChevronRight, Clock, Home as HomeIcon,
   Loader2, MapPin, Search, ShieldCheck, Star, UserRound, X,
   Zap, Droplet, Hammer, Paintbrush, HardHat, Flame, Scissors, Wrench, Bike, Car, Home,
   Wind, Snowflake, Waves, Smartphone, Laptop, Tv, Video, Sun, Droplets, Key,
@@ -260,6 +260,27 @@ export default function CitizenHomeCatalog({
               <span className="truncate max-w-[180px]">{pill.text}</span>
             </div>
           ))}
+        </section>
+
+        {/* ── HOMEPAGE FEATURED AD SLOT ── */}
+        <section aria-label="Featured advertising" className="pt-3">
+          <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-r from-[#eff6ff] via-white to-[#f5f3ff] p-4 shadow-sm sm:p-5">
+            <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-100/70 blur-2xl" />
+            <div className="relative flex items-center gap-3 sm:gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+                <Megaphone className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider text-blue-700 ring-1 ring-blue-100">Featured</span>
+                  <span className="text-[10px] font-semibold text-slate-500">PunchX spotlight</span>
+                </div>
+                <h2 className="mt-1 text-base font-extrabold leading-5 text-slate-900 sm:text-lg">Need a trusted local professional?</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Explore plumbing, electrical, cleaning and repair services in one place.</p>
+              </div>
+              <button type="button" onClick={() => { setQuery(''); setSearchOpen(true); }} className="relative shrink-0 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-blue-700 sm:px-4">Explore <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></button>
+            </div>
+          </div>
         </section>
 
         {/* ── POPULAR CAROUSEL ── */}
