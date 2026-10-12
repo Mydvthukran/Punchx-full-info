@@ -14,10 +14,13 @@ interface AuthProps {
 }
 
 export default function Auth({ onTransition, showNotification, setAuthMethodDetail, activePanelRole = 'customer' }: AuthProps) {
-  const punchxAppMode = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('punchxApp') : null;
+  const punchxAppMode = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('punchxApp') || (() => { try { return localStorage.getItem('punchx_native_app_mode'); } catch { return null; } })())
+    : null;
   const isDedicatedApp = punchxAppMode === 'citizen' || punchxAppMode === 'professional';
+  // Keep the configured callback URL exact so the identity provider's redirect allowlist continues to match.
   const authRedirectUri = typeof window !== 'undefined'
-    ? `${window.location.origin}/auth/callback${isDedicatedApp ? `?punchxApp=${encodeURIComponent(punchxAppMode!)}` : ''}`
+    ? `${window.location.origin}/auth/callback`
     : import.meta.env.VITE_NAMOID_REDIRECT_URI || 'https://www.punchxapp.co.in/auth/callback';
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [isLocating, setIsLocating] = useState(false);
