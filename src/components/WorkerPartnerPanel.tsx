@@ -254,13 +254,30 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
          if(!snap.exists()) throw new Error('Booking no longer exists.');
          const current=snap.data() as any;
          if(!pending(current.status) || (current.workerId && current.workerId!==uid)) throw new Error('This job was already accepted.');
-         tx.update(ref,{workerId:uid,workerName:userProfile?.name||'Verified Professional',workerPhone:userProfile?.phone||'',status:'In-Progress',acceptedAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+         const changedAt=new Date().toISOString();
+         const history=Array.isArray(current.stateHistory)?current.stateHistory:[];
+         tx.update(ref,{
+           workerId:uid,
+           workerName:userProfile?.name||'Verified Professional',
+           workerPhone:userProfile?.phone||'',
+           status:'In-Progress',
+           acceptedAt:changedAt,
+           updatedAt:changedAt,
+           stateHistory:[...history,{from:current.status||'Pending',to:'In-Progress',timestamp:changedAt,actorUid:uid,actorRole:'worker',reason:'Professional accepted booking'}],
+         });
        });
        showNotification?.('✅ Job accepted. The customer assignment is now active.');
      } else {
        const backendStatus:any=o.status==='ACCEPTED'?'EN_ROUTE':o.status==='TRAVELLING'?'ARRIVED':o.status==='ARRIVED'?'IN_SERVICE':o.status==='SERVICE_STARTED'?'Done':null;
        if(!backendStatus) return;
-       await updateDoc(doc(db,'orders',raw.id),{status:backendStatus,updatedAt:new Date().toISOString(),...(backendStatus==='Done'?{completedAt:new Date().toISOString(),workerOutForWork:false}:{})});
+       const changedAt=new Date().toISOString();
+       const history=Array.isArray((raw as any).stateHistory)?(raw as any).stateHistory:[];
+       await updateDoc(doc(db,'orders',raw.id),{
+         status:backendStatus,
+         updatedAt:changedAt,
+         stateHistory:[...history,{from:raw.status,to:backendStatus,timestamp:changedAt,actorUid:uid,actorRole:'worker',reason:'Professional updated booking progress'}],
+         ...(backendStatus==='Done'?{completedAt:changedAt,workerOutForWork:false}:{})
+       });
        showNotification?.(backendStatus==='Done'?'✅ Service completed and recorded.':'Order '+o.id+' updated to '+(labels[mapStatus(backendStatus)]||backendStatus)+'.');
      }
      setSelected(null);
