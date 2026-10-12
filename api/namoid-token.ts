@@ -78,11 +78,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!workerApps.empty && workerApps.docs[0].data().status === 'APPROVED') role = 'worker';
     }
 
-    const customToken = await getAuth().createCustomToken(uid, {
-      ...(email ? { email } : {}),
-      name: typeof identity.name === 'string' ? identity.name.slice(0, 160) : '',
-      role,
-    });
+    // Keep Firebase custom claims to application-specific fields only. Email
+    // and name belong in the profile document, not developer custom claims.
+    const customToken = await getAuth().createCustomToken(uid, { role });
 
     return res.status(200).json({ success: true, customToken, uid, role });
   } catch (error: any) {
