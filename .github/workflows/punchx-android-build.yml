@@ -51,7 +51,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-          cache: gradle
 
       - name: Install locked project dependencies
         run: npm ci --no-audit --no-fund
