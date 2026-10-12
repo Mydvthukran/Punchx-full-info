@@ -319,7 +319,7 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
     {tab==='settings'&&<SettingsView online={online} persistAvailability={persistAvailability} availabilitySaving={availabilitySaving} nav={nav} onTransition={onTransition}/>}
    </main>
    <footer className="wx-mobile-nav" aria-label="Worker panel navigation">{menu.slice(0,5).map(function(m:any){var I=m[2];return <button key={m[0]} className={tab===m[0]?'active':''} onClick={()=>nav(m[0])}><I size={18}/><span>{m[1]}</span></button>})}</footer>
-   <WorkerWebsiteFooter tab={tab} nav={nav} onTransition={onTransition} onLogout={handleLogout} loggingOut={loggingOut} />
+   <div className="hidden" aria-hidden="true"><WorkerWebsiteFooter tab={tab} nav={nav} onTransition={onTransition} onLogout={handleLogout} loggingOut={loggingOut} /></div>
   </div>
   {selected&&<OrderModal order={selected} close={()=>setSelected(null)} advance={()=>advance(selected)} action={action(selected.status)}/>}
  </div>
