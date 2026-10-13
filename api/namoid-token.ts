@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import crypto from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { getPunchxFirestore } from './_lib/firebaseAdmin';
 
@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Preserve the UID mapping used by existing PunchX profiles. A verified
     // NamoID subject is preferred; email is a deterministic fallback only
     // when the provider does not supply a subject.
-    const uid = subject || `namoid_${crypto.createHash('sha256').update(email).digest('hex').slice(0, 20)}`;
+    const uid = subject || `namoid_${createHash('sha256').update(email).digest('hex').slice(0, 20)}`;
     if (uid.length > 128) {
       return fail(res, 401, 'NamoID returned an invalid account identifier.');
     }

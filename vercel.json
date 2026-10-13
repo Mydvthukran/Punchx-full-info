@@ -7,6 +7,14 @@
       "destination": "/api/namoid-proxy"
     },
     {
+      "source": "/api/auth/namoid-token",
+      "destination": "/api/namoid-token"
+    },
+    {
+      "source": "/api/geocode",
+      "destination": "/api/maps/geocode"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
