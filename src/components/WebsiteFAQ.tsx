@@ -10,37 +10,37 @@ export default function WebsiteFAQ() {
     {
       category: 'Pricing',
       question: 'How does PunchX pricing work? Are there any hidden fees?',
-      answer: 'PunchX operates with complete upfront price transparency. A flat standard inspection & visiting fee of ₹199 is applied, which is fully adjusted against the final service bill if you proceed with the work. Master technician labor and genuine spare parts are itemized and approved by you before physical execution begins. There are zero surge traps or hidden conveyance costs.'
+      answer: '[SERVICE PRICE RANGES, VISIT FEES AND PLATFORM FEES: confirm with founders]. The final amount and any applicable fees should be reviewed before booking confirmation.'
     },
     {
       category: 'Safety',
-      question: 'How are technicians vetted and verified before visiting my residence?',
-      answer: 'Every PunchX service partner undergoes a rigorous 4-stage onboarding protocol: (1) Government Aadhaar & identity validation, (2) Criminal record & local police background clearance, (3) Practical trade competency examination by senior guild inspectors, and (4) Standardized customer safety & hygiene training. Every specialist wears a verified PunchX digital photo badge and uniform.'
+      question: 'How are professionals verified before a booking?',
+      answer: '[VERIFICATION STEPS: confirm with founders]. PunchX should publish the actual checks used before making a specific verification claim.'
     },
     {
       category: 'Warranty',
-      question: 'What is the PunchX 30-Day Service Guarantee and how does it work?',
-      answer: 'All completed repairs and maintenance tasks come backed by our unconditional 30-Day Revisit Guarantee. If any serviced electrical circuit, AC compressor unit, or plumbing joint develops recurring issues within 30 days of service closure, our team will dispatch a master specialist for a complimentary re-inspection and resolution at zero extra labor cost.'
+      question: 'What warranty or revisit policy applies to a service?',
+      answer: '[WARRANTY AND REVISIT POLICY: confirm with founders]. Any applicable terms should be shown before a booking is confirmed.'
     },
     {
       category: 'Dispatch',
-      question: 'How quickly will a technician arrive at my doorstep in Kolkata?',
-      answer: 'Our smart GPS radar allocates the nearest available on-duty master technician in your neighborhood sector. Average arrival time across Kolkata is 15–30 minutes for emergency dispatches, with live real-time turn-by-turn tracking available directly on your customer tracking screen.'
+      question: 'When will the professional arrive?',
+      answer: 'Arrival timing depends on the service, availability and booking details. Tracking availability depends on the booking. [CONFIRM SERVICE-AREA AND ETA PROMISES WITH FOUNDERS].'
     },
     {
       category: 'Payments',
       question: 'When do I need to pay, and what payment methods are accepted?',
-      answer: 'No advance payment is needed to book. You only pay once the technician finishes the service to your satisfaction, shows digital photo proof, and collects your completion signature. We accept all major UPI apps (GPay, PhonePe, Paytm), credit/debit cards, net banking, and cash on delivery.'
+      answer: 'Payment options can include online payment and cash where applicable. The available methods and payment timing should be confirmed in the checkout flow. [CONFIRM PAYMENT TERMS WITH FOUNDERS].'
     },
     {
       category: 'Safety',
-      question: 'What is the 4-Digit Security OTP Gate and why is it important?',
-      answer: 'To protect customer security and verify technician identity, our system issues a unique 4-digit numeric verification OTP upon booking. You share this code with the technician only when they arrive at your physical doorstep. Entering this code on the worker portal is mandatory to unlock the job ledger and start work.'
+      question: 'How is a booking or completed job confirmed?',
+      answer: 'Booking and completion confirmation steps depend on the current booking flow. [CONFIRM OTP PURPOSE AND TIMING WITH FOUNDERS].'
     },
     {
       category: 'Corporate',
       question: 'Does PunchX provide Annual Maintenance Contracts (AMC) for apartment complexes and offices?',
-      answer: 'Yes. PunchX Corporate Care delivers customized maintenance contracts for residential societies, gated villas, co-working spaces, and retail hubs with dedicated on-site technicians, scheduled monthly electrical & pump inspections, and guaranteed 15-minute emergency SLAs.'
+      answer: '[BUSINESS OR CORPORATE SERVICE AVAILABILITY: confirm with founders].'
     }
   ];
 
@@ -66,7 +66,7 @@ export default function WebsiteFAQ() {
             Frequently Asked Questions
           </h2>
           <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-            Everything you need to know about our verified technicians, guarantees, and pricing.
+            Answers about services, booking, safety and pricing.
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export default function WebsiteFAQ() {
       <div className="space-y-3 pt-2">
         {filteredFaqs.length === 0 ? (
           <div className="text-center py-10 text-zinc-500 text-xs font-mono">
-            No questions matched your search query. Try another term or contact our 24/7 helpline at 1800-PUNCHX-24 or PUNCHXSERVICE@GMAIL.COM.
+            No questions matched your search. Try another term or email punchxservice@gmail.com.
           </div>
         ) : (
           filteredFaqs.map((faq, idx) => {
@@ -157,17 +157,17 @@ export default function WebsiteFAQ() {
           </div>
           <div>
             <h4 className="text-sm font-bold text-white">Have a specific emergency or enterprise question?</h4>
-            <p className="text-xs text-zinc-400">Our concierge support team is available 24/7 across Kolkata.</p>
+            <p className="text-xs text-zinc-400">Contact PunchX by email for questions about services and bookings.</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <a
-            href="tel:1800786249"
+            href="mailto:punchxservice@gmail.com"
             className="px-4 py-2 rounded-xl bg-[#c5a059] hover:bg-[#e9c176] text-black text-xs font-bold transition-all flex items-center gap-1.5 shadow-md"
           >
             <Phone className="w-3.5 h-3.5" />
-            <span>Call 1800-PUNCHX</span>
+            <span>Email punchxservice@gmail.com</span>
           </a>
         </div>
       </div>

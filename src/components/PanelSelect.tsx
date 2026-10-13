@@ -33,7 +33,7 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
             <Sparkles className="h-3.5 w-3.5" /> PUNCHX UNIFIED PLATFORM
           </div>
           <h1 className="text-3xl font-black tracking-[-0.04em] text-[#0f172a] sm:text-5xl">Select Your PunchX Workspace</h1>
-          <p className="mt-4 max-w-lg text-sm font-medium leading-6 text-[#64748b] sm:text-base">Book verified neighborhood professionals or sign in as an authorized specialist partner.</p>
+          <p className="mt-4 max-w-lg text-sm font-medium leading-6 text-[#64748b] sm:text-base">Book local professionals or sign in as a service professional.</p>
         </motion.div>
 
         {/* Dual Cards: Customer vs Specialist */}
@@ -44,14 +44,14 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
             <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-[#2563eb]/7 blur-3xl transition-all duration-500 group-hover:bg-[#38bdf8]/12" />
             <div className="relative flex flex-col items-center text-center flex-1">
               <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
-                <User className="h-3 w-3" /> Citizen Workspace
+                <User className="h-3 w-3" /> Customer Workspace
               </div>
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb] shadow-sm mb-4 transition-transform duration-300 group-hover:scale-105">
                 <User className="h-8 w-8" />
               </div>
               <h2 className="text-xl font-extrabold tracking-tight text-[#0f172a]">Customer Portal</h2>
               <p className="mt-2 text-xs sm:text-sm text-[#64748b] mb-6 leading-relaxed">
-                Book verified professionals for AC, electrical, plumbing, carpentry, and 50+ home services with live GPS tracking.
+                Explore local professionals for AC, electrical, plumbing, carpentry and other home services. Tracking availability depends on the booking.
               </p>
             </div>
             <button onClick={() => { showNotification(`Opening Customer portal...`); onSelectPanel('customer', 'login'); }} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#2563eb] px-5 py-4 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(37,99,235,.24)] transition-all hover:bg-[#1d4ed8] hover:shadow-[0_16px_34px_rgba(37,99,235,.30)] active:scale-[.99]">

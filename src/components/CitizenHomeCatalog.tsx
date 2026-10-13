@@ -126,7 +126,7 @@ export default function CitizenHomeCatalog({
   }, [searchOpen]);
 
   /* ── Render a single service card ── */
-  const ServiceCard = ({ catId, index, color }: { catId: string; index: number; color: typeof GROUP_COLORS[0] }) => {
+  const ServiceCard = ({ catId, index, color }: { catId: string; index: number; color: typeof GROUP_COLORS[0]; key?: React.Key }) => {
     const cat = PUNCHX_50_CATEGORIES.find(c => c.id === catId);
     if (!cat) return null;
     const IconComp = ICON_MAP[cat.iconName] || Wrench;
@@ -154,7 +154,7 @@ export default function CitizenHomeCatalog({
           {cat.name}
         </span>
         <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600">
-          <Clock className="h-3 w-3" /> 45 min
+          <Info className="h-3 w-3" /> View details
         </span>
       </motion.button>
     );
@@ -215,13 +215,13 @@ export default function CitizenHomeCatalog({
 
             <div className="relative z-10">
               <div className="flex items-center gap-2 text-xs font-semibold text-blue-200">
-                <ShieldCheck className="h-4 w-4" /> Verified local professionals
+                <ShieldCheck className="h-4 w-4" /> Local service professionals
               </div>
               <h1 className="mt-3 text-2xl sm:text-4xl font-extrabold leading-tight">
                 What service do<br className="sm:hidden" /> you need today?
               </h1>
               <p className="mt-2 max-w-md text-sm text-blue-100/80 leading-relaxed">
-                Book verified professionals for home, vehicle, and personal care services.
+                Explore local professionals for home, vehicle, and personal care services.
               </p>
 
               {/* Search bar */}
@@ -250,8 +250,8 @@ export default function CitizenHomeCatalog({
         {/* ── INFO PILLS ── */}
         <section className="flex gap-2 overflow-x-auto py-3 no-scrollbar">
           {[
-            { icon: <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />, text: 'Background-verified pros' },
-            { icon: <Clock className="h-3.5 w-3.5 text-blue-600" />, text: 'Avg. 45 min response' },
+            { icon: <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />, text: 'Service details before booking' },
+            
             { icon: <MapPin className="h-3.5 w-3.5 text-violet-600" />, text: residential || 'Add address for visits' },
           ].map((pill, i) => (
             <div key={i} className="flex shrink-0 items-center gap-2 rounded-full border border-gray-100
@@ -324,7 +324,7 @@ export default function CitizenHomeCatalog({
                     {cat.shortDesc}
                   </span>
                   <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
-                    <Clock className="h-3 w-3" /> 45 min
+                    <Info className="h-3 w-3" /> View details
                     <span className="ml-auto flex items-center gap-0.5 text-amber-500">
 
                     </span>
@@ -367,7 +367,7 @@ export default function CitizenHomeCatalog({
         <section className="py-10 grid gap-3 sm:grid-cols-3">
           {[
             { icon: <ShieldCheck className="h-5 w-5 text-blue-600" />,
-              title: 'Verified professionals', desc: 'Every pro is background-checked and skill-verified.' },
+              title: 'Professional information', desc: 'Review the available profile information before booking.' },
             { icon: <CalendarDays className="h-5 w-5 text-violet-600" />,
               title: 'Easy booking flow', desc: 'Pick service → facility → exact work → confirm.' },
             { icon: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
@@ -427,7 +427,7 @@ export default function CitizenHomeCatalog({
               <div className="h-24 w-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-5 ring-4 ring-white shadow-md">
                 <UserRound className="h-10 w-10" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">{citizenName || 'PunchX Citizen'}</h3>
+              <h3 className="text-xl font-bold text-gray-900">{citizenName || 'PunchX Customer'}</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-8 text-left">
                 <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
@@ -436,7 +436,7 @@ export default function CitizenHomeCatalog({
                 </div>
                 <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
                   <div className="flex items-center gap-2 mb-1"><ShieldCheck className="h-4 w-4 text-emerald-500" /><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Account Status</span></div>
-                  <div className="text-sm font-semibold text-gray-800 ml-6">Verified Citizen</div>
+                  <div className="text-sm font-semibold text-gray-800 ml-6">Customer account</div>
                 </div>
               </div>
               
