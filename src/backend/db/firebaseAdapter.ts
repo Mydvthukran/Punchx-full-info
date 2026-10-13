@@ -123,8 +123,16 @@ export class FirebaseAdapter implements IDatabaseAdapter {
     try {
       // The canonical collection is required. The legacy collection is a best-effort mirror.
       await firestore.collection('workerApplications').doc(id).set(record, { merge: true });
+      if (app.uid) {
+        try {
+          await firestore.collection('workerApplications').doc(app.uid).set(record, { merge: true });
+        } catch {}
+      }
       try {
         await firestore.collection('worker_applications').doc(id).set(record, { merge: true });
+        if (app.uid) {
+          await firestore.collection('worker_applications').doc(app.uid).set(record, { merge: true });
+        }
       } catch (mirrorError) {
         logger.warn('Legacy worker application mirror was not updated:', mirrorError);
       }

@@ -29,6 +29,7 @@ export interface WorkerApplication {
   uid: string;
   legalName: string;
   dob?: string;
+  birthdate?: string;
   address: string;
   area?: string;
   city?: string;

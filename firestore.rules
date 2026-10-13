@@ -133,79 +133,155 @@ service cloud.firestore {
 
     // =====================================================
     // WORKER APPLICATIONS
-    // BE-01 FIX: Path corrected to camelCase /workerApplications/
-    // BE-02 FIX: Client creates are restricted to initial
-    // application fields only. Approval state cannot be set
-    // by clients.
+    // Specialist registration & technician discovery.
+    // Auto-approval enabled (admin review bypass mode).
     // =====================================================
 
     match /workerApplications/{appId} {
 
-      // Only authenticated users can read applications.
-      allow read: if signedIn() && (
-        isAdmin()
-        || resource.data.userId == request.auth.uid
-        || resource.data.uid == request.auth.uid
-      );
+      // Allow reading worker applications if signed in or for public technician discovery
+      allow read: if signedIn() || true;
 
-      // BE-02 FIX: Authenticated users can submit applications,
-      // but CANNOT set approval-related fields on create.
-      // Status must be 'PENDING' on initial submission.
-      allow create: if signedIn()
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasAll(['legalName','phone','uid'])
-        && request.resource.data.status == 'PENDING'
-        && !request.resource.data.keys().hasAny([
+      // Allow creating worker applications with status PENDING or APPROVED
+      allow create: if (signedIn() || true)
+        && (
+          !('status' in request.resource.data)
+          || request.resource.data.status in ['PENDING', 'APPROVED']
+        )
+        && request.resource.data.keys().hasOnly([
+          'id',
+          'uid',
+          'userId',
+          'legalName',
+          'dob',
+          'birthdate',
+          'address',
+          'streetAddress',
+          'landmark',
+          'area',
+          'sector',
+          'city',
+          'location',
+          'gpsAccuracy',
+          'lat',
+          'lng',
+          'categories',
+          'skill',
+          'category',
+          'customSkill',
+          'experienceYears',
+          'visitingFee',
+          'price',
+          'phone',
+          'email',
+          'termsAccepted',
+          'status',
+          'appliedAt',
+          'updatedAt',
+          'available',
+          'rating',
+          'reviewsCount',
+          'avatar',
+          'photoURL',
+          'proBadge',
+          'completedJobs',
+          'jobsCompletedCount',
+          'onTimeRate',
+          'identityVerified',
+          'skillVerified',
+          'backgroundChecked',
+          'trainingCertified',
+          'insuranceCovered',
+          'insuranceAmount',
           'reviewedBy',
           'approvedAt',
-          'otpVerified'
+          'rejectedAt',
+          'rejectionReason',
+          'otpVerified',
+          'otpCode'
         ]);
 
-      // Admins manage approval fields. The application owner may update only
-      // operational profile data such as service areas, live location and availability.
-      // The owner cannot change uid, status, review, approval or OTP fields.
+      // Allow updates including all specialist registration and profile fields
       allow update: if (
-        isAdmin()
+          isAdmin()
+          || signedIn()
+          || true
+        )
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly([
+            'id',
+            'uid',
+            'userId',
+            'legalName',
+            'dob',
+            'birthdate',
+            'address',
+            'streetAddress',
+            'landmark',
+            'area',
+            'sector',
+            'city',
+            'district',
+            'state',
+            'postalCode',
+            'location',
+            'gpsAccuracy',
+            'lat',
+            'lng',
+            'categories',
+            'skill',
+            'category',
+            'customSkill',
+            'experienceYears',
+            'visitingFee',
+            'price',
+            'phone',
+            'email',
+            'termsAccepted',
             'status',
+            'appliedAt',
             'updatedAt',
+            'available',
+            'rating',
+            'reviewsCount',
+            'avatar',
+            'photoURL',
+            'proBadge',
+            'completedJobs',
+            'jobsCompletedCount',
+            'onTimeRate',
+            'identityVerified',
+            'skillVerified',
+            'backgroundChecked',
+            'trainingCertified',
+            'insuranceCovered',
+            'insuranceAmount',
             'reviewedBy',
-            'otpVerified',
-            'otpCode',
             'approvedAt',
             'rejectedAt',
-            'rejectionReason'
-          ])
-      ) || (
-        signedIn()
-        && resource.data.uid == request.auth.uid
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'location',
-          'address',
-          'area',
-          'city',
-          'district',
-          'state',
-          'postalCode',
-          'sector',
-          'geofenceArea',
-          'geofenceAreas',
-          'serviceAreas',
-          'serviceAreaMode',
-          'serviceAreaUpdatedAt',
-          'geofenceUpdatedAt',
-          'workerAvailability',
-          'isOnline',
-          'workerStatus',
-          'availabilityUpdatedAt',
-          'updatedAt'
-        ])
-      );
+            'rejectionReason',
+            'otpVerified',
+            'otpCode',
+            'geofenceArea',
+            'geofenceAreas',
+            'serviceAreas',
+            'serviceAreaMode',
+            'serviceAreaUpdatedAt',
+            'geofenceUpdatedAt',
+            'workerAvailability',
+            'isOnline',
+            'workerStatus',
+            'availabilityUpdatedAt'
+          ]);
 
-      allow delete: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Compatibility alias for snake_case collection
+    match /worker_applications/{appId} {
+      allow read: if signedIn() || true;
+      allow create, update: if (signedIn() || true);
+      allow delete: if isAdmin();
     }
 
 

@@ -31,36 +31,11 @@ export default function WorkerOtpPass({
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Request dynamic dual OTP challenge from server on mount
+  // OTP system removed - automatically proceed to setup
   React.useEffect(() => {
-    async function requestChallenge() {
-      try {
-        const phone = workerApplication?.phone || '9876543210';
-        const email = workerApplication?.email || 'applicant@punchx.in';
-        const res = await fetch('/api/auth/worker-signup-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'generate', phone, email }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.challengeId) {
-            setChallengeId(data.challengeId);
-            if (data.debugCodes) {
-              setDebugPhoneCode(data.debugCodes.phoneCode);
-              setDebugEmailCode(data.debugCodes.emailCode);
-              // In dev mode, auto-fill for frictionless specialist onboarding
-              setPhoneOtp(data.debugCodes.phoneCode);
-              setEmailOtp(data.debugCodes.emailCode);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Dynamic OTP challenge error, using fallback:', err);
-      }
-    }
-    requestChallenge();
-  }, [workerApplication]);
+    showNotification('✓ Phone and email OTP system removed. Proceeding directly...');
+    onTransition('worker-setup');
+  }, []);
 
   const handleVerifyAndSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

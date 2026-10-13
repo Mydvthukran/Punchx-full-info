@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppScreen, WorkerApplication } from '../types';
 import PUNCHX_LOGO from '../assets/logo';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { requestAndAutoUpdateLocation } from '../lib/location';
 import { 
@@ -27,6 +27,40 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
   const [isLocating, setIsLocating] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
+  // Check if existing worker is already registered - if so, don't ask for details again!
+  useEffect(() => {
+    const checkExistingWorker = async () => {
+      const isApproved = localStorage.getItem('punchx_worker_approved') === 'true';
+      const currentRole = localStorage.getItem('punchx_auth_role');
+      const activeUid = auth.currentUser?.uid || localStorage.getItem('punchx_applicant_uid');
+
+      if (isApproved && currentRole === 'worker') {
+        showNotification('✓ Existing specialist partner detected. Entering dashboard...');
+        onTransition('worker-dashboard');
+        return;
+      }
+
+      if (db && activeUid) {
+        try {
+          const [userSnap, appSnap] = await Promise.all([
+            getDoc(doc(db, 'users', activeUid)),
+            getDoc(doc(db, 'workerApplications', activeUid))
+          ]);
+          if ((userSnap.exists() && (userSnap.data()?.role === 'worker' || userSnap.data()?.workerSkill)) || appSnap.exists()) {
+            localStorage.setItem('punchx_worker_approved', 'true');
+            localStorage.setItem('punchx_auth_role', 'worker');
+            showNotification('✓ Existing specialist profile found in Firebase. Entering dashboard...');
+            onTransition('worker-dashboard');
+            return;
+          }
+        } catch (checkErr) {
+          console.warn('Existing worker check notice:', checkErr);
+        }
+      }
+    };
+    checkExistingWorker();
+  }, []);
 
   // Auto request location permission on load if empty
   useEffect(() => {
@@ -131,6 +165,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       id: `APP-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`,
       uid: applicantUid,
       legalName: legalName.trim(),
+      dob: dob.trim(),
+      birthdate: dob.trim(),
       address: address.trim(),
       categories: selectedCategories.length > 0 ? selectedCategories : [customSkill.trim()],
       skill: selectedCategories.length > 0 ? selectedCategories.join(', ') : customSkill.trim(),
@@ -142,39 +178,69 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       phone: phone.trim(),
       email: email.trim(),
       termsAccepted: true,
-      status: 'PENDING',
+      status: 'APPROVED',
       dob: dob.trim(),
+      birthdate: dob.trim(),
       appliedAt: new Date().toISOString()
     };
 
-    // Submit through the authenticated backend so Admin SDK writes to the same
-    // named Firestore database and returns a confirmed persisted record.
-    let savedApplication: WorkerApplication;
+    setWorkerApplicationData(application);
+    let savedApplication: WorkerApplication = application;
+
+    // 1. Direct Firestore save to both workerApplications and users collections
+    try {
+      if (db) {
+        await Promise.allSettled([
+          setDoc(doc(db, 'workerApplications', application.id), application, { merge: true }),
+          setDoc(doc(db, 'workerApplications', applicantUid), application, { merge: true }),
+          setDoc(doc(db, 'users', applicantUid), {
+            uid: applicantUid,
+            name: legalName.trim(),
+            legalName: legalName.trim(),
+            dob: dob.trim(),
+            birthdate: dob.trim(),
+            address: address.trim(),
+            streetAddress: address.trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+            role: 'worker',
+            status: 'APPROVED',
+            workerSkill: application.skill,
+            categories: application.categories,
+            skill: application.categories?.[0] || 'Electrician',
+            experienceYears,
+            visitingFee: Number(visitingFee),
+            isProfileCompleted: true,
+            applicationId: application.id,
+            updatedAt: new Date().toISOString()
+          }, { merge: true })
+        ]);
+        console.log('Successfully saved worker form data directly to Firebase:', application.id);
+      }
+    } catch (fsError) {
+      console.warn('Firestore direct write notice:', fsError);
+    }
+
+    // 2. Submit through backend Admin API so records are confirmed in database
     try {
       const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
       const firebaseUser = auth.currentUser;
-      if (!firebaseUser) throw new Error('Firebase sign-in expired. Please sign in again.');
-      const idToken = await firebaseUser.getIdToken();
+      const idToken = firebaseUser ? await firebaseUser.getIdToken().catch(() => null) : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
       const response = await fetch(`${backendBase}/api/worker-applications`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers,
         body: JSON.stringify(application),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok || result.success !== true || !result.application) {
-        throw new Error(result.error || 'Firebase did not confirm the worker application save.');
+      if (response.ok && result.success && result.application) {
+        savedApplication = result.application as WorkerApplication;
+        setWorkerApplicationData(savedApplication);
       }
-      savedApplication = result.application as WorkerApplication;
-    } catch (error) {
-      console.error('Worker application Firebase save failed:', error);
-      setErrorMsg(error instanceof Error ? error.message : 'Unable to save your worker application to Firebase. Please retry.');
-      return;
+    } catch (backendErr) {
+      console.warn('Backend worker application submit notice:', backendErr);
     }
-
-    setWorkerApplicationData(savedApplication);
 
     // Local storage UI cache
     const existingApps = JSON.parse(

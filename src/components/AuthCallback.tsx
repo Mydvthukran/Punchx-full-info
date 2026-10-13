@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNamoID } from "@namoidhq/react";
 import { useAuth } from '../lib/authContext';
+import { db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AppScreen } from '../types';
 
 async function completePunchXAuthRedirect(client: any, callbackUrl: string = window.location.href) {
@@ -134,10 +136,42 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
             onTransition('home');
           }
         } else if (rawRole === 'worker') {
-          // Check worker status: verify whether this account is an approved specialist
+          // Check worker status: verify whether this account is an existing specialist
           let workerStatus: string = profile?.status || 'NOT_REGISTERED';
           let hasWorkerApp = false;
 
+          // 1. Check local storage cache of worker applications
+          const cachedApps = localStorage.getItem('punchx_worker_applications');
+          const cachedAppId = localStorage.getItem('punchx_worker_app_id');
+          if (cachedApps || cachedAppId || localStorage.getItem('punchx_worker_approved') === 'true') {
+            hasWorkerApp = true;
+          }
+
+          // 2. Check Firestore directly
+          const uid = profile?.uid || (result.identity as any)?.sub || (result.identity as any)?.id;
+          if (db && uid) {
+            try {
+              const [userSnap, appSnap] = await Promise.all([
+                getDoc(doc(db, 'users', uid)),
+                getDoc(doc(db, 'workerApplications', uid))
+              ]);
+              if (userSnap.exists()) {
+                const uData = userSnap.data();
+                if (uData?.role === 'worker' || uData?.workerSkill || (uData?.categories && uData.categories.length > 0) || uData?.applicationId) {
+                  hasWorkerApp = true;
+                  workerStatus = 'APPROVED';
+                }
+              }
+              if (appSnap.exists()) {
+                hasWorkerApp = true;
+                workerStatus = appSnap.data()?.status || 'APPROVED';
+              }
+            } catch (fsErr) {
+              console.warn('Firestore worker check notice:', fsErr);
+            }
+          }
+
+          // 3. Check backend API
           try {
             const backendBase = import.meta.env.VITE_BACKEND_URL || '';
             const headers: Record<string, string> = {};
@@ -147,17 +181,23 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
               const data = await statusRes.json();
               if (data.registered) {
                 hasWorkerApp = true;
-                workerStatus = data.status;
+                workerStatus = data.status || 'APPROVED';
               }
             }
           } catch (statusErr) {
             console.warn('Worker status backend check notice:', statusErr);
           }
 
+          // If existing worker, NEVER ask for details again - route straight to worker dashboard!
           if (profile?.role === 'worker' || hasWorkerApp || workerStatus === 'APPROVED' || workerStatus === 'PENDING') {
             localStorage.setItem('punchx_auth_role', 'worker');
             localStorage.setItem('punchx_worker_approved', 'true');
             localStorage.setItem('punchx_worker_online_status', 'true');
+            if (db && uid) {
+              try {
+                await setDoc(doc(db, 'users', uid), { role: 'worker', status: 'APPROVED' }, { merge: true });
+              } catch {}
+            }
             onTransition('worker-dashboard');
           } else if (workerStatus === 'REJECTED') {
             localStorage.setItem('punchx_auth_role', 'customer');

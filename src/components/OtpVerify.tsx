@@ -36,6 +36,12 @@ export default function OtpVerify({
     useRef<HTMLInputElement>(null),
   ];
 
+  // OTP system removed - automatically proceed to destination
+  useEffect(() => {
+    const target = activePanelRole === 'worker' ? 'worker-dashboard' : activePanelRole === 'admin' ? 'admin-dashboard' : 'home';
+    onTransition(target);
+  }, [activePanelRole]);
+
   // Map incoming otpCode state (e.g. from Drago Assistant auto-fill) to individual inputs
   useEffect(() => {
     if (otpCode && otpCode.length === 6) {

@@ -71,7 +71,7 @@ export default function PanelSelect({ onSelectPanel, showNotification }: PanelSe
               </div>
               <h2 className="text-xl font-extrabold tracking-tight text-[#0f172a]">Worker / Specialist Portal</h2>
               <p className="mt-2 text-xs sm:text-sm text-[#64748b] mb-6 leading-relaxed">
-                Receive instant neighborhood dispatches, manage active orders with OTP verification, and track daily payouts.
+                Receive instant neighborhood dispatches, manage active orders, and track daily payouts.
               </p>
             </div>
             <div className="space-y-2.5 w-full">

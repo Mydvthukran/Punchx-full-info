@@ -339,8 +339,14 @@ function AppMain() {
         try { localStorage.setItem('punchx_splash_seen', 'true'); } catch { /* Splash still works if storage is unavailable. */ }
       }
       let resolvedTarget = target;
-      // Keep the onboarding and booking journey sequential: each screen is
-      // shown only when the preceding step explicitly transitions to it.
+      // Auto-bypass OTP and Admin Review screens
+      if (resolvedTarget === 'worker-otp-pass') resolvedTarget = 'worker-setup';
+      if (resolvedTarget === 'worker-pending-approval') resolvedTarget = 'worker-dashboard';
+      if (resolvedTarget === 'otp') resolvedTarget = activePanelRole === 'worker' ? 'worker-dashboard' : 'home';
+      // Existing workers should never be asked for details again
+      if (resolvedTarget === 'worker-signup' && (userProfile?.role === 'worker' || localStorage.getItem('punchx_worker_approved') === 'true')) {
+        resolvedTarget = 'worker-dashboard';
+      }
 
       const protectedNavScreens: Record<string, string> = { tracking: '📍 Live Tracking', providers: '🔍 Find Specialists', booking: '📋 Booking', payment: '💳 Payment', 'provider-details': '👤 Specialist Details' };
       if (!currentUser && protectedNavScreens[target]) { showToast(`🔒 Sign in required to access ${protectedNavScreens[target]}. Redirecting to portal...`); resolvedTarget = dedicatedAppRole ? 'auth' : 'panel-select'; }
@@ -410,7 +416,28 @@ function AppMain() {
             >
               {currentScreen === 'auth-callback' && <NamoIDAuthShell>{authContent}</NamoIDAuthShell>}
           {currentScreen === 'splash' && <Splash onTransition={handleTransition} />}
-          {currentScreen === 'panel-select' && <PanelSelect onSelectPanel={(panel, action) => { setActivePanelRole(panel); if (panel === 'worker' && action === 'signup') handleTransition('worker-signup'); else handleTransition('auth'); }} showNotification={showToast} />}
+          {currentScreen === 'panel-select' && (
+            <PanelSelect 
+              onSelectPanel={(panel, action) => { 
+                setActivePanelRole(panel);
+                try { localStorage.setItem('punchx_auth_role', panel); } catch {}
+                if (panel === 'worker' && action === 'signup') {
+                  if (userProfile?.role === 'worker' || localStorage.getItem('punchx_worker_approved') === 'true') {
+                    setCurrentScreen('worker-dashboard');
+                  } else {
+                    setCurrentScreen('worker-signup');
+                  }
+                } else if (currentUser) {
+                  if (panel === 'worker' || userProfile?.role === 'worker') setCurrentScreen('worker-dashboard');
+                  else if (panel === 'admin' || userProfile?.role === 'admin') setCurrentScreen('admin-dashboard');
+                  else setCurrentScreen('home');
+                } else {
+                  setCurrentScreen('auth');
+                }
+              }} 
+              showNotification={showToast} 
+            />
+          )}
           {currentScreen === 'worker-signup' && <WorkerSignup onTransition={handleTransition} showNotification={showToast} setWorkerApplicationData={setWorkerApplication} />}
           {currentScreen === 'worker-otp-pass' && <WorkerOtpPass onTransition={handleTransition} showNotification={showToast} workerApplication={workerApplication} setWorkerApplicationData={setWorkerApplication} />}
           {currentScreen === 'worker-pending-approval' && <WorkerPendingApproval onTransition={handleTransition} showNotification={showToast} workerApplication={workerApplication} setWorkerApplicationData={setWorkerApplication} />}

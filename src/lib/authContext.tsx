@@ -170,11 +170,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
 
           if (userSnap.exists()) {
             const existingData = userSnap.data() as UserProfile;
-            // Only accept 'worker' if status is explicitly APPROVED by admin
-            const isApprovedWorker = existingData.role === 'worker' && existingData.status === 'APPROVED';
+            const rawStoredRole = localStorage.getItem('punchx_auth_role');
+            const hasWorkerDetails = Boolean(
+              (existingData as any).workerSkill || 
+              ((existingData as any).categories && (existingData as any).categories.length > 0) || 
+              (existingData as any).applicationId
+            );
+            const isWorker = existingData.role === 'worker' || hasWorkerDetails || (rawStoredRole === 'worker' && existingData.role !== 'admin');
             const resolvedRole: 'citizen' | 'worker' | 'admin' = existingData.role === 'admin' 
               ? 'admin' 
-              : isApprovedWorker 
+              : isWorker 
                 ? 'worker' 
                 : 'citizen';
 
@@ -188,18 +193,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
               birthdate: existingData.birthdate || existingData.dob || extractedDob,
               isProfileCompleted: existingData.isProfileCompleted ?? (!!existingData.name && !!(existingData.dob || existingData.birthdate) && !!existingData.address),
               role: resolvedRole,
-              status: existingData.status,
+              status: resolvedRole === 'worker' ? 'APPROVED' : existingData.status,
               address: existingData.address !== undefined ? existingData.address : '',
               phone: existingData.phone || identity.phone_number || ''
             };
+
+            if (resolvedRole === 'worker' && existingData.status !== 'APPROVED') {
+              try {
+                await setDoc(userDocRef, { role: 'worker', status: 'APPROVED' }, { merge: true });
+              } catch {}
+            }
             
             setUserProfile(updatedProfile);
             localStorage.setItem('punchx_namoid_profile', JSON.stringify(updatedProfile));
+            if (resolvedRole === 'worker') {
+              localStorage.setItem('punchx_auth_role', 'worker');
+              localStorage.setItem('punchx_worker_approved', 'true');
+              localStorage.setItem('punchx_worker_online_status', 'true');
+            }
             return updatedProfile;
           } else {
+            const rawStoredRole = localStorage.getItem('punchx_auth_role');
+            const initialProfile: UserProfile = { ...fallbackProfile };
+            if (rawStoredRole === 'worker') {
+              initialProfile.role = 'worker';
+              initialProfile.status = 'APPROVED';
+            }
+
             try {
               await Promise.race([
-                setDoc(userDocRef, fallbackProfile),
+                setDoc(userDocRef, initialProfile, { merge: true }),
                 new Promise<never>((_, reject) =>
                   setTimeout(() => reject(new Error('Firestore setDoc timeout')), 2500)
                 ),
@@ -208,9 +231,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; activeRole?: 'c
               console.warn('Firestore setDoc notice (using local profile state):', setErr);
             }
 
-            setUserProfile(fallbackProfile);
-            localStorage.setItem('punchx_namoid_profile', JSON.stringify(fallbackProfile));
-            return fallbackProfile;
+            setUserProfile(initialProfile);
+            localStorage.setItem('punchx_namoid_profile', JSON.stringify(initialProfile));
+            if (initialProfile.role === 'worker') {
+              localStorage.setItem('punchx_auth_role', 'worker');
+              localStorage.setItem('punchx_worker_approved', 'true');
+              localStorage.setItem('punchx_worker_online_status', 'true');
+            }
+            return initialProfile;
           }
         } catch (fsErr) {
           console.warn('Firestore fetch notice (using local profile state):', fsErr);

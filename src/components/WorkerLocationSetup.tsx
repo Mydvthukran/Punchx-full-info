@@ -232,7 +232,7 @@ export default function WorkerLocationSetup({
       email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || currentUser?.email || ''),
       visitingFee: workerApplication?.visitingFee,
       termsAccepted: true,
-      status: 'PENDING',
+      status: 'APPROVED',
       appliedAt: new Date().toISOString()
     };
 
@@ -273,12 +273,22 @@ export default function WorkerLocationSetup({
         ...(coords ? { location: { lat: coords.lat, lng: coords.lng } } : {}),
         phone: appData.phone,
         email: appData.email,
+        role: 'worker',
+        status: 'APPROVED',
         isProfileCompleted: true,
         applicationId: savedApplication.id,
         updatedAt: new Date().toISOString(),
       } as any);
 
       if (setWorkerApplicationData) setWorkerApplicationData(savedApplication);
+
+      // Save application document to Firestore workerApplications collection (by savedApplication.id and activeUid)
+      try {
+        await Promise.allSettled([
+          setDoc(doc(db, 'workerApplications', savedApplication.id), { ...appData, id: savedApplication.id, status: 'APPROVED' }, { merge: true }),
+          setDoc(doc(db, 'workerApplications', activeUid), { ...appData, id: savedApplication.id, status: 'APPROVED' }, { merge: true })
+        ]);
+      } catch {}
 
       const existingApps = JSON.parse(localStorage.getItem('punchx_worker_applications') || '[]');
       const filtered = existingApps.filter((a: WorkerApplication) => a.id !== savedApplication.id);
