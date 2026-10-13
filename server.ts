@@ -1278,8 +1278,6 @@ async function startServer() {
         streetAddress: appData.address,
         email: appData.email,
         phone: appData.phone,
-        dob: appData.dob || "",
-        address: appData.address || "",
         role: "worker",
         status: "APPROVED",
         applicationId: created.id,

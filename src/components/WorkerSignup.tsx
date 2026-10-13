@@ -179,8 +179,6 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       email: email.trim(),
       termsAccepted: true,
       status: 'APPROVED',
-      dob: dob.trim(),
-      birthdate: dob.trim(),
       appliedAt: new Date().toISOString()
     };
 
