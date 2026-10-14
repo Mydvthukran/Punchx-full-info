@@ -832,10 +832,10 @@ export async function calibrate100PercentAccuracyLocation(
 
 
 /**
- * PUNCHX local service coverage policy.
- * Smaller towns default to a 4 km radius; large urban markets use 8 km.
- * The radius is centered on the customer's verified GPS location for discovery,
- * and is recalculated from the resolved city whenever location changes.
+ * PUNCHX local service discovery range.
+ * Smaller towns default to 6 km; large urban markets remain at 8 km.
+ * This radius is for discovery only; booking serviceability is checked against
+ * configured localities/service areas rather than a circular distance boundary.
  */
 const PUNCHX_LARGE_CITIES = new Set([
   'kolkata', 'bengaluru', 'bangalore', 'mumbai', 'delhi', 'new delhi',
@@ -856,15 +856,15 @@ export function normalizePunchXCity(value?: string): string {
     .replace(/^(city of|town of)\s+/, '');
 }
 
-export function getServiceRadiusKm(city?: string): 4 | 8 {
+export function getServiceRadiusKm(city?: string): 6 | 8 {
   const normalized = normalizePunchXCity(city);
-  if (!normalized) return 4;
+  if (!normalized) return 6;
   if (PUNCHX_LARGE_CITIES.has(normalized)) return 8;
   // Accept a full reverse-geocoded address while requiring whole city-name matches.
   for (const largeCity of PUNCHX_LARGE_CITIES) {
     if (normalized.split(' ').includes(largeCity) || normalized.startsWith(largeCity + ' ')) return 8;
   }
-  return 4;
+  return 6;
 }
 
 export function isSameServiceCity(customerCity?: string, professionalLocation?: string): boolean {
