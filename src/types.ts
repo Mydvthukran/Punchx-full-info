@@ -97,6 +97,8 @@ export interface UserProfile {
   workerCompletedJobs?: number;
   status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
   applicationId?: string;
+  termsAccepted?: boolean;
+  appliedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
