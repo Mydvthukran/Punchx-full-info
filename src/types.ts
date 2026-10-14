@@ -86,6 +86,8 @@ export interface UserProfile {
   minimumVisitingFee?: number;
   maximumVisitingFee?: number;
   workerSkill?: string;
+  /** Legacy aliases stored by the worker registration backend. */
+  skill?: string;
   workerCategories?: string[];
   workerExperience?: string;
   workerRating?: number;
