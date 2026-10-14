@@ -88,6 +88,7 @@ export interface UserProfile {
   workerSkill?: string;
   /** Legacy aliases stored by the worker registration backend. */
   skill?: string;
+  customSkill?: string;
   workerCategories?: string[];
   categories?: string[];
   workerExperience?: string;
