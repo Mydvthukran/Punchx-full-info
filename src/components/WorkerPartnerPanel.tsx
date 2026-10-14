@@ -30,7 +30,12 @@ const safeNumber=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)?n:0;}
 
 const isInstantOrderRecord=(o:OrderRecord)=>Boolean(o.isInstantOrder)||o.bookingType==='INSTANT'||Boolean(o.emergencyETA)||Number(o.emergencySurcharge||0)>0||['instant','sos','emergency'].includes(normalise((o as any).orderType||(o as any).priority));
 
-export default function WorkerPartnerPanel({ onTransition, showNotification }: { onTransition?: (screen: any) => void; showNotification?: (message: string) => void }) {
+interface WorkerPartnerPanelProps {
+  onTransition?: (screen: any) => void;
+  showNotification?: (message: string) => void;
+}
+
+export default function WorkerPartnerPanel({ onTransition, showNotification }: WorkerPartnerPanelProps) {
  const {currentUser,userProfile,refreshProfile,logout}=useAuth() as any;
  const uid=auth.currentUser?.uid || userProfile?.uid || currentUser?.sub || currentUser?.id || '';
  const [tab,setTab]=useState<Tab>('home');
