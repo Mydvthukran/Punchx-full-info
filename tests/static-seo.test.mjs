@@ -20,7 +20,7 @@ test('landing page has one semantic H1 and useful no-JavaScript content', () => 
 });
 
 test('SEO metadata is present and avoids obsolete keywords metadata', () => {
-  assert.match(html, /<title>PunchX \| Local Service Professionals<\/title>/);
+  assert.match(html, /<title>PunchX \| Book Local Home Service Professionals<\/title>/);
   assert.match(html, /<meta name="description" content="[^"]+"/);
   assert.match(html, /<link rel="canonical" href="https:\/\/www\.punchxapp\.co\.in\/"\s*\/>/);
   assert.match(html, /property="og:title"/);
