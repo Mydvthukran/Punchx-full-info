@@ -23,7 +23,7 @@ test('SEO metadata is present and avoids obsolete keywords metadata', () => {
   assert.match(html, /<title>PunchX \| Book Local Home Service Professionals<\/title>/);
   assert.match(html, /<meta name="description" content="[^"]+"/);
   assert.match(html, /<link rel="canonical" href="https:\/\/www\.punchxapp\.co\.in\/"\s*\/>/);
-  assert.match(html, /property="og:title"/);
+  assert.match(html, /property="og:title"/);\n  assert.match(html, /og-image\\.png/);
   assert.match(html, /property="og:description"/);
   assert.match(html, /name="twitter:card"/);
   assert.doesNotMatch(html, /<meta\s+name="keywords"/i);
