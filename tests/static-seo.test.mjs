@@ -12,19 +12,20 @@ const sitemap = readFileSync(resolve(root, 'public/sitemap.xml'), 'utf8');
 test('landing page has one semantic H1 and useful no-JavaScript content', () => {
   assert.equal((html.match(/<h1\b/gi) || []).length, 1, 'expected exactly one H1 in static HTML');
   assert.match(html, /id="static-seo-fallback"/);
-  assert.match(html, /Connecting people with trusted local professionals\./);
+  assert.match(html, /Book home services with local professionals through PunchX\./);
   for (const service of ['Electrical', 'Plumbing', 'AC repair', 'Cleaning', 'Carpentry', 'Painting']) {
-    assert.match(html, new RegExp(service, 'i'), `missing service: ${service}`);
+    assert.match(html, new RegExp(service, 'i'), \`missing service: \${service}\`);
   }
   assert.doesNotMatch(html, /Please enable JavaScript to continue/i);
 });
 
 test('SEO metadata is present and avoids obsolete keywords metadata', () => {
-  assert.match(html, /<title>PunchX \| Book Local Home Service Professionals<\/title>/);
+  assert.match(html, /<title>PunchX \| Book Home Services, Electricians &amp; Plumbers<\/title>/);
   assert.match(html, /<meta name="description" content="[^"]+"/);
   assert.match(html, /<link rel="canonical" href="https:\/\/www\.punchxapp\.co\.in\/"\s*\/>/);
-  assert.match(html, /property="og:title"/);\n  assert.match(html, /og-image\\.png/);
+  assert.match(html, /property="og:title"/);
   assert.match(html, /property="og:description"/);
+  assert.match(html, /og-image\.png/);
   assert.match(html, /name="twitter:card"/);
   assert.doesNotMatch(html, /<meta\s+name="keywords"/i);
 });
