@@ -14,7 +14,7 @@ test('landing page has one semantic H1 and useful no-JavaScript content', () => 
   assert.match(html, /id="static-seo-fallback"/);
   assert.match(html, /Book home services with local professionals through PunchX\./);
   for (const service of ['Electrical', 'Plumbing', 'AC repair', 'Cleaning', 'Carpentry', 'Painting']) {
-    assert.match(html, new RegExp(service, 'i'), \`missing service: \${service}\`);
+    assert.match(html, new RegExp(service, 'i'), 'missing expected service');
   }
   assert.doesNotMatch(html, /Please enable JavaScript to continue/i);
 });
