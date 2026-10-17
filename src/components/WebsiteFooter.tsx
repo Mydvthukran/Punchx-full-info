@@ -71,7 +71,14 @@ export default function WebsiteFooter({ onTransition, onSelectCategory, showNoti
               <button onClick={() => showNotification('Support request entry point is available from your PunchX account.')} className="mt-4 flex w-full items-center justify-between rounded-xl bg-white px-3 py-2.5 text-xs font-black text-[#17191d] transition hover:bg-[#efeff2]">Open support flow <ArrowRight className="h-4 w-4" /></button>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button onClick={() => onTransition('worker-signup')} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left text-[10px] font-bold text-white/75 hover:bg-white/[0.08]">Join as a professional</button>
+              <button onClick={() => {
+                try {
+                  localStorage.setItem('punchx_auth_role', 'worker');
+                  localStorage.setItem('punchx_edit_worker_signup', 'true');
+                  localStorage.removeItem('punchx_worker_approved');
+                } catch {}
+                onTransition('worker-signup');
+              }} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left text-[10px] font-bold text-white/75 hover:bg-white/[0.08]">Join as a professional</button>
               <button onClick={() => setRefundOpen(true)} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left text-[10px] font-bold text-white/75 hover:bg-white/[0.08]">Refund & warranty</button>
             </div>
           </div>

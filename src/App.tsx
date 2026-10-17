@@ -305,8 +305,19 @@ function AppMain() {
         setCurrentScreen('admin-dashboard');
       } else if (activePanelRole === 'worker' || userProfile?.role === 'worker') {
         setActivePanelRole('worker');
-        window.history.replaceState({ screen: 'worker-dashboard' }, '', screenRoutes['worker-dashboard'] || '/');
-        setCurrentScreen('worker-dashboard');
+        const hasCompletedWorkerRegistration = Boolean(
+          userProfile?.applicationId ||
+          userProfile?.workerSkill ||
+          (userProfile?.workerCategories && userProfile.workerCategories.length > 0) ||
+          workerApplication?.id
+        );
+        if (hasCompletedWorkerRegistration && localStorage.getItem('punchx_worker_approved') === 'true') {
+          window.history.replaceState({ screen: 'worker-dashboard' }, '', screenRoutes['worker-dashboard'] || '/');
+          setCurrentScreen('worker-dashboard');
+        } else {
+          window.history.replaceState({ screen: 'worker-signup' }, '', screenRoutes['worker-signup'] || '/worker-signup');
+          setCurrentScreen('worker-signup');
+        }
       } else {
         setActivePanelRole('customer');
         window.history.replaceState({ screen: 'home' }, '', screenRoutes.home || '/');

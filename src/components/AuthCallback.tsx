@@ -143,8 +143,13 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
           // 1. Check local storage cache of worker applications
           const cachedApps = localStorage.getItem('punchx_worker_applications');
           const cachedAppId = localStorage.getItem('punchx_worker_app_id');
-          if (cachedApps || cachedAppId || localStorage.getItem('punchx_worker_approved') === 'true') {
-            hasWorkerApp = true;
+          if (cachedApps || cachedAppId) {
+            try {
+              const parsed = JSON.parse(cachedApps || '[]');
+              if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].skill || parsed[0].address)) {
+                hasWorkerApp = true;
+              }
+            } catch {}
           }
 
           // 2. Check Firestore directly

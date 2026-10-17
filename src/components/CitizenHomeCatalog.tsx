@@ -455,6 +455,30 @@ export default function CitizenHomeCatalog({
                   </div>
                   <ChevronRight className="h-4 w-4 text-gray-400" />
                 </button>
+                <button onClick={() => {
+                  try {
+                    localStorage.setItem('punchx_auth_role', 'worker');
+                    localStorage.setItem('punchx_edit_worker_signup', 'true');
+                    localStorage.removeItem('punchx_worker_approved');
+                  } catch {}
+                  onTransition('worker-signup');
+                }} className="w-full flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/60 p-4 hover:bg-amber-100/70 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center"><Wrench className="h-4 w-4" /></div>
+                    <div className="text-left">
+                      <span className="block text-sm font-bold text-amber-900">Apply as Professional Specialist</span>
+                      <span className="block text-[11px] text-amber-700">Register your trade, set visiting fee, and start getting bookings</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-amber-700" />
+                </button>
+                <button onClick={() => onTransition('panel-select')} className="w-full flex items-center justify-between rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center"><ShieldCheck className="h-4 w-4" /></div>
+                    <span className="text-sm font-bold text-gray-700">Switch Workspace / Specialist Login</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </button>
               </div>
             </div>
           </section>
