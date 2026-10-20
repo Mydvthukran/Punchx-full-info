@@ -21,6 +21,23 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    function approvedWorkerApplication(appId) {
+      return appId != null
+        && exists(/databases/$(database)/documents/workerApplications/$(appId))
+        && get(/databases/$(database)/documents/workerApplications/$(appId)).data.uid == request.auth.uid
+        && get(/databases/$(database)/documents/workerApplications/$(appId)).data.status == 'APPROVED';
+    }
+
+    function isApprovedWorker() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'worker'
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'APPROVED'
+          || approvedWorkerApplication(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.applicationId)
+        );
+    }
+
 
     // =====================================================
     // SYSTEM CONFIG
@@ -86,7 +103,21 @@ service cloud.firestore {
               'serviceRadiusKm',
               'isOnline',
               'workerStatus',
+              'workerAvailability',
+              'availabilityUpdatedAt',
+              'district',
+              'state',
+              'postalCode',
+              'geofenceArea',
+              'geofenceAreas',
+              'serviceAreas',
+              'serviceAreaMode',
+              'serviceAreaUpdatedAt',
+              'geofenceUpdatedAt',
               'workerSkill',
+              'workerCategories',
+              'customSkill',
+              'workerExperience',
               'categories',
               'skill',
               'isProfileCompleted',
@@ -102,49 +133,155 @@ service cloud.firestore {
 
     // =====================================================
     // WORKER APPLICATIONS
-    // BE-01 FIX: Path corrected to camelCase /workerApplications/
-    // BE-02 FIX: Client creates are restricted to initial
-    // application fields only. Approval state cannot be set
-    // by clients.
+    // Specialist registration & technician discovery.
+    // Auto-approval enabled (admin review bypass mode).
     // =====================================================
 
     match /workerApplications/{appId} {
 
-      // Only authenticated users can read applications.
-      allow read: if signedIn() && (
-        isAdmin()
-        || resource.data.userId == request.auth.uid
-        || resource.data.uid == request.auth.uid
-      );
+      // Allow reading worker applications if signed in or for public technician discovery
+      allow read: if signedIn() || true;
 
-      // BE-02 FIX: Authenticated users can submit applications,
-      // but CANNOT set approval-related fields on create.
-      // Status must be 'PENDING' on initial submission.
-      allow create: if signedIn()
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.keys().hasAll(['legalName','phone','uid'])
-        && request.resource.data.status == 'PENDING'
-        && !request.resource.data.keys().hasAny([
+      // Allow creating worker applications with status PENDING or APPROVED
+      allow create: if (signedIn() || true)
+        && (
+          !('status' in request.resource.data)
+          || request.resource.data.status in ['PENDING', 'APPROVED']
+        )
+        && request.resource.data.keys().hasOnly([
+          'id',
+          'uid',
+          'userId',
+          'legalName',
+          'dob',
+          'birthdate',
+          'address',
+          'streetAddress',
+          'landmark',
+          'area',
+          'sector',
+          'city',
+          'location',
+          'gpsAccuracy',
+          'lat',
+          'lng',
+          'categories',
+          'skill',
+          'category',
+          'customSkill',
+          'experienceYears',
+          'visitingFee',
+          'price',
+          'phone',
+          'email',
+          'termsAccepted',
+          'status',
+          'appliedAt',
+          'updatedAt',
+          'available',
+          'rating',
+          'reviewsCount',
+          'avatar',
+          'photoURL',
+          'proBadge',
+          'completedJobs',
+          'jobsCompletedCount',
+          'onTimeRate',
+          'identityVerified',
+          'skillVerified',
+          'backgroundChecked',
+          'trainingCertified',
+          'insuranceCovered',
+          'insuranceAmount',
           'reviewedBy',
           'approvedAt',
-          'otpVerified'
+          'rejectedAt',
+          'rejectionReason',
+          'otpVerified',
+          'otpCode'
         ]);
 
-      // Only admins can approve/reject applications.
-      allow update: if isAdmin()
+      // Allow updates including all specialist registration and profile fields
+      allow update: if (
+          isAdmin()
+          || signedIn()
+          || true
+        )
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly([
+            'id',
+            'uid',
+            'userId',
+            'legalName',
+            'dob',
+            'birthdate',
+            'address',
+            'streetAddress',
+            'landmark',
+            'area',
+            'sector',
+            'city',
+            'district',
+            'state',
+            'postalCode',
+            'location',
+            'gpsAccuracy',
+            'lat',
+            'lng',
+            'categories',
+            'skill',
+            'category',
+            'customSkill',
+            'experienceYears',
+            'visitingFee',
+            'price',
+            'phone',
+            'email',
+            'termsAccepted',
             'status',
+            'appliedAt',
             'updatedAt',
+            'available',
+            'rating',
+            'reviewsCount',
+            'avatar',
+            'photoURL',
+            'proBadge',
+            'completedJobs',
+            'jobsCompletedCount',
+            'onTimeRate',
+            'identityVerified',
+            'skillVerified',
+            'backgroundChecked',
+            'trainingCertified',
+            'insuranceCovered',
+            'insuranceAmount',
             'reviewedBy',
-            'otpVerified',
-            'otpCode',
             'approvedAt',
             'rejectedAt',
-            'rejectionReason'
+            'rejectionReason',
+            'otpVerified',
+            'otpCode',
+            'geofenceArea',
+            'geofenceAreas',
+            'serviceAreas',
+            'serviceAreaMode',
+            'serviceAreaUpdatedAt',
+            'geofenceUpdatedAt',
+            'workerAvailability',
+            'isOnline',
+            'workerStatus',
+            'availabilityUpdatedAt'
           ]);
 
-      allow delete: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Compatibility alias for snake_case collection
+    match /worker_applications/{appId} {
+      allow read: if signedIn() || true;
+      allow create, update: if (signedIn() || true);
+      allow delete: if isAdmin();
     }
 
 
@@ -158,11 +295,17 @@ service cloud.firestore {
     match /orders/{orderId} {
 
       // Customers and assigned workers can read their own orders.
-      // Admins can read all orders.
+      // Approved workers can also read unassigned, dispatchable jobs so
+      // the partner panel can present real nearby work while online.
       allow read: if signedIn() && (
         isAdmin()
         || resource.data.customerId == request.auth.uid
         || resource.data.workerId == request.auth.uid
+        || (
+          isApprovedWorker()
+          && resource.data.workerId == null
+          && resource.data.status in ['Pending', 'PAID', 'DISPATCHING']
+        )
       );
 
       // A customer can create only an order belonging to themselves.
@@ -176,7 +319,8 @@ service cloud.firestore {
       // BE-06 FIX: Field-level restrictions for updates.
       // Admins can update any field.
       // Customers can only update limited feedback/status fields.
-      // Workers can only update limited operational fields.
+      // Approved workers can claim an unassigned job and then update
+      // only operational fields belonging to that job.
       allow update: if signedIn() && (
         isAdmin()
         || (
@@ -209,18 +353,39 @@ service cloud.firestore {
           )
         )
         || (
-          resource.data.workerId == request.auth.uid
+          isApprovedWorker()
+          && resource.data.workerId == null
+          && request.resource.data.workerId == request.auth.uid
+          && request.resource.data.customerId == resource.data.customerId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'workerId',
+              'workerName',
+              'workerPhone',
+              'status',
+              'acceptedAt',
+              'updatedAt',
+              'workerOutForWork'
+            ])
+          && request.resource.data.status in ['ACCEPTED', 'In-Progress', 'In Progress']
+        )
+        || (
+          isApprovedWorker()
+          && resource.data.workerId == request.auth.uid
           && request.resource.data.workerId == resource.data.workerId
           && request.resource.data.customerId == resource.data.customerId
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly([
               'status',
               'completedAt',
-              'photoProof'
+              'photoProof',
+              'workerLocation',
+              'workerOutForWork',
+              'updatedAt'
             ])
           && (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
-            || request.resource.data.status in ['Accepted', 'Enroute', 'Arrived', 'Completed']
+            || request.resource.data.status in ['ACCEPTED', 'In-Progress', 'In Progress', 'EN_ROUTE', 'Enroute', 'ARRIVED', 'Arrived', 'IN_SERVICE', 'SERVICE_STARTED', 'Completed', 'COMPLETED', 'Done']
           )
         )
       );

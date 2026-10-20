@@ -11,7 +11,7 @@ import './punchx-motion-fixes.css';
 // Keep this marker unique for every recovery implementation so a browser that
 // already consumed an older recovery attempt can still recover after a deploy.
 if (typeof window !== 'undefined') {
-  const BUILD_MARKER = '2026-10-01-runtime-recovery-v3';
+  const BUILD_MARKER = '2026-10-15-runtime-recovery-v4';
   const recoveryKey = `punchx-vite-recovery:${BUILD_MARKER}`;
 
   const isChunkFailure = (value: unknown) => {

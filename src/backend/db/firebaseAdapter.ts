@@ -1,4 +1,7 @@
-import { getFirestore, Firestore, Query } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, Query, FieldValue } from 'firebase-admin/firestore';
+
+// Keep server-side Admin SDK writes in the exact Firestore database used by the web client.
+const FIRESTORE_DATABASE_ID = process.env.FIREBASE_DATABASE_ID || process.env.VITE_FIREBASE_DATABASE_ID || 'ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38';
 import { IDatabaseAdapter } from './dbAdapter.js';
 import { UserProfile, WorkerApplication, OrderRecord, WarrantyClaim, ComplaintRecord, CustomerReview } from '../../types.js';
 import { logger } from '../logger.js';
@@ -24,7 +27,7 @@ export class FirebaseAdapter implements IDatabaseAdapter {
 
   private get db(): Firestore | null {
     try {
-      return getFirestore();
+      return getFirestore(undefined, FIRESTORE_DATABASE_ID);
     } catch {
       return null;
     }
@@ -32,12 +35,13 @@ export class FirebaseAdapter implements IDatabaseAdapter {
 
   async isHealthy(): Promise<boolean> {
     const firestore = this.db;
-    if (!firestore) return true;
+    if (!firestore) return false;
     try {
       await firestore.collection('users').limit(1).get();
       return true;
     } catch (e) {
-      return true;
+      logger.error('Firebase health check failed:', e);
+      return false;
     }
   }
 
@@ -58,16 +62,28 @@ export class FirebaseAdapter implements IDatabaseAdapter {
   }
 
   async upsertUser(user: UserProfile): Promise<UserProfile> {
-    this.inMemoryFallback.users.set(user.uid, user);
     const firestore = this.db;
-    if (firestore) {
-      try {
-        await firestore.collection('users').doc(user.uid).set(user, { merge: true });
-      } catch (err) {
-        logger.warn('Firebase upsertUser notice (saved in memory):', err);
-      }
+    if (!firestore) {
+      throw new Error('Firestore is not initialized; user profile was not saved.');
     }
-    return user;
+
+    try {
+      const userRef = firestore.collection('users').doc(user.uid);
+      const existing = await userRef.get();
+      const now = new Date().toISOString();
+      const record = {
+        ...user,
+        uid: user.uid,
+        createdAt: existing.exists ? ((existing.data() as any)?.createdAt || now) : (user.createdAt || now),
+        updatedAt: now,
+      };
+      await userRef.set(record, { merge: true });
+      this.inMemoryFallback.users.set(user.uid, record);
+      return record;
+    } catch (err) {
+      logger.error('Firebase upsertUser failed; profile was NOT persisted:', err);
+      throw new Error('Failed to save user profile to Firebase. Please retry.');
+    }
   }
 
   async listUsers(role?: string): Promise<UserProfile[]> {
@@ -91,22 +107,41 @@ export class FirebaseAdapter implements IDatabaseAdapter {
   // ─── WORKER APPLICATIONS ───
   async createWorkerApplication(app: WorkerApplication): Promise<WorkerApplication> {
     const id = app.id || `app_${Date.now()}`;
-    const record = { ...app, id, status: app.status || 'PENDING', appliedAt: app.appliedAt || new Date().toISOString() };
-    this.inMemoryFallback.workerApplications.set(id, record);
-
+    const existing = await this.getWorkerApplication(id);
+    const now = new Date().toISOString();
+    const record = {
+      ...app,
+      id,
+      status: app.status || 'PENDING',
+      appliedAt: app.appliedAt || now,
+      createdAt: (existing as any)?.createdAt || now,
+      updatedAt: now,
+    };
     const firestore = this.db;
-    if (firestore) {
-      try {
-        // Write to both workerApplications and worker_applications for full compatibility
-        await Promise.allSettled([
-          firestore.collection('workerApplications').doc(id).set(record, { merge: true }),
-          firestore.collection('worker_applications').doc(id).set(record, { merge: true })
-        ]);
-      } catch (err) {
-        logger.warn('Firebase createWorkerApplication notice (saved in memory):', err);
+    if (!firestore) throw new Error('Firestore is not initialized; worker application was not saved.');
+
+    try {
+      // The canonical collection is required. The legacy collection is a best-effort mirror.
+      await firestore.collection('workerApplications').doc(id).set(record, { merge: true });
+      if (app.uid) {
+        try {
+          await firestore.collection('workerApplications').doc(app.uid).set(record, { merge: true });
+        } catch {}
       }
+      try {
+        await firestore.collection('worker_applications').doc(id).set(record, { merge: true });
+        if (app.uid) {
+          await firestore.collection('worker_applications').doc(app.uid).set(record, { merge: true });
+        }
+      } catch (mirrorError) {
+        logger.warn('Legacy worker application mirror was not updated:', mirrorError);
+      }
+      this.inMemoryFallback.workerApplications.set(id, record);
+      return record;
+    } catch (err) {
+      logger.error('Firebase createWorkerApplication failed; application was NOT persisted:', err);
+      throw new Error('Failed to save worker application to Firebase. Please retry.');
     }
-    return record;
   }
 
   async getWorkerApplication(id: string): Promise<WorkerApplication | null> {
@@ -278,18 +313,24 @@ export class FirebaseAdapter implements IDatabaseAdapter {
   async createOrder(order: OrderRecord): Promise<OrderRecord> {
     const id = order.id || `ORD-${Date.now()}`;
     const record = { ...order, id, createdAt: order.createdAt || new Date().toISOString() };
-    this.inMemoryFallback.orders.set(id, record);
-
     const firestore = this.db;
-    if (firestore) {
-      try {
-        const ref = firestore.collection('orders').doc(id);
-        await ref.set(record, { merge: true });
-      } catch (err) {
-        logger.warn('Firebase createOrder notice (saved in memory):', err);
-      }
+    if (!firestore) {
+      throw new Error('Firestore is not initialized; order was NOT saved.');
     }
-    return record;
+
+    try {
+      const ref = firestore.collection('orders').doc(id);
+      // Keep a readable ISO timestamp and a server-authoritative Firestore timestamp.
+      await ref.set({
+        ...record,
+        createdAtServerTimestamp: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      this.inMemoryFallback.orders.set(id, record);
+      return record;
+    } catch (err) {
+      logger.error('Firebase createOrder failed; order was NOT persisted:', err);
+      throw new Error('Failed to save the booking to Firebase. Please retry.');
+    }
   }
 
   async getOrder(id: string): Promise<OrderRecord | null> {

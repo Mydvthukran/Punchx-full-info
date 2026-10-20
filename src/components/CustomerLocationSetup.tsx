@@ -7,8 +7,7 @@ import {
   ShieldCheck, Sparkles, Building, AlertCircle, Loader2, Wrench,
   Zap, Droplets, SprayCan as SparkleIcon, Paintbrush, Hammer, Bug, Truck, Tv, Info
 } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
 import { requestAndAutoUpdateLocation, fetchRegisteredLocationServices, RegisteredService } from '../lib/location';
 import DobPicker from './DobPicker';
@@ -96,7 +95,8 @@ export default function CustomerLocationSetup({
   const [resolvedCity, setResolvedCity] = useState('Kolkata');
   const [registeredServices, setRegisteredServices] = useState<RegisteredService[]>([]);
   const [coverageStatus, setCoverageStatus] = useState('Checking registered services in your area...');
-  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
+  const [hasGpsFix, setHasGpsFix] = useState(false);
 
   // Sync state if NamoID profile loads asynchronously
   useEffect(() => {
@@ -129,13 +129,18 @@ export default function CustomerLocationSetup({
     lat?: number,
     lng?: number
   ) => {
+    // Do not geofence from a typed address, IP lookup, or placeholder coordinates.
+    const fixLat = typeof lat === 'number' ? lat : coords.lat;
+    const fixLng = typeof lng === 'number' ? lng : coords.lng;
+    if (!hasGpsFix && !(typeof lat === 'number' && typeof lng === 'number')) return;
+    if (!Number.isFinite(fixLat) || !Number.isFinite(fixLng) || (fixLat === 0 && fixLng === 0)) return;
     setIsResolvingBackend(true);
     try {
       const resp = await fetchRegisteredLocationServices({
-        address: targetAddress || address || 'Indiranagar 100ft Road, Kolkata',
+        address: targetAddress || address,
         landmark: targetLandmark || landmark,
-        lat: lat || coords.lat,
-        lng: lng || coords.lng
+        lat: fixLat,
+        lng: fixLng
       });
 
       if (resp && resp.success) {
@@ -153,21 +158,18 @@ export default function CustomerLocationSetup({
     } finally {
       setIsResolvingBackend(false);
     }
-  }, [address, landmark, coords.lat, coords.lng]);
+  }, [address, landmark, coords.lat, coords.lng, hasGpsFix]);
 
-  // Initial lookup on mount
-  useEffect(() => {
-    resolveServicesFromBackend(address || 'Indiranagar, Kolkata', landmark);
-  }, []);
+  // No serviceability lookup until a real device GPS fix is acquired.
 
   // Debounced lookup when user types manual address or landmark
   useEffect(() => {
-    if (!address || address.trim().length < 3) return;
+    if (!hasGpsFix || !address || address.trim().length < 3) return;
     const timer = setTimeout(() => {
       resolveServicesFromBackend(address, landmark);
     }, 700);
     return () => clearTimeout(timer);
-  }, [address, landmark]);
+  }, [address, landmark, hasGpsFix]);
 
   // GPS Auto Detection Trigger
   const handleAutoDetectGps = async () => {
@@ -180,6 +182,7 @@ export default function CustomerLocationSetup({
       if (loc && loc.address) {
         setAddress(loc.address);
         setCoords({ lat: loc.lat, lng: loc.lng });
+        setHasGpsFix(true);
         setResolvedArea(loc.area);
         setResolvedCity(loc.city);
         setResolvedSector(loc.sector);
@@ -233,6 +236,12 @@ export default function CustomerLocationSetup({
       return;
     }
 
+    // A real device GPS fix is required before calculating serviceability or submitting location.
+    if (!hasGpsFix || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng) || (coords.lat === 0 && coords.lng === 0)) {
+      setErrorMessage('Please detect your current GPS location before continuing so PunchX can verify the service boundary accurately.');
+      return;
+    }
+
     // 3. Address Validation
     if (!address.trim()) {
       setErrorMessage('Please enter your house / street / locality address.');
@@ -261,6 +270,8 @@ export default function CustomerLocationSetup({
       localStorage.setItem('punchx_user_location', JSON.stringify({
         lat: coords.lat,
         lng: coords.lng,
+        gpsVerified: true,
+        gpsAccuracyRequirementMeters: 100,
         address: finalFormattedAddress,
         area: resolvedArea,
         city: resolvedCity,
@@ -273,39 +284,39 @@ export default function CustomerLocationSetup({
     }
 
     // Save to Firestore users collection
-    const activeUid = currentUser?.sub || `cust_${Date.now()}`;
-    const userPayload = {
-      uid: activeUid,
-      name: name.trim(),
-      dob: dob.trim(),
-      birthdate: dob.trim(),
-      address: finalFormattedAddress,
-      streetAddress: address.trim(),
-      landmark: landmark.trim(),
-      area: resolvedArea,
-      city: resolvedCity,
-      sector: resolvedSector,
-      location: { lat: coords.lat, lng: coords.lng },
-      role: 'citizen' as const,
-      phone: authMethod === 'phone' ? authTarget : (currentUser?.phone_number || ''),
-      email: authMethod === 'gmail' ? authTarget : (currentUser?.email || ''),
-      isProfileCompleted: true,
-      updatedAt: new Date().toISOString()
-    };
-
+    const activeUid = auth.currentUser?.uid || userProfile?.uid;
+    if (!activeUid) {
+      setIsSubmitting(false);
+      setErrorMessage('Your secure sign-in session is missing. Please sign in again before saving your profile.');
+      return;
+    }
     try {
-      await setDoc(doc(db, 'users', activeUid), userPayload, { merge: true });
-      if (updateUserProfile) {
-        await updateUserProfile({
-          name: name.trim(),
-          dob: dob.trim(),
-          birthdate: dob.trim(),
-          address: finalFormattedAddress,
-          isProfileCompleted: true
-        });
+      if (!auth.currentUser || auth.currentUser.uid !== activeUid) {
+        throw new Error('Your Firebase account is not ready. Please sign in again.');
       }
+      // One authenticated backend write saves the full customer profile in the
+      // same named Firestore database used by bookings and login history.
+      await updateUserProfile({
+        name: name.trim(),
+        dob: dob.trim(),
+        birthdate: dob.trim(),
+        address: finalFormattedAddress,
+        streetAddress: address.trim(),
+        landmark: landmark.trim(),
+        area: resolvedArea,
+        city: resolvedCity,
+        sector: resolvedSector,
+        location: { lat: coords.lat, lng: coords.lng },
+        phone: authMethod === 'phone' ? authTarget : (currentUser?.phone_number || ''),
+        email: authMethod === 'gmail' ? authTarget : (currentUser?.email || ''),
+        isProfileCompleted: true,
+        updatedAt: new Date().toISOString()
+      } as any);
     } catch (dbErr) {
-      console.warn("Firestore customer profile save error:", dbErr);
+      console.error("Firebase customer profile save failed:", dbErr);
+      setIsSubmitting(false);
+      setErrorMessage(dbErr instanceof Error ? dbErr.message : 'Your profile could not be saved to Firebase. Check your connection and try again.');
+      return;
     }
 
     setIsSubmitting(false);

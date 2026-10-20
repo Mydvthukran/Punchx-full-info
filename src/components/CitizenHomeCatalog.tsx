@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import {
-  ArrowRight, CalendarDays, CheckCircle2, ChevronRight, Clock, Home as HomeIcon,
+  ArrowRight, Megaphone, CalendarDays, CheckCircle2, ChevronRight, Clock, Home as HomeIcon,
   Loader2, MapPin, Search, ShieldCheck, Star, UserRound, X,
-  Zap, Droplet, Hammer, Paintbrush, HardHat, Flame, Scissors, Wrench, Bike, Car,
+  Zap, Droplet, Hammer, Paintbrush, HardHat, Flame, Scissors, Wrench, Bike, Car, Home,
   Wind, Snowflake, Waves, Smartphone, Laptop, Tv, Video, Sun, Droplets, Key,
   Sparkles, Bug, Sprout, Utensils, Cake, Package, Truck, Shield, Palette, Camera, Music, FileText, Info
 } from 'lucide-react';
@@ -22,58 +22,15 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 
 /* ── Semantic groupings for the category grid ── */
 const CATEGORY_GROUPS: { title: string; emoji: string; ids: string[] }[] = [
-  {
-    title: 'Home Repairs',
-    emoji: '🏠',
-    ids: ['electrician', 'plumber', 'carpenter', 'painter', 'mason', 'welder', 'locksmith',
-          'pop-false-ceiling-worker', 'glass-glazier-worker', 'tile-marble-installer',
-          'waterproofing-specialist', 'fabricator'],
-  },
-  {
-    title: 'Appliances & Tech',
-    emoji: '🔧',
-    ids: ['ac-technician', 'refrigerator-technician', 'washing-machine-technician',
-          'mobile-repair-technician', 'computer-laptop-technician',
-          'electronics-repair-technician', 'cctv-technician', 'solar-technician',
-          'ro-water-purifier-technician', 'appliance-repair-technician'],
-  },
-  {
-    title: 'Personal Care',
-    emoji: '✨',
-    ids: ['barber', 'hair-stylist', 'beautician', 'tailor', 'laundry-dry-cleaner',
-          'ironing-worker', 'cobbler-shoe-repairer'],
-  },
-  {
-    title: 'Vehicle Services',
-    emoji: '🚗',
-    ids: ['mechanic', 'bike-mechanic', 'car-mechanic'],
-  },
-  {
-    title: 'Home Help',
-    emoji: '🧹',
-    ids: ['cleaner-housekeeper', 'pest-control-worker', 'gardener',
-          'security-guard', 'house-painter'],
-  },
-  {
-    title: 'Food & Catering',
-    emoji: '🍳',
-    ids: ['cook', 'baker', 'caterer', 'tiffin-home-food-provider'],
-  },
-  {
-    title: 'Moving & Delivery',
-    emoji: '📦',
-    ids: ['packer-mover', 'delivery-driver'],
-  },
-  {
-    title: 'Creative & Events',
-    emoji: '🎬',
-    ids: ['interior-decorator', 'event-decorator', 'photographer', 'videographer',
-          'dj-sound-system-operator'],
-  },
+  { title: 'Home Repairs', emoji: '🏠', ids: ['electrician', 'plumber', 'carpenter', 'painter', 'mason', 'welder', 'locksmith', 'pop-false-ceiling-worker', 'glass-glazier-worker', 'waterproofing-specialist'] },
+  { title: 'Appliances & Technology', emoji: '🔧', ids: ['ac-technician', 'appliance-repair-technician', 'ro-water-purifier-technician', 'electronics-repair-technician', 'computer-laptop-technician', 'mobile-repair-technician', 'cctv-technician', 'solar-technician'] },
+  { title: 'Cleaning & Home Care', emoji: '🧹', ids: ['cleaner-housekeeper', 'upholstery-sofa-cleaner', 'pest-control-worker', 'gardener', 'laundry-dry-cleaner', 'home-disinfection', 'vehicle-detailing'] },
+  { title: 'Beauty & Personal Care', emoji: '✨', ids: ['beautician', 'massage-spa', 'tailor', 'cobbler-shoe-repairer'] },
+  { title: 'Daily Help & Moving', emoji: '📦', ids: ['packer-mover', 'delivery-driver', 'domestic-help', 'cook', 'caterer', 'security-guard'] },
+  { title: 'Design & Events', emoji: '🎬', ids: ['interior-decorator', 'event-decorator', 'photographer', 'videographer', 'dj-sound-technician'] },
 ];
 
-const POPULAR_IDS = ['electrician', 'plumber', 'carpenter', 'ac-technician',
-  'cleaner-housekeeper', 'painter', 'car-mechanic', 'beautician'];
+const POPULAR_IDS = ['electrician', 'plumber', 'carpenter', 'ac-technician', 'cleaner-housekeeper', 'painter', 'appliance-repair-technician', 'beautician'];
 
 /* ── Accent color per group for visual variety ── */
 const GROUP_COLORS = [
@@ -169,7 +126,7 @@ export default function CitizenHomeCatalog({
   }, [searchOpen]);
 
   /* ── Render a single service card ── */
-  const ServiceCard = ({ catId, index, color }: { catId: string; index: number; color: typeof GROUP_COLORS[0] }) => {
+  const ServiceCard = ({ catId, index, color }: { catId: string; index: number; color: typeof GROUP_COLORS[0]; key?: React.Key }) => {
     const cat = PUNCHX_50_CATEGORIES.find(c => c.id === catId);
     if (!cat) return null;
     const IconComp = ICON_MAP[cat.iconName] || Wrench;
@@ -197,7 +154,7 @@ export default function CitizenHomeCatalog({
           {cat.name}
         </span>
         <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600">
-          <Clock className="h-3 w-3" /> 45 min
+          <Info className="h-3 w-3" /> View details
         </span>
       </motion.button>
     );
@@ -258,13 +215,13 @@ export default function CitizenHomeCatalog({
 
             <div className="relative z-10">
               <div className="flex items-center gap-2 text-xs font-semibold text-blue-200">
-                <ShieldCheck className="h-4 w-4" /> Verified local professionals
+                <ShieldCheck className="h-4 w-4" /> Local service professionals
               </div>
               <h1 className="mt-3 text-2xl sm:text-4xl font-extrabold leading-tight">
                 What service do<br className="sm:hidden" /> you need today?
               </h1>
               <p className="mt-2 max-w-md text-sm text-blue-100/80 leading-relaxed">
-                Book verified professionals for home, vehicle, and personal care services.
+                Explore local professionals for home, vehicle, and personal care services.
               </p>
 
               {/* Search bar */}
@@ -293,8 +250,8 @@ export default function CitizenHomeCatalog({
         {/* ── INFO PILLS ── */}
         <section className="flex gap-2 overflow-x-auto py-3 no-scrollbar">
           {[
-            { icon: <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />, text: 'Background-verified pros' },
-            { icon: <Clock className="h-3.5 w-3.5 text-blue-600" />, text: 'Avg. 45 min response' },
+            { icon: <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />, text: 'Service details before booking' },
+            
             { icon: <MapPin className="h-3.5 w-3.5 text-violet-600" />, text: residential || 'Add address for visits' },
           ].map((pill, i) => (
             <div key={i} className="flex shrink-0 items-center gap-2 rounded-full border border-gray-100
@@ -303,6 +260,27 @@ export default function CitizenHomeCatalog({
               <span className="truncate max-w-[180px]">{pill.text}</span>
             </div>
           ))}
+        </section>
+
+        {/* ── HOMEPAGE FEATURED AD SLOT ── */}
+        <section aria-label="Featured advertising" className="pt-3">
+          <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-r from-[#eff6ff] via-white to-[#f5f3ff] p-4 shadow-sm sm:p-5">
+            <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-100/70 blur-2xl" />
+            <div className="relative flex items-center gap-3 sm:gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+                <Megaphone className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider text-blue-700 ring-1 ring-blue-100">Featured</span>
+                  <span className="text-[10px] font-semibold text-slate-500">PunchX spotlight</span>
+                </div>
+                <h2 className="mt-1 text-base font-extrabold leading-5 text-slate-900 sm:text-lg">Need a trusted local professional?</h2>
+                <p className="mt-1 text-xs leading-5 text-slate-600">Explore plumbing, electrical, cleaning and repair services in one place.</p>
+              </div>
+              <button type="button" onClick={() => { setQuery(''); setSearchOpen(true); }} className="relative shrink-0 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-blue-700 sm:px-4">Explore <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></button>
+            </div>
+          </div>
         </section>
 
         {/* ── POPULAR CAROUSEL ── */}
@@ -346,7 +324,7 @@ export default function CitizenHomeCatalog({
                     {cat.shortDesc}
                   </span>
                   <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
-                    <Clock className="h-3 w-3" /> 45 min
+                    <Info className="h-3 w-3" /> View details
                     <span className="ml-auto flex items-center gap-0.5 text-amber-500">
 
                     </span>
@@ -389,7 +367,7 @@ export default function CitizenHomeCatalog({
         <section className="py-10 grid gap-3 sm:grid-cols-3">
           {[
             { icon: <ShieldCheck className="h-5 w-5 text-blue-600" />,
-              title: 'Verified professionals', desc: 'Every pro is background-checked and skill-verified.' },
+              title: 'Professional information', desc: 'Review the available profile information before booking.' },
             { icon: <CalendarDays className="h-5 w-5 text-violet-600" />,
               title: 'Easy booking flow', desc: 'Pick service → facility → exact work → confirm.' },
             { icon: <CheckCircle2 className="h-5 w-5 text-emerald-600" />,
@@ -449,7 +427,7 @@ export default function CitizenHomeCatalog({
               <div className="h-24 w-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-5 ring-4 ring-white shadow-md">
                 <UserRound className="h-10 w-10" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">{citizenName || 'PunchX Citizen'}</h3>
+              <h3 className="text-xl font-bold text-gray-900">{citizenName || 'PunchX Customer'}</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-8 text-left">
                 <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
@@ -458,7 +436,7 @@ export default function CitizenHomeCatalog({
                 </div>
                 <div className="rounded-2xl bg-gray-50 p-4 border border-gray-100">
                   <div className="flex items-center gap-2 mb-1"><ShieldCheck className="h-4 w-4 text-emerald-500" /><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Account Status</span></div>
-                  <div className="text-sm font-semibold text-gray-800 ml-6">Verified Citizen</div>
+                  <div className="text-sm font-semibold text-gray-800 ml-6">Customer account</div>
                 </div>
               </div>
               
@@ -474,6 +452,30 @@ export default function CitizenHomeCatalog({
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center"><UserRound className="h-4 w-4" /></div>
                     <span className="text-sm font-bold text-gray-700">Manage Account</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                </button>
+                <button onClick={() => {
+                  try {
+                    localStorage.setItem('punchx_auth_role', 'worker');
+                    localStorage.setItem('punchx_edit_worker_signup', 'true');
+                    localStorage.removeItem('punchx_worker_approved');
+                  } catch {}
+                  onTransition('worker-signup');
+                }} className="w-full flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/60 p-4 hover:bg-amber-100/70 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center"><Wrench className="h-4 w-4" /></div>
+                    <div className="text-left">
+                      <span className="block text-sm font-bold text-amber-900">Apply as Professional Specialist</span>
+                      <span className="block text-[11px] text-amber-700">Register your trade, set visiting fee, and start getting bookings</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-amber-700" />
+                </button>
+                <button onClick={() => onTransition('panel-select')} className="w-full flex items-center justify-between rounded-xl border border-gray-200 p-4 hover:bg-gray-50 transition">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center"><ShieldCheck className="h-4 w-4" /></div>
+                    <span className="text-sm font-bold text-gray-700">Switch Workspace / Specialist Login</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-gray-400" />
                 </button>

@@ -185,7 +185,7 @@ export default function ArrivalQualityModal({
                   </div>
                   <h3 className="text-lg font-bold text-white">Verified & Approved</h3>
                   <p className="text-xs text-zinc-300">
-                    Thank you for verifying technician equipment and conduct. You can share your secure OTP with the technician after service is completed!
+                    Thank you for verifying technician equipment and conduct. The service job will be marked completed upon finish.
                   </p>
                 </>
               )}

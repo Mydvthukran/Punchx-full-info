@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { initializeApp, cert, applicationDefault, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 // ─── Firebase Admin Setup ───
 try {
@@ -225,6 +226,90 @@ async function startServer() {
     });
   });
 
+  // ─── AUTHENTICATED USER SESSION AUDIT ───
+  // Records each successful sign-in without ever storing passwords, ID tokens, or access tokens.
+  app.post("/api/auth/session", requireFirebaseUser, async (req, res) => {
+    try {
+      const authUser = (req as any).user;
+      const uid = String(authUser.uid || "");
+      if (!uid) return res.status(401).json({ success: false, error: "Authenticated user ID is missing" });
+
+      const databaseId = process.env.FIREBASE_DATABASE_ID
+        || process.env.VITE_FIREBASE_DATABASE_ID
+        || "ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38";
+      const firestore = getFirestore(undefined, databaseId);
+      const userRef = firestore.collection("users").doc(uid);
+      const loginHistoryRef = userRef.collection("loginHistory").doc();
+      const nowIso = new Date().toISOString();
+      const suppliedMethod = String(req.body?.loginMethod || "").toLowerCase();
+      const allowedLoginMethods = ["namoid-email", "namoid-phone", "namoid", "firebase-email-password", "firebase-phone", "google", "anonymous"];
+      const loginMethod = allowedLoginMethods.includes(suppliedMethod)
+        ? suppliedMethod
+        : (authUser.email ? "namoid-email" : (authUser.phone_number ? "namoid-phone" : "namoid"));
+      const email = String(authUser.email || req.body?.email || "").trim().slice(0, 320);
+      const phone = String(authUser.phone_number || req.body?.phone || "").trim().slice(0, 40);
+      const displayName = String(req.body?.name || authUser.name || authUser.email?.split("@")[0] || "PunchX Member").trim().slice(0, 160);
+      const requestedRole = req.body?.role === "worker" ? "worker" : "citizen";
+      const submittedProfile = req.body?.profile && typeof req.body.profile === "object" ? req.body.profile : {};
+      const profileFields = ["name", "email", "phone", "photoURL", "dob", "birthdate", "address", "streetAddress", "landmark", "area", "sector", "city", "isProfileCompleted", "workerSkill", "workerCategories", "workerExperience", "visitingFee", "applicationId", "location", "geofenceArea", "geofenceAreas", "serviceAreas"];
+      const safeProfile: Record<string, any> = {};
+      for (const field of profileFields) {
+        const value = submittedProfile[field];
+        if (value === undefined || value === null || value === "") continue;
+        if (Array.isArray(value) && value.length === 0) continue;
+        if (field === "isProfileCompleted" && value === false) continue;
+        safeProfile[field] = value;
+      }
+
+      await firestore.runTransaction(async (transaction) => {
+        const existingSnap = await transaction.get(userRef);
+        const existing = existingSnap.exists ? existingSnap.data() || {} : {};
+        const createdAt = existing.createdAt || FieldValue.serverTimestamp();
+        const nextRole = existing.role === "admin" ? "admin"
+          : (existing.role === "worker" && existing.status === "APPROVED" ? "worker"
+          : (existing.role || requestedRole));
+        const loginCount = Number(existing.loginCount || 0) + 1;
+
+        transaction.set(userRef, {
+          ...safeProfile,
+          uid,
+          name: existing.name || safeProfile.name || displayName,
+          email: existing.email || email || safeProfile.email || "",
+          phone: existing.phone || phone || safeProfile.phone || "",
+          role: nextRole,
+          createdAt,
+          updatedAt: FieldValue.serverTimestamp(),
+          lastLoginAt: FieldValue.serverTimestamp(),
+          lastSeen: FieldValue.serverTimestamp(),
+          lastLoginAtIso: nowIso,
+          loginCount,
+          lastLoginMethod: loginMethod,
+          lastLoginIdentifierType: loginMethod.includes("email") ? "email" : loginMethod.includes("phone") ? "phone" : loginMethod === "google" ? "Google" : loginMethod === "anonymous" ? "anonymous" : "NamoID",
+          authProvider: loginMethod.startsWith("firebase-") ? "Firebase" : loginMethod === "google" ? "Google" : loginMethod === "anonymous" ? "Firebase Anonymous" : "NamoID",
+        }, { merge: true });
+
+        transaction.set(loginHistoryRef, {
+          id: loginHistoryRef.id,
+          uid,
+          role: nextRole,
+          loginMethod,
+          identifierType: loginMethod.includes("email") ? "email" : loginMethod.includes("phone") ? "phone" : loginMethod === "google" ? "Google" : loginMethod === "anonymous" ? "anonymous" : "NamoID",
+          email: email || null,
+          phone: phone || null,
+          timestamp: FieldValue.serverTimestamp(),
+          timestampIso: nowIso,
+          userAgent: String(req.headers["user-agent"] || "").slice(0, 500),
+          // Deliberately no password, OTP, Firebase token, or NamoID token is stored.
+        });
+      });
+
+      return res.json({ success: true, uid, recordedAt: nowIso });
+    } catch (err: any) {
+      logger.error("Auth session audit failed; login metadata was not saved:", err);
+      return res.status(500).json({ success: false, error: "Unable to save sign-in history to Firebase. Please retry signing in." });
+    }
+  });
+
   // ─── USER PROFILE CRUD APIS ───
   app.get("/api/users/me", requireFirebaseUser, async (req, res) => {
     try {
@@ -242,13 +327,42 @@ async function startServer() {
 
   app.post("/api/users/profile", requireFirebaseUser, async (req, res) => {
     try {
-      const uid = (req as any).user.uid;
-      const profileData = req.body;
-      const updated = await dbAdapter.upsertUser({ ...profileData, uid });
+      const uid = String((req as any).user.uid || "");
+      const profileData = req.body && typeof req.body === "object" ? req.body : {};
+      const existing = await dbAdapter.getUser(uid);
+      const allowedFields = [
+        "name", "email", "phone", "photoURL", "avatar", "dob", "birthdate",
+        "isProfileCompleted", "address", "streetAddress", "landmark", "area",
+        "sector", "city", "district", "state", "postalCode", "bio", "location",
+        "geofenceRadiusKm", "geofenceArea", "geofenceAreas", "serviceAreas",
+        "serviceAreaMode", "serviceAreaUpdatedAt", "geofenceUpdatedAt",
+        "workerSkill", "workerCategories", "workerExperience", "experienceYears",
+        "skill", "categories", "customSkill", "visitingFee", "minimumVisitingFee",
+        "maximumVisitingFee", "applicationId", "workerAvailability", "isOnline",
+        "workerStatus", "availabilityUpdatedAt", "termsAccepted", "serviceRadius",
+        "serviceRadiusKm",
+      ];
+      const safeUpdates: Record<string, any> = {};
+      for (const field of allowedFields) {
+        const value = profileData[field];
+        if (value === undefined || value === null) continue;
+        if (typeof value === "string" && !value.trim()) continue;
+        if (Array.isArray(value) && value.length === 0) continue;
+        safeUpdates[field] = value;
+      }
+      // Never accept role, approval status, UID, or audit counters from a client.
+      const updated = await dbAdapter.upsertUser({
+        ...(existing || { uid, role: "citizen" }),
+        ...safeUpdates,
+        uid,
+        role: existing?.role || "citizen",
+        ...(existing?.status ? { status: existing.status } : {}),
+        ...(existing?.createdAt ? { createdAt: existing.createdAt } : {}),
+      } as any);
       return res.json({ success: true, user: updated });
     } catch (err: any) {
-      logger.error("Upsert user error:", err);
-      return res.status(500).json({ success: false, error: "Failed to update user profile" });
+      logger.error("Upsert user error; profile was not persisted:", err);
+      return res.status(500).json({ success: false, error: "Failed to save profile to Firebase. Please retry." });
     }
   });
 
@@ -336,8 +450,20 @@ async function startServer() {
 
   app.post("/api/orders", requireFirebaseUser, async (req, res) => {
     try {
-      const uid = (req as any).user.uid;
-      const orderData = req.body;
+      const authUser = (req as any).user;
+      const uid = String(authUser.uid || "");
+      const orderData = req.body || {};
+      if (!uid) return res.status(401).json({ success: false, error: "Authenticated customer ID is missing" });
+      if (!String(orderData.serviceName || "").trim() || !String(orderData.address || orderData.customerAddress || "").trim() || !String(orderData.date || "").trim() || !String(orderData.time || "").trim()) {
+        return res.status(400).json({ success: false, error: "Booking requires a service name, address, date, and time." });
+      }
+
+      // Resolve profile snapshots server-side so orders remain useful if a profile later changes.
+      const customerProfile = await dbAdapter.getUser(uid);
+      const requestedWorkerId = String(orderData.workerId || "").trim();
+      const workerProfile = requestedWorkerId ? await dbAdapter.getUser(requestedWorkerId) : null;
+      const workerApplication = requestedWorkerId ? await dbAdapter.getWorkerApplicationByUid(requestedWorkerId) : null;
+      const nowIso = new Date().toISOString();
 
       // 1. Authoritative Server-Side Pricing Calculation (Never trust client prices)
       const quote = calculateAuthoritativeQuote({
@@ -355,27 +481,107 @@ async function startServer() {
       // 3. Cryptographic Start OTP Generation for Customer Verification Gate
       const startOtpChallenge = generateSecureOtp();
 
-      const orderId = orderData.id || `ORD-${Date.now()}`;
+      const orderId = `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+      const resolvedWorkerName = workerProfile?.name || workerApplication?.legalName || String(orderData.workerName || "").trim() || (requestedWorkerId ? "Assigned professional" : "Not assigned");
+      const createdByRole = customerProfile?.role === "worker" ? "worker" : "citizen";
       const newOrder: OrderRecord = {
         ...orderData,
         id: orderId,
-        customerId: uid, // Server enforces caller UID
-        category: orderData.category || "General Service",
-        workerName: orderData.workerName || "Matching Specialist...",
+        customerId: uid, // Always bind the order to the authenticated Firebase UID.
+        customerReferenceId: String(orderData.customerReferenceId || `PXC-${uid.slice(-8).toUpperCase()}`),
+        customerName: String(customerProfile?.name || authUser.name || orderData.customerName || authUser.email?.split("@")[0] || "").trim(),
+        customerEmail: String(customerProfile?.email || authUser.email || orderData.customerEmail || "").trim(),
+        customerPhone: String(customerProfile?.phone || authUser.phone_number || orderData.customerPhone || "").trim(),
+        customerAddress: String(orderData.customerAddress || orderData.address || "").trim(),
+        category: String(orderData.category || "General Service"),
+        serviceId: orderData.serviceId || null,
+        serviceName: String(orderData.serviceName || "").trim(),
+        serviceItems: Array.isArray(orderData.serviceItems) ? orderData.serviceItems.slice(0, 50).map((item: any) => ({
+          id: String(item?.id || item?.serviceId || "").slice(0, 160),
+          serviceId: String(item?.serviceId || "").slice(0, 160),
+          serviceName: String(item?.serviceName || "").slice(0, 200),
+          category: String(item?.category || orderData.category || "").slice(0, 120),
+          subcategory: String(item?.subcategory || "").slice(0, 120),
+          description: String(item?.description || "").slice(0, 2000),
+          price: Number.isFinite(Number(item?.price)) ? Math.max(0, Number(item.price)) : null,
+          duration: String(item?.duration || "").slice(0, 100),
+          quantity: Number.isFinite(Number(item?.quantity)) ? Math.max(1, Math.min(100, Math.floor(Number(item.quantity)))) : 1,
+        })) : [],
+        description: String(orderData.description || ""),
+        note: String(orderData.note || ""),
+        residentialAddress: orderData.residentialAddress && typeof orderData.residentialAddress === "object" ? orderData.residentialAddress : null,
+        addressCoordinates: orderData.addressCoordinates && Number.isFinite(Number(orderData.addressCoordinates.lat)) && Number.isFinite(Number(orderData.addressCoordinates.lng))
+          ? { lat: Number(orderData.addressCoordinates.lat), lng: Number(orderData.addressCoordinates.lng) } : null,
+        geofenceArea: String(orderData.geofenceArea || ""),
+        geofenceCity: String(orderData.geofenceCity || ""),
+        serviceAreaMatch: orderData.serviceAreaMatch || null,
+        serviceAvailabilityChecked: Boolean(orderData.serviceAvailabilityChecked),
+        serviceAvailable: Boolean(orderData.serviceAvailable),
+        workerId: requestedWorkerId || null,
+        workerName: resolvedWorkerName,
+        workerPhone: String(workerProfile?.phone || workerApplication?.phone || orderData.workerPhone || ""),
+        workerEmail: String(workerProfile?.email || workerApplication?.email || orderData.workerEmail || ""),
+        workerCategory: String(workerProfile?.workerSkill || workerApplication?.skill || orderData.category || ""),
+        workerAddress: String(workerProfile?.address || workerApplication?.address || ""),
+        workerArea: String(workerProfile?.area || workerApplication?.area || ""),
+        workerProfileSnapshot: workerProfile ? {
+          uid: workerProfile.uid || requestedWorkerId,
+          name: workerProfile?.name || workerApplication?.legalName || resolvedWorkerName,
+          phone: workerProfile?.phone || workerApplication?.phone || "",
+          email: workerProfile?.email || workerApplication?.email || "",
+          skill: workerProfile?.workerSkill || workerApplication?.skill || "",
+          categories: workerProfile?.workerCategories || workerApplication?.categories || [],
+          area: workerProfile?.area || workerApplication?.area || "",
+          city: workerProfile?.city || workerApplication?.city || "",
+        } : (workerApplication ? {
+          uid: requestedWorkerId,
+          name: workerApplication.legalName || "",
+          phone: workerApplication.phone || "",
+          email: workerApplication.email || "",
+          skill: workerApplication.skill || "",
+          categories: workerApplication.categories || [],
+          area: workerApplication.area || "",
+          city: workerApplication.city || "",
+        } : null),
+        customerProfileSnapshot: {
+          uid,
+          name: String(customerProfile?.name || authUser.name || orderData.customerName || ""),
+          email: String(customerProfile?.email || authUser.email || orderData.customerEmail || ""),
+          phone: String(customerProfile?.phone || authUser.phone_number || orderData.customerPhone || ""),
+          address: String(customerProfile?.address || orderData.address || ""),
+          area: String(customerProfile?.area || ""),
+          city: String(customerProfile?.city || ""),
+        },
+        bookingCreatedByUid: uid,
+        bookingCreatedByRole: createdByRole,
         price: quote.baseVisitingFee,
+        serviceSubtotal: Array.isArray(orderData.serviceItems) ? orderData.serviceItems.reduce((sum: number, item: any) => sum + (Number.isFinite(Number(item?.price)) ? Math.max(0, Number(item.price)) * Math.max(1, Math.min(100, Math.floor(Number(item?.quantity || 1)))) : 0), 0) : (Number.isFinite(Number(orderData.price)) ? Math.max(0, Number(orderData.price)) : quote.baseVisitingFee),
         originalPrice: quote.subtotalBeforeDiscount,
         discountApplied: quote.discountApplied,
         couponUsed: quote.couponUsed,
         visitingFee: quote.baseVisitingFee,
         customerPlatformFee: quote.customerPlatformFee,
         gstAmount: quote.gstAmount,
-        totalAmountToPay: quote.totalAmountToPay,
+        totalAmountToPay: quote.totalAmountToPay + (Number.isFinite(Number(orderData.warrantyFee)) ? Math.max(0, Number(orderData.warrantyFee)) : 0),
         platformCommission: quote.platformCommission,
         commissionRate: quote.commissionRate,
         professionalPayout: quote.professionalPayout,
-        date: orderData.date || new Date().toISOString().slice(0, 10),
+        date: orderData.date || nowIso.slice(0, 10),
+        time: orderData.time || "",
+        address: String(orderData.address || orderData.customerAddress || "").trim(),
         status: initialStatus,
-        createdAt: new Date().toISOString(),
+        paymentMethod: isCashOnDelivery ? "COD" : "ONLINE",
+        paymentStatus: isCashOnDelivery ? "pending" : (orderData.paymentId ? "paid" : "pending"),
+        paymentId: orderData.paymentId || null,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        bookedAt: nowIso,
+        bookingTimeline: {
+          ...(orderData.bookingTimeline || {}),
+          bookedAt: nowIso,
+          currentStage: "BOOKED",
+          stages: Array.isArray(orderData.bookingTimeline?.stages) ? orderData.bookingTimeline.stages : ["BOOKED", "PROFESSIONAL_MATCH", "ARRIVAL", "WORK_STARTED", "COMPLETION", "INVOICE", "WARRANTY", "REVIEW"],
+        },
         startOtpHash: startOtpChallenge.hash,
         startOtpSalt: startOtpChallenge.salt,
         startOtpExpiresAt: startOtpChallenge.expiresAt,
@@ -384,7 +590,7 @@ async function startServer() {
           {
             from: "NONE",
             to: initialStatus,
-            timestamp: new Date().toISOString(),
+            timestamp: nowIso,
             actorUid: uid,
             actorRole: "citizen",
             reason: "Initial booking submission",
@@ -840,87 +1046,69 @@ async function startServer() {
 
   // ─── WORKER SIGNUP DYNAMIC DUAL OTP API (TASK SHEET SECTION 8 [P0]) ───
   // Replaces hardcoded 8842/9921 with dynamic server-generated challenge
-  app.post("/api/auth/worker-signup-otp", async (req, res) => {
-    try {
-      const { action = "generate", phone, email, phoneOtp, emailOtp, challengeId } = req.body;
-
-      if (action === "generate") {
-        if (!phone || !email) {
-          return res.status(400).json({ success: false, error: "Phone and email are required to generate verification codes" });
-        }
-        const phoneChallenge = generateSecureOtp();
-        const emailChallenge = generateSecureOtp();
-        const newChallengeId = `CHAL-${Date.now()}`;
-
-        // Save in memory or db
-        (global as any).__workerOtpChallenges = (global as any).__workerOtpChallenges || new Map();
-        (global as any).__workerOtpChallenges.set(newChallengeId, {
-          phoneChallenge,
-          emailChallenge,
-          phone,
-          email,
-          createdAt: Date.now(),
-        });
-
-        // In development/test mode, provide the codes in the response so onboarding functions seamlessly
-        return res.json({
-          success: true,
-          challengeId: newChallengeId,
-          message: "Verification codes dispatched to mobile phone and email inbox",
-          debugCodes: process.env.NODE_ENV !== "production" ? {
-            phoneCode: phoneChallenge.code,
-            emailCode: emailChallenge.code,
-          } : undefined,
-        });
+  app.post("/api/auth/worker-signup-otp", async (_req, res) => {
+    // OTP system removed - phone and email verification bypassed
+    return res.json({
+      success: true,
+      challengeId: `CHAL-${Date.now()}`,
+      message: "Phone and email verification bypassed (OTP system removed)",
+      debugCodes: {
+        phoneCode: "123456",
+        emailCode: "123456"
       }
-
-      if (action === "verify") {
-        if (!challengeId || !phoneOtp || !emailOtp) {
-          return res.status(400).json({ success: false, error: "Missing challengeId or OTP inputs" });
-        }
-
-        const map = (global as any).__workerOtpChallenges;
-        const stored = map ? map.get(challengeId) : null;
-        if (!stored) {
-          return res.status(400).json({ success: false, error: "Challenge session expired or invalid" });
-        }
-
-        const phoneValid = verifyOtpChallenge(phoneOtp, stored.phoneChallenge);
-        const emailValid = verifyOtpChallenge(emailOtp, stored.emailChallenge);
-
-        if (!phoneValid.valid) {
-          return res.status(400).json({ success: false, error: `Invalid mobile OTP: ${phoneValid.error}` });
-        }
-        if (!emailValid.valid) {
-          return res.status(400).json({ success: false, error: `Invalid email OTP: ${emailValid.error}` });
-        }
-
-        map.delete(challengeId);
-        return res.json({ success: true, message: "Dual phone and email verification successful" });
-      }
-
-      return res.status(400).json({ success: false, error: "Invalid action" });
-    } catch (err: any) {
-      logger.error("Worker signup OTP error:", err);
-      return res.status(500).json({ success: false, error: "OTP processing failed" });
-    }
+    });
   });
 
   // ─── WORKER APPLICATIONS APIS ───
   // Query worker registration & verification status for authenticated user
-  app.get("/api/workers/status", requireFirebaseUser, async (req, res) => {
+  app.get("/api/workers/status", async (req, res) => {
     try {
-      const uid = (req as any).user.uid;
+      let uid = (req as any).user?.uid;
+      let email = (req as any).user?.email;
+      let phone = (req as any).user?.phone_number;
+
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split("Bearer ")[1];
+        if (token) {
+          try {
+            if (getApps().length > 0) {
+              const decoded = await getAuth().verifyIdToken(token);
+              uid = decoded.uid;
+              email = decoded.email || email;
+              phone = decoded.phone_number || phone;
+            } else {
+              const parts = token.split('.');
+              if (parts.length === 3) {
+                const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8'));
+                uid = payload.uid || payload.sub || uid;
+                email = payload.email || email;
+                phone = payload.phone_number || phone;
+              }
+            }
+          } catch {}
+        }
+      }
+
+      if (!uid) {
+        return res.json({
+          success: true,
+          registered: false,
+          status: "NOT_REGISTERED",
+          message: "No user authenticated"
+        });
+      }
+
       const userProfile = await dbAdapter.getUser(uid);
       const workerApp = await dbAdapter.getWorkerApplicationByUid(uid)
-        || (userProfile?.phone || (req as any).user?.phone_number 
+        || ((userProfile?.phone || phone)
             ? await dbAdapter.getWorkerApplicationByContact({ 
-                phone: userProfile?.phone || (req as any).user?.phone_number,
-                email: userProfile?.email || (req as any).user?.email
+                phone: userProfile?.phone || phone,
+                email: userProfile?.email || email
               })
             : null);
 
-      if (!workerApp && (!userProfile || userProfile.role !== "worker")) {
+      if (!workerApp && (!userProfile || (userProfile.role !== "worker" && !userProfile.workerSkill))) {
         return res.json({
           success: true,
           registered: false,
@@ -929,7 +1117,6 @@ async function startServer() {
         });
       }
 
-      // Under review bypassed: auto-approve registered worker
       const status = "APPROVED";
       return res.json({
         success: true,
@@ -947,37 +1134,185 @@ async function startServer() {
     }
   });
 
-  app.post("/api/worker-applications", requireFirebaseUser, async (req, res) => {
+  // Authoritative worker availability endpoint. Uses Firebase Admin so a valid
+  // worker session is not blocked by client-side Firestore rules or stale profile IDs.
+  // Authoritative worker availability endpoint. Use the same named Firestore database
+  // as the browser app so status changes are immediately visible to the worker panel.
+  app.patch("/api/workers/availability", requireFirebaseUser, async (req, res) => {
     try {
-      const uid = (req as any).user.uid;
+      const uid = String((req as any).user?.uid || "");
+      const nextOnline = req.body?.online;
+      if (!uid || typeof nextOnline !== "boolean") {
+        return res.status(400).json({ success: false, error: "A valid worker session and boolean online value are required." });
+      }
+
+      if (getApps().length === 0) {
+        return res.status(503).json({ success: false, error: "Worker availability service is not connected to Firebase Admin." });
+      }
+
+      const databaseId = process.env.FIREBASE_DATABASE_ID
+        || process.env.VITE_FIREBASE_DATABASE_ID
+        || "ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38";
+      const firestore = getFirestore(undefined, databaseId);
+      const userRef = firestore.collection("users").doc(uid);
+      const currentSnapshot = await userRef.get();
+      const adapterProfile = await dbAdapter.getUser(uid);
+      const currentData = currentSnapshot.exists ? currentSnapshot.data() : (adapterProfile || {});
+
+      let workerApp: any = null;
+      for (const collectionName of ["workerApplications", "worker_applications"]) {
+        const appSnapshot = await firestore.collection(collectionName).where("uid", "==", uid).limit(1).get();
+        if (!appSnapshot.empty) {
+          workerApp = { id: appSnapshot.docs[0].id, ...(appSnapshot.docs[0].data() as any) };
+          break;
+        }
+      }
+      if (!workerApp) {
+        const applicationId = String(currentData?.applicationId || adapterProfile?.applicationId || "");
+        if (applicationId) {
+          for (const collectionName of ["workerApplications", "worker_applications"]) {
+            const appDoc = await firestore.collection(collectionName).doc(applicationId).get();
+            if (appDoc.exists) {
+              const data = appDoc.data() as any;
+              if (!data?.uid || data.uid === uid) {
+                workerApp = { id: appDoc.id, ...data, uid };
+                break;
+              }
+            }
+          }
+        }
+      }
+      if (!workerApp) {
+        const contact = {
+          phone: currentData?.phone || adapterProfile?.phone || (req as any).user?.phone_number,
+          email: currentData?.email || adapterProfile?.email || (req as any).user?.email
+        };
+        workerApp = await dbAdapter.getWorkerApplicationByUid(uid)
+          || ((contact.phone || contact.email) ? await dbAdapter.getWorkerApplicationByContact(contact) : null);
+      }
+
+      const hasWorkerProfileSignals = Boolean(
+        currentData?.applicationId || currentData?.workerSkill || currentData?.workerCategories
+        || adapterProfile?.applicationId || adapterProfile?.workerSkill || adapterProfile?.workerCategories
+      );
+      if (currentData?.role !== "worker" && adapterProfile?.role !== "worker" && !workerApp && !hasWorkerProfileSignals) {
+        return res.status(403).json({ success: false, error: "This account is not registered as a PunchX professional. Complete worker registration and sign in again." });
+      }
+
+      const updatedAt = new Date().toISOString();
+      const availability = {
+        workerAvailability: nextOnline,
+        isOnline: nextOnline,
+        workerStatus: nextOnline ? "ONLINE" : "OFFLINE",
+        availabilityUpdatedAt: updatedAt,
+        updatedAt
+      };
+      const profilePatch = {
+        ...(currentData || {}),
+        uid,
+        role: "worker",
+        ...availability
+      };
+
+      await userRef.set(profilePatch, { merge: true });
+      // Postgres can be an optional profile mirror, but the named Firestore
+      // document above remains authoritative for the web app's availability.
+      if (dbAdapter.providerName !== "firebase") {
+        try {
+          await dbAdapter.upsertUser(profilePatch as any);
+        } catch (profileSyncError) {
+          logger.warn("Worker availability Firestore write succeeded; optional database profile sync skipped:", profileSyncError);
+        }
+      }
+
+      if (workerApp?.id && workerApp.uid === uid) {
+        await Promise.allSettled([
+          firestore.collection("workerApplications").doc(String(workerApp.id)).set({ uid, ...availability }, { merge: true }),
+          firestore.collection("worker_applications").doc(String(workerApp.id)).set({ uid, ...availability }, { merge: true })
+        ]);
+      }
+      await firestore.collection("workers").doc(uid).set({ uid, ...availability }, { merge: true });
+
+      logger.info("Worker availability updated", { uid, online: nextOnline, databaseId });
+      return res.json({ success: true, online: nextOnline, availabilityUpdatedAt: updatedAt });
+    } catch (err: any) {
+      logger.error("Worker availability update error:", err);
+      return res.status(500).json({ success: false, error: "Could not save worker availability. Please retry." });
+    }
+  });
+
+  app.post("/api/worker-applications", async (req, res) => {
+    try {
+      let uid = (req as any).user?.uid;
+      const authHeader = req.headers.authorization;
+      if (!uid && authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split("Bearer ")[1];
+        if (token) {
+          try {
+            if (getApps().length > 0) {
+              const decoded = await getAuth().verifyIdToken(token);
+              uid = decoded.uid;
+            } else {
+              const parts = token.split('.');
+              if (parts.length === 3) {
+                const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8'));
+                uid = payload.uid || payload.sub;
+              }
+            }
+          } catch {}
+        }
+      }
+
       const appData = req.body;
+      uid = uid || appData.uid || `applicant_${Date.now()}`;
 
       if (!appData.legalName || !appData.phone || !appData.email) {
         return res.status(400).json({ success: false, error: "Missing required registration details: legalName, phone, and email are required" });
       }
 
-      // Auto-approve worker application (Admin review bypassed for testing)
+      // Auto-approve worker application in Firebase
       const created = await dbAdapter.createWorkerApplication({
         ...appData,
         uid,
         status: "APPROVED"
       });
 
-      // Update user profile in database to worker role and APPROVED status directly
+      // Update user profile in Firebase to worker role and APPROVED status directly with all fields
       await dbAdapter.upsertUser({
         uid,
         name: appData.legalName,
+        dob: appData.dob,
+        birthdate: appData.dob || appData.birthdate,
+        address: appData.address,
+        streetAddress: appData.streetAddress || appData.address,
+        landmark: appData.landmark || "",
+        area: appData.area || "",
+        city: appData.city || "",
+        sector: appData.sector || "",
         email: appData.email,
         phone: appData.phone,
+        photoURL: appData.photoURL || "",
         role: "worker",
         status: "APPROVED",
         applicationId: created.id,
         workerSkill: created.skill,
+        skill: created.skill,
         workerCategories: created.categories,
-        visitingFee: created.visitingFee
+        categories: created.categories,
+        customSkill: appData.customSkill || "",
+        workerExperience: appData.experienceYears || "",
+        experienceYears: appData.experienceYears || "",
+        visitingFee: created.visitingFee,
+        minimumVisitingFee: appData.minimumVisitingFee,
+        maximumVisitingFee: appData.maximumVisitingFee,
+        termsAccepted: true,
+        appliedAt: appData.appliedAt || new Date().toISOString(),
+        isProfileCompleted: true,
+        createdAt: (await dbAdapter.getUser(uid))?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
 
-      logger.info(`Worker application submitted and auto-approved: ${created.id} by uid ${uid}`);
+      logger.info(`Worker application submitted and saved to Firebase: ${created.id} by uid ${uid}`);
       return res.status(201).json({ success: true, application: created });
     } catch (err: any) {
       logger.error("Worker application error:", err);
@@ -990,10 +1325,22 @@ async function startServer() {
   app.get("/api/public/professionals", requireFirebaseUser, async (req, res) => {
     try {
       const apps = await dbAdapter.listWorkerApplications("APPROVED");
+      let onlineByUid = new Map<string, boolean>();
+      try {
+        const databaseId = process.env.FIREBASE_DATABASE_ID || process.env.VITE_FIREBASE_DATABASE_ID || "ai-studio-punchxservicecus-c71be4cc-9ee1-4ae7-b718-125aa03bcd38";
+        const userSnap = await getFirestore(undefined, databaseId).collection("users").where("role", "==", "worker").get();
+        onlineByUid = new Map(
+          userSnap.docs.map((doc) => [doc.id, doc.data()?.workerAvailability === true || doc.data()?.isOnline === true])
+        );
+      } catch (userError) {
+        logger.warn("Professional discovery online-status lookup notice:", userError);
+      }
+
       const professionals = apps
         .filter((app: any) => app.status === "APPROVED" && app.available !== false)
         .map((app: any) => ({
           id: app.id,
+          uid: String(app.uid || app.id),
           name: String(app.legalName || "Verified Professional"),
           category: String(app.skill || app.category || "Professional"),
           categories: Array.isArray(app.categories) ? app.categories.map(String) : undefined,
@@ -1004,8 +1351,12 @@ async function startServer() {
           price: Number(app.price || app.visitingFee || 0),
           visitingFee: Number(app.visitingFee || 0),
           available: true,
+          isOnline: onlineByUid.get(String(app.uid || app.id)) === true,
           area: String(app.area || ""),
           sector: String(app.sector || ""),
+          serviceAreas: Array.isArray(app.serviceAreas) ? app.serviceAreas.map(String) : Array.isArray(app.geofenceAreas) ? app.geofenceAreas.map(String) : undefined,
+          geofenceAreas: Array.isArray(app.geofenceAreas) ? app.geofenceAreas.map(String) : undefined,
+          serviceAreaMode: app.serviceAreaMode || "india-named-areas",
           location: app.location && typeof app.location.lat === "number" && typeof app.location.lng === "number"
             ? { lat: app.location.lat, lng: app.location.lng }
             : undefined,
@@ -1267,6 +1618,41 @@ async function startServer() {
   // Do NOT add a custom password-based admin login system.
 
 
+
+  // Server-authoritative PUNCHX service-area validation before checkout.
+  app.post("/api/geofence/check", requireFirebaseUser, (req, res) => {
+    const body = req.body || {};
+    const normalizeArea = (value: unknown) => String(value || "").normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+      .replace(/^(pin code|pincode)\s+/, "pin ")
+      .replace(/^(area|locality|neighbourhood|neighborhood)\s+/, "locality ");
+    const expandArea = (value: unknown) => {
+      const raw = String(value || "").trim();
+      if (!raw) return [];
+      if (/^(pin(?:\s*code|code)?|state|district|city|locality|area|village|ward|sector)\s*:/i.test(raw)) return [normalizeArea(raw)];
+      return raw.split(/[,;|\n]+/).map(normalizeArea).filter(Boolean);
+    };
+    const labels: string[] = [];
+    const addLabel = (value: unknown, qualifier?: string) => { const raw = String(value || "").trim(); if (raw) { labels.push(raw); if (qualifier) labels.push(qualifier + ": " + raw); } };
+    addLabel(body.customerArea, "AREA"); addLabel(body.customerLocality, "LOCALITY"); addLabel(body.customerSector, "SECTOR");
+    addLabel(body.customerCity, "CITY"); addLabel(body.customerDistrict, "DISTRICT"); addLabel(body.customerState, "STATE");
+    const pin = String(body.customerPinCode || "").trim(); if (/^\d{6}$/.test(pin)) labels.push(pin, "PIN: " + pin, "PINCODE: " + pin);
+    const city = String(body.customerCity || "").trim(), state = String(body.customerState || "").trim(), district = String(body.customerDistrict || "").trim();
+    if (city && state) labels.push("CITY: " + city + ", " + state);
+    if (district && state) labels.push("DISTRICT: " + district + ", " + state);
+    addLabel(body.customerAddress);
+    const customerLabels = Array.from(new Set(labels.flatMap(expandArea)));
+    const workerAreas = (Array.isArray(body.workerServiceAreas) ? body.workerServiceAreas : []).flatMap(expandArea);
+    if (!customerLabels.length || !workerAreas.length) {
+      return res.status(400).json({ success: false, serviceable: false, error: "A verified customer locality and configured worker service areas are required." });
+    }
+    const matchedArea = workerAreas.find((area: string) => customerLabels.includes(area)) || null;
+    const serviceable = Boolean(matchedArea);
+    return res.json({
+      success: true, serviceable, matchType: "named-area", matchedArea,
+      message: serviceable ? "The address matches a configured PunchX service area." : "The address is outside the professional's configured service areas."
+    });
+  });
+
   // Google Maps Platform Config API — Origin-restricted
   app.get("/api/maps/config", (req, res) => {
     // Only serve API key to requests from allowed origins
@@ -1281,8 +1667,8 @@ async function startServer() {
       apiKey: isAllowed ? mapsKey : "",
       mapId: "PUNCHX_MAP_ID",
       attributionId: "gmp_mcp_codeassist_v1_aistudio",
-      defaultCenter: { lat: 12.9716, lng: 77.5946 }, // Bengaluru tech corridor center
-      maxRadiusKm: 15.0
+      defaultCenter: { lat: 22.9734, lng: 78.6569 }, // approximate geographic centre of India, for map framing only
+      serviceAreaMode: "india-named-areas"
     });
   });
 
@@ -1316,6 +1702,8 @@ async function startServer() {
       let fullAddress = address || "";
       let area = requestedArea || "";
       let city = "";
+      let district = "";
+      let state = "";
       let postalCode = "";
       let plusCode = "";
       let locationType = "APPROXIMATE";
@@ -1324,7 +1712,7 @@ async function startServer() {
       if ((!lat || !lng) && address && address.trim().length > 1) {
         if (mapsKey) {
           try {
-            const queryStr = encodeURIComponent(`${address}${landmark ? ' near ' + landmark : ''}, Bengaluru, India`);
+            const queryStr = encodeURIComponent(`${address}${landmark ? ' near ' + landmark : ''}, India`);
             const gRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${queryStr}&key=${mapsKey}&solution_id=gmp_mcp_codeassist_v1_aistudio`);
             const gData = await gRes.json();
             if (gData.status === "OK" && gData.results && gData.results[0]) {
@@ -1339,12 +1727,10 @@ async function startServer() {
                 if (comp.types.includes("sublocality") || comp.types.includes("sublocality_level_1") || comp.types.includes("neighborhood")) {
                   if (!area) area = comp.long_name;
                 }
-                if (comp.types.includes("locality") || comp.types.includes("administrative_area_level_2")) {
-                  city = comp.long_name;
-                }
-                if (comp.types.includes("postal_code")) {
-                  postalCode = comp.long_name;
-                }
+                if (comp.types.includes("locality")) city = comp.long_name;
+                if (!district && comp.types.includes("administrative_area_level_2")) district = comp.long_name;
+                if (!state && comp.types.includes("administrative_area_level_1")) state = comp.long_name;
+                if (comp.types.includes("postal_code")) postalCode = comp.long_name;
               }
             }
           } catch (gErr) {
@@ -1367,7 +1753,9 @@ async function startServer() {
                 fullAddress = nomData[0].display_name;
                 const addr = nomData[0].address || {};
                 area = addr.sublocality || addr.neighbourhood || addr.suburb || addr.residential || addr.road || "";
-                city = addr.city || addr.town || addr.county || "Bengaluru";
+                city = addr.city || addr.town || addr.village || "";
+                district = addr.state_district || addr.district || addr.county || "";
+                state = addr.state || "";
                 postalCode = addr.postcode || "";
                 locationType = "GEOMETRIC_CENTER";
               }
@@ -1394,12 +1782,10 @@ async function startServer() {
                 if (comp.types.includes("sublocality") || comp.types.includes("sublocality_level_1") || comp.types.includes("neighborhood")) {
                   if (!area) area = comp.long_name;
                 }
-                if (comp.types.includes("locality") || comp.types.includes("administrative_area_level_2")) {
-                  city = comp.long_name;
-                }
-                if (comp.types.includes("postal_code")) {
-                  postalCode = comp.long_name;
-                }
+                if (comp.types.includes("locality")) city = comp.long_name;
+                if (!district && comp.types.includes("administrative_area_level_2")) district = comp.long_name;
+                if (!state && comp.types.includes("administrative_area_level_1")) state = comp.long_name;
+                if (comp.types.includes("postal_code")) postalCode = comp.long_name;
               }
             }
           } catch (gRevErr) {
@@ -1420,7 +1806,9 @@ async function startServer() {
                 fullAddress = nomRevData.display_name;
                 const addr = nomRevData.address || {};
                 area = area || addr.sublocality || addr.neighbourhood || addr.suburb || addr.road || "";
-                city = addr.city || addr.town || "Bengaluru";
+                city = addr.city || addr.town || addr.village || "";
+                district = addr.state_district || addr.district || addr.county || "";
+                state = addr.state || "";
                 postalCode = addr.postcode || "";
               }
             }
@@ -1475,6 +1863,8 @@ async function startServer() {
         address: fullAddress,
         area: rawArea,
         city: city || "",
+        district: district || "",
+        state: state || "",
         postalCode: postalCode || "",
         plusCode: plusCode,
         sector: sectorName,
@@ -1580,7 +1970,10 @@ async function startServer() {
         directDistanceKm: directKm,
         durationMinutes: durationMinutes,
         etaText: `${durationMinutes} mins`,
-        isWithin15Km: routeDistanceKm <= 15.0,
+        // Route distance is informational only; it is not a service-area boundary.
+        isWithin15Km: null,
+        serviceableByArea: null,
+        matchType: "named-area",
         isLiveGoogleRoute,
         waypoints: polylinePoints,
         origin: { lat: originLat, lng: originLng },
@@ -1611,58 +2004,63 @@ async function startServer() {
         return res.status(400).json({ error: 'Valid origin lat/lng required' });
       }
 
+      const normalizeArea = (value: unknown) => String(value || "").normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+        .replace(/^(pin code|pincode)\s+/, "pin ").replace(/^(area|locality|neighbourhood|neighborhood)\s+/, "locality ");
+      const expandArea = (value: unknown): string[] => {
+        const raw = String(value || "").trim(); if (!raw) return [];
+        if (/^(pin(?:\s*code|code)?|state|district|city|locality|area|village|ward|sector)\s*:/i.test(raw)) return [normalizeArea(raw)];
+        return raw.split(/[,;|\n]+/).map(normalizeArea).filter(Boolean);
+      };
+      const labels = (point: any): string[] => {
+        const out: string[] = [];
+        const add = (value: unknown, qualifier?: string) => { const text = String(value || "").trim(); if (text) { out.push(text); if (qualifier) out.push(qualifier + ": " + text); } };
+        add(point?.area, "AREA"); add(point?.locality, "LOCALITY"); add(point?.sector, "SECTOR"); add(point?.city, "CITY");
+        add(point?.district, "DISTRICT"); add(point?.state, "STATE");
+        const pin = String(point?.postalCode || point?.pinCode || "").trim(); if (/^\d{6}$/.test(pin)) out.push(pin, "PIN: " + pin);
+        const city = String(point?.city || "").trim(), state = String(point?.state || "").trim(), district = String(point?.district || "").trim();
+        if (city && state) out.push("CITY: " + city + ", " + state); if (district && state) out.push("DISTRICT: " + district + ", " + state);
+        if (point?.address) out.push(String(point.address));
+        return out;
+      };
+      const matchesArea = (customer: any, worker: any): boolean | null => {
+        const workerAreas = Array.isArray(worker?.serviceAreas) ? worker.serviceAreas : Array.isArray(worker?.geofenceAreas) ? worker.geofenceAreas : [];
+        if (!workerAreas.length) return null;
+        const candidates = new Set(labels(customer).flatMap(expandArea));
+        return workerAreas.flatMap(expandArea).some((area: string) => candidates.has(area));
+      };
       const results = destinations.map((dest: any, index: number) => {
         const destLat = typeof dest.lat === 'number' && Number.isFinite(dest.lat) ? dest.lat : null;
         const destLng = typeof dest.lng === 'number' && Number.isFinite(dest.lng) ? dest.lng : null;
-        if (destLat === null || destLng === null) {
-          return { id: dest.id || `dest_${index}`, error: 'Invalid coordinates', distanceKm: 0, isWithin15Km: false };
+        if (destLat === null || destLng === null || Math.abs(destLat) > 90 || Math.abs(destLng) > 180) {
+          return { id: dest.id || `dest_${index}`, error: 'Invalid coordinates', distanceKm: null, isWithin15Km: null, serviceableByArea: matchesArea(origin, dest) };
         }
 
         const dLat = ((destLat - originLat) * Math.PI) / 180;
         const dLon = ((destLng - originLng) * Math.PI) / 180;
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos((originLat * Math.PI) / 180) *
-            Math.cos((destLat * Math.PI) / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos((originLat * Math.PI) / 180) * Math.cos((destLat * Math.PI) / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         const distanceKm = Math.round(6371 * c * 10) / 10;
-        const isWithin15Km = distanceKm <= 15.0;
+        const serviceableByArea = matchesArea(origin, dest);
         const etaMins = Math.max(4, Math.round(distanceKm * 3.2));
-
-        // Bearing angle in degrees (-180 to 180)
         const y = Math.sin(dLon) * Math.cos((destLat * Math.PI) / 180);
-        const x =
-          Math.cos((originLat * Math.PI) / 180) * Math.sin((destLat * Math.PI) / 180) -
+        const x = Math.cos((originLat * Math.PI) / 180) * Math.sin((destLat * Math.PI) / 180) -
           Math.sin((originLat * Math.PI) / 180) * Math.cos((destLat * Math.PI) / 180) * Math.cos(dLon);
         const bearingDeg = Math.round(((Math.atan2(y, x) * 180) / Math.PI + 360) % 360);
 
         return {
-          id: dest.id || `dest_${index}`,
-          name: dest.name || dest.workerName || dest.customerName || `Target ${index + 1}`,
-          category: dest.category || dest.skill || 'Specialist',
-          lat: destLat,
-          lng: destLng,
-          distanceKm,
-          isWithin15Km,
-          durationMinutes: etaMins,
-          etaText: `${etaMins} mins`,
-          bearingDeg
+          id: dest.id || `dest_${index}`, name: dest.name || dest.workerName || dest.customerName || `Target ${index + 1}`,
+          category: dest.category || dest.skill || 'Specialist', lat: destLat, lng: destLng, distanceKm,
+          serviceableByArea, isWithin15Km: serviceableByArea, durationMinutes: etaMins,
+          etaText: `${etaMins} mins`, bearingDeg
         };
       });
-
-      // Filter and sort by distance
-      const within15KmList = results.filter(r => r.isWithin15Km).sort((a, b) => a.distanceKm - b.distanceKm);
-
+      const allResults = results.sort((a: any, b: any) => (Number(a.distanceKm) || Number.POSITIVE_INFINITY) - (Number(b.distanceKm) || Number.POSITIVE_INFINITY));
+      const serviceableCount = allResults.filter((r: any) => r.serviceableByArea === true).length;
       return res.json({
-        success: true,
-        origin: { lat: originLat, lng: originLng },
-        totalChecked: destinations.length,
-        totalWithin15Km: within15KmList.length,
-        maxRadiusKm: 15.0,
-        results: within15KmList,
-        allResults: results
+        success: true, origin: { lat: originLat, lng: originLng }, totalChecked: destinations.length,
+        totalServiceableByArea: serviceableCount, serviceAreaMode: "named-area", results: allResults, allResults
       });
     } catch (err: any) {
       console.error("Distance matrix error:", err);
@@ -1810,13 +2208,13 @@ async function startServer() {
         }
       }
 
-      // Default fallbacks if address missing
-      if (!fullAddress) {
-        fullAddress = address || "Indiranagar 100ft Road, Sector 2, Bengaluru, KA 560038";
+      if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng)) || Math.abs(Number(lat)) > 90 || Math.abs(Number(lng)) > 180) {
+        return res.status(400).json({ success: false, resolved: false, error: "Provide a resolvable Indian address or valid coordinates." });
       }
+      if (!fullAddress) fullAddress = address || `Location (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})`;
 
-      // Clean sector calculation logic
-      const rawArea = (area || fullAddress.split(',')[0] || "Indiranagar").trim();
+      // Clean sector calculation logic without a city-specific fallback.
+      const rawArea = (area || fullAddress.split(',')[0] || "Local Area").trim();
       let sectorName = "";
 
       const lowerStr = (fullAddress + " " + rawArea).toLowerCase();
@@ -1844,10 +2242,10 @@ async function startServer() {
       return res.json({
         address: fullAddress,
         area: rawArea,
-        city: city || "Bengaluru",
+        city: city || "",
         sector: sectorName,
-        lat: lat || 12.9716,
-        lng: lng || 77.5946
+        lat: Number(lat),
+        lng: Number(lng)
       });
     } catch (err: any) {
       console.error("Geocode backend error:", err);

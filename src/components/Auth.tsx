@@ -14,6 +14,14 @@ interface AuthProps {
 }
 
 export default function Auth({ onTransition, showNotification, setAuthMethodDetail, activePanelRole = 'customer' }: AuthProps) {
+  const punchxAppMode = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('punchxApp') || (() => { try { return localStorage.getItem('punchx_native_app_mode'); } catch { return null; } })())
+    : null;
+  const isDedicatedApp = punchxAppMode === 'citizen' || punchxAppMode === 'professional';
+  // Keep the configured callback URL exact so the identity provider's redirect allowlist continues to match.
+  const authRedirectUri = typeof window !== 'undefined'
+    ? `${window.location.origin}/auth/callback`
+    : import.meta.env.VITE_NAMOID_REDIRECT_URI || 'https://www.punchxapp.co.in/auth/callback';
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [isLocating, setIsLocating] = useState(false);
 
@@ -57,9 +65,9 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
       </div>
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl flex-col items-center justify-center">
-        <button onClick={() => onTransition('panel-select')} className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/80 px-4 py-2 text-xs font-bold text-[#2563eb] shadow-sm backdrop-blur transition-all hover:bg-white hover:shadow-md">
+        {!isDedicatedApp && <button onClick={() => onTransition('panel-select')} className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#bfdbfe] bg-white/80 px-4 py-2 text-xs font-bold text-[#2563eb] shadow-sm backdrop-blur transition-all hover:bg-white hover:shadow-md">
           <ArrowLeft className="h-4 w-4" /> Choose Different Panel
-        </button>
+        </button>}
 
         <motion.div initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} className="mb-7 flex flex-col items-center text-center">
           <div className="mb-4 h-20 w-20 rounded-full border border-[#bfdbfe] bg-white p-1.5 shadow-[0_16px_45px_rgba(37,99,235,.18)]">
@@ -84,7 +92,7 @@ export default function Auth({ onTransition, showNotification, setAuthMethodDeta
 
           <div className="my-6 flex justify-center">
             <div className="w-full overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white p-1 shadow-sm">
-              <SignIn redirectUri={typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : import.meta.env.VITE_NAMOID_REDIRECT_URI || 'https://www.punchxapp.co.in/auth/callback'} />
+              <SignIn redirectUri={authRedirectUri} />
             </div>
           </div>
 

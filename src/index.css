@@ -155,3 +155,366 @@ body:has(.punchx-citizen-shell), body:has(#providers-list-root), body:has(#provi
 @media (prefers-reduced-motion:reduce) {
   #panel-select-screen,.punchx-citizen-shell,#providers-list-root,#provider-details-root,#booking-container,#payment-screen-container { animation:none !important; }
 }
+
+
+/* Mobile-first overflow hardening: keep every screen, label and control inside the viewport. */
+*,*::before,*::after { box-sizing:border-box; }
+html,body,#root { width:100%; min-width:0; max-width:100%; }
+html { overflow-x:clip; -webkit-text-size-adjust:100%; }
+body { overflow-x:clip; }
+#root { overflow-x:clip; }
+img,video,canvas,svg,iframe { max-width:100%; }
+img,video,canvas { height:auto; }
+button,input,textarea,select { max-width:100%; min-width:0; }
+textarea,select { max-width:100%; }
+button,a,[role="button"] { overflow-wrap:anywhere; }
+h1,h2,h3,h4,h5,h6,p,span,label,small,strong,em,li,td,th { overflow-wrap:anywhere; }
+pre,code { white-space:pre-wrap; overflow-wrap:anywhere; }
+table { max-width:100%; }
+.flex > *, .inline-flex > *, .grid > * { min-width:0; }
+[class*="w-screen"] { width:100%; max-width:100vw; }
+[class*="max-w-"] { max-width:min(100%,100vw); }
+
+@media (max-width:767px) {
+  html { font-size:15px; }
+  body { font-size:14px; }
+  #root > * { min-width:0; max-width:100%; }
+  main,header,footer,section,article,aside,nav,form { min-width:0; max-width:100%; }
+  .overflow-x-auto { max-width:100%; overscroll-behavior-x:contain; }
+  [role="dialog"], [aria-modal="true"] {
+    width:min(100% - 24px, 560px);
+    max-width:calc(100vw - 24px);
+    max-height:calc(100dvh - 24px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+  }
+  input,select,textarea { font-size:16px; }
+  button { white-space:normal; }
+  #panel-select-screen { padding-left:16px !important; padding-right:16px !important; }
+  #panel-select-screen > .max-w-4xl { width:100%; }
+  #panel-select-screen .grid > div { width:100%; min-width:0; }
+  .wx-app { width:100%; min-width:0; max-width:100vw; overflow-x:clip; }
+  .wx-main { width:0; min-width:0; max-width:100%; }
+  .wx-header { min-width:0; padding-left:14px; padding-right:14px; gap:10px; }
+  .wx-header > * { min-width:0; }
+  .wx-period-card,.wx-period-tabs,.wx-report-summary { min-width:0; max-width:100%; }
+  .wx-period-tabs button { min-width:0; overflow-wrap:anywhere; }
+  .wx-feedback-row > * { min-width:0; }
+  .wx-chart-card,.wx-analytics-chart,.wx-growth-card { min-width:0; max-width:100%; }
+}
+
+@media (max-width:360px) {
+  .wx-header { padding-left:10px; padding-right:10px; }
+  #panel-select-screen h1 { font-size:clamp(27px,9vw,34px) !important; }
+  .wx-period-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
+
+
+/* Mobile viewport containment: prevent drawers, navigation, and long labels
+   from escaping the visible page on narrow devices. */
+html, body, #root { min-height:100%; }
+body { overflow-x:hidden; }
+#punchx-website-navbar { width:100%; max-width:100vw; }
+#punchx-website-navbar > div { min-width:0; max-width:100%; }
+#punchx-website-navbar button,
+#punchx-website-navbar a { min-width:0; }
+#punchx-website-navbar [role="menu"],
+#punchx-website-navbar [role="dialog"],
+#punchx-website-navbar [data-state="open"] { max-width:calc(100vw - 16px); }
+@media (max-width:767px) {
+  #root, #root > *, #root main, #root main > * { min-width:0; width:100%; max-width:100%; }
+  #root main { overflow-x:clip; }
+  #punchx-website-navbar { padding-left:0; padding-right:0; }
+  #punchx-website-navbar > div { gap:clamp(4px,1.5vw,10px); padding-left:10px; padding-right:10px; }
+  #punchx-website-navbar img { max-width:100%; }
+  #punchx-website-navbar button { overflow-wrap:anywhere; }
+  [data-radix-popper-content-wrapper] { max-width:calc(100vw - 16px) !important; }
+  [role="dialog"], [aria-modal="true"] {
+    box-sizing:border-box !important;
+    left:auto;
+    right:auto;
+    max-width:calc(100vw - 16px) !important;
+    overflow-x:hidden;
+    overflow-y:auto;
+  }
+  .fixed.inset-y-0.left-0, .fixed.inset-y-0.right-0,
+  .fixed.left-0.top-0, .fixed.right-0.top-0 {
+    box-sizing:border-box;
+    width:min(100vw - 16px, 360px);
+    max-width:calc(100vw - 16px);
+  }
+  main * { overflow-wrap:anywhere; }
+  main img, main video, main canvas, main iframe { max-width:100%; }
+  main .flex, main .grid { min-width:0; }
+}
+
+
+/* Mobile viewport containment without overriding intentional min-width utilities. */
+html, body, #root { width:100%; max-width:100%; }
+body { overflow-x:hidden; }
+#root { overflow-x:clip; }
+#root > div, #root main, #root main > div { min-width:0; max-width:100%; }
+#root main img, #root main video, #root main iframe, #root main canvas { max-width:100%; }
+#root main h1, #root main h2, #root main h3, #root main p, #root main label, #root main button, #root main a { overflow-wrap:anywhere; }
+#root main .flex > *, #root main .grid > * { min-width:0; }
+#root main input, #root main textarea, #root main select { min-width:0; max-width:100%; }
+@media (max-width:767px) {
+  #root main { overflow-x:clip; }
+  #punchx-website-navbar > div { width:100%; min-width:0; }
+  #worker-signup-screen, #worker-otp-pass-screen, #worker-setup-screen, #customer-setup-screen, #booking-container, #payment-screen-container, #providers-list-root, #provider-details-root { width:100%; max-width:100vw; min-width:0; overflow-x:clip; }
+  [role=dialog], [aria-modal=true] { box-sizing:border-box !important; width:calc(100vw - 24px) !important; max-width:calc(100vw - 24px) !important; }
+  .fixed.inset-y-0.left-0, .fixed.inset-y-0.right-0, .fixed.left-0.top-0, .fixed.right-0.top-0 { width:min(360px, calc(100vw - 16px)); max-width:calc(100vw - 16px); }
+}
+
+
+/* Final viewport safety net: constrain layout boxes, not every child, so intentional
+   flex/grid sizing remains intact while long text and controls wrap on small screens. */
+*, *::before, *::after { box-sizing:border-box; }
+html, body, #root { width:100%; max-width:100%; min-width:0; }
+body, #root { overflow-x:clip; }
+img, video, iframe, canvas, svg { max-width:100%; }
+p, h1, h2, h3, h4, h5, h6, label, small, strong, em, li, td, th, a, button {
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+pre, code, kbd, samp { max-width:100%; white-space:pre-wrap; overflow-wrap:anywhere; }
+input, textarea, select { min-width:0; max-width:100%; }
+@media (max-width:767px) {
+  body, #root { overflow-x:clip !important; }
+  #root > div, #root main, #root header, #root footer, #root section, #root nav,
+  #root form, #root [role="dialog"], #root [aria-modal="true"] {
+    min-width:0;
+    max-width:100%;
+  }
+  #root main { width:100%; overflow-x:clip; }
+  #punchx-website-navbar, #punchx-website-navbar > div {
+    width:100%;
+    min-width:0;
+    max-width:100vw;
+  }
+  #punchx-website-navbar [role="menu"],
+  #punchx-website-navbar [role="dialog"],
+  #punchx-website-navbar [data-state="open"] {
+    box-sizing:border-box;
+    max-width:calc(100vw - 16px) !important;
+    overflow-wrap:anywhere;
+  }
+  #root main .flex > *, #root main .grid > *,
+  #punchx-website-navbar .flex > *, #punchx-website-navbar .grid > * { min-width:0; }
+  #root main button, #root main a, #punchx-website-navbar button,
+  #punchx-website-navbar a { white-space:normal; }
+}
+
+/* PunchX responsive hardening: constrain real surfaces while preserving intentional
+   horizontal scrollers such as category carousels and provider chips. */
+#punchx-website-navbar { isolation:isolate; }
+#punchx-website-navbar [role="menu"],
+#punchx-website-navbar [role="dialog"] {
+  box-sizing:border-box;
+  max-width:calc(100vw - 24px);
+}
+#punchx-website-navbar .absolute.right-0 {
+  width:min(18rem,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+}
+#citizen-account-bar,
+#citizen-account-bar > * { min-width:0; max-width:100%; }
+#citizen-account-bar [class*="truncate"] { min-width:0; max-width:100%; }
+#worker-signup-screen,
+#worker-otp-pass-screen,
+#worker-setup-screen,
+#customer-setup-screen,
+#home-dashboard-root,
+#providers-list-root,
+#provider-details-root,
+#booking-container,
+#payment-screen-container {
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+}
+#worker-signup-screen input,
+#worker-signup-screen select,
+#worker-signup-screen textarea,
+#worker-otp-pass-screen input,
+#worker-setup-screen input,
+#customer-setup-screen input,
+#customer-setup-screen textarea {
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+#worker-signup-screen [class*="grid"],
+#worker-setup-screen [class*="grid"],
+#customer-setup-screen [class*="grid"] { min-width:0; }
+#worker-signup-screen [class*="flex"] > *,
+#worker-setup-screen [class*="flex"] > *,
+#customer-setup-screen [class*="flex"] > * { min-width:0; }
+#global-prestige-toast { box-sizing:border-box; max-width:calc(100vw - 24px); }
+#drago-chat-body { min-width:0; }
+#drago-chat-body > * { min-width:0; max-width:100%; }
+#drago-message-input { min-width:0; width:100%; }
+
+@media (max-width:767px) {
+  #punchx-website-navbar { position:sticky; top:0; }
+  #punchx-website-navbar > div { gap:clamp(4px,1.8vw,10px); }
+  #punchx-website-navbar > div > button[aria-label="PunchX Home"] { min-width:0; flex:0 1 auto; }
+  #punchx-website-navbar > div > button[aria-label="Notifications"] { flex:0 0 40px; }
+  #punchx-website-navbar [role="menu"],
+  #punchx-website-navbar [role="dialog"],
+  #punchx-website-navbar .absolute.right-0 {
+    left:auto;
+    right:8px;
+    width:calc(100vw - 16px);
+    max-width:calc(100vw - 16px);
+  }
+  #home-dashboard-root main,
+  #providers-list-root main,
+  #provider-details-root main,
+  #booking-container main,
+  #payment-screen-container main { padding-left:12px; padding-right:12px; }
+  #citizen-account-bar { overflow-wrap:anywhere; }
+  #citizen-account-bar button { max-width:100%; }
+  #root [role="dialog"][aria-modal="true"] {
+    width:calc(100vw - 24px) !important;
+    max-width:calc(100vw - 24px) !important;
+    max-height:calc(100dvh - 24px);
+    overflow-y:auto;
+    overflow-x:clip;
+  }
+  #root .fixed.inset-0.flex.items-center.justify-center {
+    padding:12px;
+  }
+  #root footer { min-width:0; }
+}
+
+@media (max-width:359px) {
+  #punchx-website-navbar > div { padding-left:8px; padding-right:8px; }
+  #punchx-website-navbar button { padding-left:8px; padding-right:8px; }
+  #citizen-account-bar { padding:12px; }
+  #root [role="dialog"][aria-modal="true"] { width:calc(100vw - 16px) !important; max-width:calc(100vw - 16px) !important; }
+}
+
+
+
+/* Final global mobile containment for dialogs, menus, banners and notifications. */
+#global-prestige-toast{
+  box-sizing:border-box;
+  width:min(440px,calc(100vw - 24px));
+  max-width:calc(100vw - 24px);
+  overflow-wrap:anywhere;
+}
+#global-prestige-toast p{min-width:0;overflow-wrap:anywhere;word-break:normal}
+[role="dialog"],[aria-modal="true"]{box-sizing:border-box;min-width:0;max-width:calc(100vw - 24px)}
+@media(max-width:767px){
+  html,body,#root{width:100%;min-width:0;max-width:100%;overflow-x:clip}
+  #root main,#root header,#root footer,#root section,#root article,#root form{min-width:0;max-width:100%}
+  #global-prestige-toast{
+    top:max(10px,env(safe-area-inset-top));
+    left:12px;
+    right:12px;
+    width:auto;
+    max-width:calc(100vw - 24px);
+    transform:none;
+    padding:12px;
+    gap:8px;
+  }
+  #global-prestige-toast p{font-size:12px;line-height:1.45}
+  [role="dialog"],[aria-modal="true"]{
+    width:calc(100vw - 20px)!important;
+    max-width:calc(100vw - 20px)!important;
+    max-height:calc(100dvh - 20px)!important;
+    overflow-x:clip!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  [data-radix-popper-content-wrapper]{
+    box-sizing:border-box;
+    max-width:calc(100vw - 16px)!important;
+  }
+  .fixed.inset-0.flex.items-center.justify-center{
+    box-sizing:border-box;
+    width:100%;
+    max-width:100vw;
+    padding:10px!important;
+    overflow-y:auto;
+    overflow-x:clip;
+  }
+  .fixed.inset-0.flex.items-center.justify-center>div{
+    box-sizing:border-box;
+    min-width:0;
+    max-width:100%;
+    max-height:calc(100dvh - 20px);
+    overflow-x:clip;
+    overflow-y:auto;
+  }
+  input,textarea,select{font-size:16px}
+  button,a,[role="button"]{overflow-wrap:anywhere;touch-action:manipulation}
+  .overflow-x-auto{max-width:100%;overscroll-behavior-x:contain}
+  img,video,iframe,canvas{max-width:100%}
+}
+@media(max-width:359px){
+  #global-prestige-toast{left:8px;right:8px;max-width:calc(100vw - 16px);padding:10px}
+  [role="dialog"],[aria-modal="true"]{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important}
+}
+
+
+/* Final shared notification/dialog positioning for customer and worker panels. */
+#global-prestige-toast{
+  position:fixed!important;
+  top:max(12px,env(safe-area-inset-top))!important;
+  left:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  width:min(440px,calc(100vw - 24px))!important;
+  max-width:calc(100vw - 24px)!important;
+  max-height:calc(100dvh - 24px)!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  transform:translateX(-50%)!important;
+  z-index:2147483647!important;
+  overflow-wrap:anywhere!important;
+  overflow-x:clip!important;
+  overflow-y:auto!important;
+  animation:none!important;
+}
+#global-prestige-toast p{min-width:0!important;overflow-wrap:anywhere!important;word-break:normal!important}
+@media(max-width:767px){
+  #global-prestige-toast{
+    top:max(8px,env(safe-area-inset-top))!important;
+    left:50%!important;
+    right:auto!important;
+    width:calc(100vw - 20px)!important;
+    max-width:calc(100vw - 20px)!important;
+    padding:12px!important;
+    transform:translateX(-50%)!important;
+  }
+  #root .wx-overlay{
+    position:fixed!important;
+    inset:0!important;
+    box-sizing:border-box!important;
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    padding:calc(12px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom))!important;
+    overflow-x:clip!important;
+    overflow-y:auto!important;
+    z-index:2147483000!important;
+  }
+  #root .wx-overlay .wx-modal{
+    flex:0 1 auto!important;
+    width:min(680px,100%)!important;
+    max-width:100%!important;
+    max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    margin:0 auto!important;
+    overflow-x:clip!important;
+    overflow-y:auto!important;
+  }
+}

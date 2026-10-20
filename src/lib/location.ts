@@ -7,6 +7,9 @@ export interface LocationData {
   address: string;
   area: string;
   city: string;
+  district?: string;
+  state?: string;
+  postalCode?: string;
   sector: string;
   timestamp: string;
 }
@@ -76,7 +79,7 @@ export const LOCALITY_COORDINATES: Record<string, { lat: number; lng: number; ar
 
 // Calculate Haversine distance between two sets of coordinates in kilometers
 export function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 2.5; // Reasonable default fallback
+  if (![lat1, lon1, lat2, lon2].every(Number.isFinite) || Math.abs(lat1) > 90 || Math.abs(lat2) > 90 || Math.abs(lon1) > 180 || Math.abs(lon2) > 180) return Number.POSITIVE_INFINITY;
   const R = 6371; // Earth radius in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -129,31 +132,24 @@ export function getStoredCustomerCoordinates(citizenAddress?: string): { lat: nu
   return getCoordinatesForAddressOrSector(citizenAddress);
 }
 
-// Check if a target location is within 15 km of origin
+// Legacy name retained for compatibility. Distance is informational; named areas decide coverage.
 export function checkIsWithin15KmRadius(
-  origin: { lat: number; lng: number } | string | undefined,
-  target: { lat: number; lng: number } | string | undefined
+  origin: ({ lat: number; lng: number } & PunchXAreaContext) | string | undefined,
+  target: ({ lat: number; lng: number } & PunchXAreaContext) | string | undefined
 ): { isWithin15Km: boolean; distanceKm: number } {
-  let originCoords: { lat: number; lng: number };
-  let targetCoords: { lat: number; lng: number };
-
-  if (typeof origin === 'object' && origin && typeof origin.lat === 'number' && typeof origin.lng === 'number') {
-    originCoords = origin;
-  } else {
-    originCoords = getStoredCustomerCoordinates(typeof origin === 'string' ? origin : undefined);
-  }
-
-  if (typeof target === 'object' && target && typeof target.lat === 'number' && typeof target.lng === 'number') {
-    targetCoords = target;
-  } else {
-    targetCoords = getCoordinatesForAddressOrSector(typeof target === 'string' ? target : undefined);
-  }
-
-  const distanceKm = calculateDistanceKm(originCoords.lat, originCoords.lng, targetCoords.lat, targetCoords.lng);
-  return {
-    isWithin15Km: distanceKm <= 15.0,
-    distanceKm
+  const labelsFor = (value: typeof origin): string[] => {
+    if (typeof value === 'string') return buildPunchXCustomerAreaLabels({ address: value });
+    if (value && typeof value === 'object') return buildPunchXCustomerAreaLabels(value);
+    return [];
   };
+  const originLabels = labelsFor(origin);
+  const targetLabels = labelsFor(target);
+  let distanceKm = Number.POSITIVE_INFINITY;
+  if (origin && typeof origin === 'object' && target && typeof target === 'object' &&
+      Number.isFinite(origin.lat) && Number.isFinite(origin.lng) && Number.isFinite(target.lat) && Number.isFinite(target.lng)) {
+    distanceKm = calculateDistanceKm(origin.lat, origin.lng, target.lat, target.lng);
+  }
+  return { isWithin15Km: isServiceAreaMatch(originLabels, targetLabels), distanceKm };
 }
 
 // Extract main area/locality from address string
@@ -169,38 +165,29 @@ export function extractAreaFromAddress(address: string): string {
   return parts[0];
 }
 
-// Check if customer area and worker area are in the same location or within 15 km proximity
+// Legacy name retained: exact locality matching replaces proximity/radius matching.
 export function isSameAreaOrNearby(
   customerAddress?: string,
   workerAddress?: string,
   customerCoords?: { lat: number; lng: number },
   workerCoords?: { lat: number; lng: number }
 ): { isMatch: boolean; distanceKm: number; matchedArea?: string; isWithin15Km: boolean } {
-  const cCoords = customerCoords?.lat ? customerCoords : getStoredCustomerCoordinates(customerAddress);
-  const wCoords = workerCoords?.lat ? workerCoords : getCoordinatesForAddressOrSector(workerAddress);
-
-  const dist = calculateDistanceKm(cCoords.lat, cCoords.lng, wCoords.lat, wCoords.lng);
-  const isWithin15Km = dist <= 15.0;
-
-  if (isWithin15Km) {
-    return {
-      isMatch: true,
-      distanceKm: dist,
-      matchedArea: `${dist} km away (Inside 15km Zone)`,
-      isWithin15Km: true
-    };
-  }
-
+  const customerArea = extractAreaFromAddress(customerAddress || '');
+  const workerArea = extractAreaFromAddress(workerAddress || '');
+  const isMatch = Boolean(customerArea && workerArea && normalizePunchXArea(customerArea) === normalizePunchXArea(workerArea));
+  const distanceKm = customerCoords && workerCoords
+    ? calculateDistanceKm(customerCoords.lat, customerCoords.lng, workerCoords.lat, workerCoords.lng)
+    : Number.POSITIVE_INFINITY;
   return {
-    isMatch: false,
-    distanceKm: dist,
-    matchedArea: `${dist} km away (Outside 15km Zone)`,
-    isWithin15Km: false
+    isMatch,
+    distanceKm,
+    matchedArea: isMatch ? customerArea : undefined,
+    isWithin15Km: isMatch
   };
 }
 
 // Reverse Geocode using multiple accurate sources (Google Maps Platform, OpenStreetMap, BigDataCloud & Backend API)
-export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ address: string; area: string; city: string; sector: string; accuracyScore?: number }> {
+export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ address: string; area: string; city: string; district: string; state: string; postalCode: string; sector: string; accuracyScore?: number }> {
   // 1. Primary High-Precision: Google Maps Platform Backend API (/api/maps/geocode)
   try {
     const token = await getAuthToken();
@@ -218,7 +205,10 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
         return {
           address: data.address,
           area: data.area || extractAreaFromAddress(data.address),
-          city: data.city || 'Kolkata',
+          city: data.city || '',
+          district: data.district || '',
+          state: data.state || '',
+          postalCode: data.postalCode || '',
           sector: data.sector || getSectorFromAddress(data.address, data.area, lat, lng),
           accuracyScore: data.accuracyScore || 100
         };
@@ -254,9 +244,8 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
           addrObj.village ||
           addrObj.municipality ||
           addrObj.county ||
-          addrObj.state ||
-          'Kolkata';
-        const state = addrObj.state || 'West Bengal';
+          ''; 
+        const state = addrObj.state || '';
         const postcode = addrObj.postcode || '';
 
         const parts = [
@@ -275,6 +264,9 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
           address: fullAddress,
           area: resolvedArea,
           city: city,
+          district: addrObj.state_district || addrObj.district || addrObj.county || '',
+          state,
+          postalCode: addrObj.postcode || '',
           sector: getSectorFromAddress(fullAddress, resolvedArea, lat, lng),
           accuracyScore: 98
         };
@@ -291,7 +283,7 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
       const bdc = await bdcRes.json();
       if (bdc) {
         const locality = bdc.locality || '';
-        const city = bdc.city || bdc.principalSubdivision || 'Kolkata';
+        const city = bdc.city || bdc.locality || '';
         const state = bdc.principalSubdivision || '';
         const country = bdc.countryName || 'India';
         const area = locality || bdc.principalSubdivision || city;
@@ -301,6 +293,9 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
           address: fullAddr,
           area: area || extractAreaFromAddress(fullAddr),
           city: city,
+          district: bdc.localityInfo?.administrative?.[0]?.name || '',
+          state,
+          postalCode: bdc.postcode || '',
           sector: getSectorFromAddress(fullAddr, area, lat, lng),
           accuracyScore: 95
         };
@@ -312,40 +307,46 @@ export async function reverseGeocodeCoords(lat: number, lng: number): Promise<{ 
 
   // 4. Default coordinates representation
   const areaName = `Locality (${lat.toFixed(3)}°, ${lng.toFixed(3)}°)`;
-  const cityName = "Kolkata";
-  const formattedAddress = `GPS Position (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E), Kolkata, West Bengal`;
+  const cityName = "";
+  const formattedAddress = `GPS Position (${lat.toFixed(4)}°, ${lng.toFixed(4)}°)`;
 
   return {
     address: formattedAddress,
     area: areaName,
     city: cityName,
+    district: '',
+    state: '',
+    postalCode: '',
     sector: getSectorFromAddress(formattedAddress, areaName, lat, lng),
     accuracyScore: 90
   };
 }
 
 // Resilient GPS Resolver with High Accuracy and Sufficient Timeout
-export async function getAccurateCurrentPosition(rejectOnDenied = false): Promise<{ lat: number; lng: number }> {
+export async function getAccurateCurrentPosition(rejectOnDenied = true): Promise<{ lat: number; lng: number; accuracy: number }> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      if (rejectOnDenied) return reject(new Error('Geolocation not supported'));
-      return resolve({ lat: 22.5726, lng: 88.3639 });
+      return reject(new Error('Geolocation is not supported on this device. Please enter your address manually.'));
     }
 
     let hasResolved = false;
 
     // Helper to resolve only once
-    const safeResolve = (coords: { lat: number; lng: number }) => {
-      if (!hasResolved) {
+    const safeResolve = (coords: { lat: number; lng: number; accuracy: number }) => {
+      if (hasResolved) return;
+      if (!Number.isFinite(coords.accuracy) || coords.accuracy > 100) {
         hasResolved = true;
-        resolve(coords);
+        reject(new Error(`GPS accuracy is about ${Math.round(coords.accuracy || 0)} m. Move to an open area and retry; PunchX needs a fix within 100 m to verify service coverage.`));
+        return;
       }
+      hasResolved = true;
+      resolve(coords);
     };
 
     // Primary: High Accuracy Hardware/Network GPS (15s timeout, 0ms max age for real fresh lock)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
       },
       (highAccErr) => {
         console.warn("High-accuracy GPS attempt note:", highAccErr?.message);
@@ -356,26 +357,13 @@ export async function getAccurateCurrentPosition(rejectOnDenied = false): Promis
         // Secondary: Standard accuracy with 8s timeout
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            safeResolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
           },
           async (lowAccErr) => {
             console.warn("Standard accuracy fallback notice:", lowAccErr?.message);
             
-            // Tertiary: IP Geolocation Fallback
-            try {
-              const ipRes = await fetch('https://ipapi.co/json/');
-              if (ipRes.ok) {
-                const ipData = await ipRes.json();
-                if (ipData && ipData.latitude && ipData.longitude) {
-                  return safeResolve({ lat: Number(ipData.latitude), lng: Number(ipData.longitude) });
-                }
-              }
-            } catch (ipErr) {
-              console.warn("IP fallback 1:", ipErr);
-            }
-
-            // Fallback default coordinates
-            safeResolve({ lat: 22.5726, lng: 88.3639 });
+            // IP-derived locations are too imprecise for geofence or booking decisions.
+            reject(new Error('Precise GPS is unavailable. Enable device location and retry in an open area.'));
           },
           { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 }
         );
@@ -391,8 +379,8 @@ export async function requestAndAutoUpdateLocation(
   targetUid?: string
 ): Promise<LocationData | null> {
   try {
-    const coords = await getAccurateCurrentPosition();
-    const { address, area, city, sector } = await reverseGeocodeCoords(coords.lat, coords.lng);
+    const coords = await getAccurateCurrentPosition(true);
+    const { address, area, city, district, state, postalCode, sector } = await reverseGeocodeCoords(coords.lat, coords.lng);
 
     const locData: LocationData = {
       lat: coords.lat,
@@ -400,6 +388,9 @@ export async function requestAndAutoUpdateLocation(
       address,
       area,
       city,
+      district,
+      state,
+      postalCode,
       sector: sector || getSectorFromAddress(address, area, coords.lat, coords.lng),
       timestamp: new Date().toISOString()
     };
@@ -424,6 +415,9 @@ export async function requestAndAutoUpdateLocation(
             address: address,
             area: area,
             city: city,
+            district,
+            state,
+            postalCode,
             sector: locData.sector,
             role: role,
             updatedAt: new Date().toISOString()
@@ -440,6 +434,9 @@ export async function requestAndAutoUpdateLocation(
               address: address,
               area: area,
               city: city,
+              district,
+              state,
+              postalCode,
               sector: locData.sector,
               updatedAt: new Date().toISOString()
             },
@@ -576,7 +573,7 @@ export interface GoogleMapsConfig {
   mapId: string;
   attributionId: string;
   defaultCenter: { lat: number; lng: number };
-  maxRadiusKm: number;
+  serviceAreaMode?: 'india-named-areas';
 }
 
 export async function fetchGoogleMapsConfig(): Promise<GoogleMapsConfig> {
@@ -594,8 +591,8 @@ export async function fetchGoogleMapsConfig(): Promise<GoogleMapsConfig> {
     apiKey: '',
     mapId: 'PUNCHX_MAP_ID',
     attributionId: 'gmp_mcp_codeassist_v1_aistudio',
-    defaultCenter: { lat: 22.5726, lng: 88.3639 },
-    maxRadiusKm: 15.0
+    defaultCenter: { lat: 22.9734, lng: 78.6569 },
+    serviceAreaMode: 'india-named-areas'
   };
 }
 
@@ -606,7 +603,10 @@ export interface RouteResult {
   directDistanceKm: number;
   durationMinutes: number;
   etaText: string;
-  isWithin15Km: boolean;
+  /** @deprecated Legacy alias; null means route distance did not decide serviceability. */
+  isWithin15Km: boolean | null;
+  serviceableByArea?: boolean | null;
+  matchType?: 'named-area';
   isLiveGoogleRoute: boolean;
   waypoints: { lat: number; lng: number }[];
   origin: { lat: number; lng: number };
@@ -625,7 +625,7 @@ export async function fetchGoogleMapsRoute(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ origin, destination })
+      body: JSON.stringify({ origin, destination, city: getStoredCustomerCity() })
     });
     if (res.ok) {
       return await res.json();
@@ -644,7 +644,9 @@ export async function fetchGoogleMapsRoute(
     directDistanceKm: directKm,
     durationMinutes: etaMins,
     etaText: `${etaMins} mins`,
-    isWithin15Km: roadKm <= 15.0,
+    isWithin15Km: null,
+    serviceableByArea: null,
+    matchType: 'named-area',
     isLiveGoogleRoute: false,
     waypoints: [origin, destination],
     origin,
@@ -652,7 +654,7 @@ export async function fetchGoogleMapsRoute(
   };
 }
 
-// Distance Matrix and 15km Zone Radar Backend Query
+// Distance matrix: distance is navigation context; named areas decide coverage.
 export interface DistanceMatrixItem {
   id: string;
   name: string;
@@ -660,7 +662,9 @@ export interface DistanceMatrixItem {
   lat: number;
   lng: number;
   distanceKm: number;
-  isWithin15Km: boolean;
+  /** @deprecated Legacy alias; mirrors serviceableByArea, never a radius check. */
+  isWithin15Km: boolean | null;
+  serviceableByArea?: boolean | null;
   durationMinutes: number;
   etaText: string;
   bearingDeg: number;
@@ -670,8 +674,10 @@ export interface DistanceMatrixResponse {
   success: boolean;
   origin: { lat: number; lng: number };
   totalChecked: number;
-  totalWithin15Km: number;
-  maxRadiusKm: number;
+  totalWithin15Km?: number;
+  totalServiceableByArea?: number;
+  maxRadiusKm?: number;
+  serviceAreaMode?: 'named-area';
   results: DistanceMatrixItem[];
   allResults: DistanceMatrixItem[];
 }
@@ -688,7 +694,7 @@ export async function fetchGoogleMapsDistanceMatrix(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ origin, destinations })
+      body: JSON.stringify({ origin, destinations, city: getStoredCustomerCity() })
     });
     if (res.ok) {
       return await res.json();
@@ -823,3 +829,134 @@ export async function calibrate100PercentAccuracyLocation(
 }
 
 
+
+
+/**
+ * PUNCHX local service discovery range.
+ * Smaller towns default to 6 km; large urban markets remain at 8 km.
+ * This radius is for discovery only; booking serviceability is checked against
+ * configured localities/service areas rather than a circular distance boundary.
+ */
+const PUNCHX_LARGE_CITIES = new Set([
+  'kolkata', 'bengaluru', 'bangalore', 'mumbai', 'delhi', 'new delhi',
+  'hyderabad', 'chennai', 'pune', 'ahmedabad', 'jaipur', 'lucknow',
+  'kanpur', 'nagpur', 'indore', 'bhopal', 'patna', 'ranchi',
+  'bhubaneswar', 'cuttack', 'visakhapatnam', 'vizag', 'surat', 'vadodara',
+  'ludhiana', 'agra', 'nashik', 'coimbatore', 'kochi', 'thiruvananthapuram',
+  'guwahati', 'mysuru', 'mysore', 'noida', 'gurugram', 'gurgaon',
+  'faridabad', 'ghaziabad', 'durgapur', 'asansol', 'siliguri'
+]);
+
+export function normalizePunchXCity(value?: string): string {
+  return String(value || '')
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/^(city of|town of)\s+/, '');
+}
+
+export function getServiceRadiusKm(city?: string): 6 | 8 {
+  const normalized = normalizePunchXCity(city);
+  if (!normalized) return 6;
+  if (PUNCHX_LARGE_CITIES.has(normalized)) return 8;
+  // Accept a full reverse-geocoded address while requiring whole city-name matches.
+  for (const largeCity of PUNCHX_LARGE_CITIES) {
+    if (normalized.split(' ').includes(largeCity) || normalized.startsWith(largeCity + ' ')) return 8;
+  }
+  return 6;
+}
+
+export function isSameServiceCity(customerCity?: string, professionalLocation?: string): boolean {
+  const city = normalizePunchXCity(customerCity);
+  const location = normalizePunchXCity(professionalLocation);
+  if (!city || !location) return false;
+  return location === city || (' ' + location + ' ').includes(' ' + city + ' ');
+}
+
+/**
+ * Area-based serviceability. This intentionally does not calculate a circle or
+ * use distance: the worker chooses the localities/areas they actually cover.
+ */
+export function normalizePunchXArea(value?: string): string {
+  return String(value || '').normalize('NFKD').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').trim()
+    .replace(/^(pin code|pincode)\s+/, 'pin ')
+    .replace(/^(area|locality|neighbourhood|neighborhood)\s+/, 'locality ');
+}
+
+export type PunchXAreaContext = {
+  area?: string; locality?: string; sector?: string; city?: string;
+  district?: string; state?: string; pinCode?: string; postalCode?: string; address?: string;
+};
+
+/** Builds comparable nationwide locality, city, district, state and PIN-code labels. */
+export function buildPunchXCustomerAreaLabels(context: PunchXAreaContext): string[] {
+  const labels: string[] = [];
+  const add = (value?: string, qualifier?: string) => {
+    const text = String(value || '').trim();
+    if (text) { labels.push(text); if (qualifier) labels.push(qualifier + ': ' + text); }
+  };
+  add(context.area, 'AREA'); add(context.locality, 'LOCALITY'); add(context.sector, 'SECTOR');
+  add(context.city, 'CITY'); add(context.district, 'DISTRICT'); add(context.state, 'STATE');
+  const addressPin = String(context.address || '').match(/\b\d{6}\b/)?.[0] || '';
+  const pin = String(context.pinCode || context.postalCode || addressPin).trim();
+  if (/^\d{6}$/.test(pin)) labels.push(pin, 'PIN: ' + pin, 'PINCODE: ' + pin);
+  const city = String(context.city || '').trim(), state = String(context.state || '').trim(), district = String(context.district || '').trim();
+  if (city && state) labels.push('CITY: ' + city + ', ' + state);
+  if (district && state) labels.push('DISTRICT: ' + district + ', ' + state);
+  if (context.address) labels.push(context.address);
+  return Array.from(new Set(labels.filter(Boolean)));
+}
+
+function expandServiceAreaLabel(value: string): string[] {
+  const text = String(value || '').trim();
+  if (!text) return [];
+  if (/^(pin(?:\s*code|code)?|state|district|city|locality|area|village|ward|sector)\s*:/i.test(text)) return [normalizePunchXArea(text)];
+  return text.split(/[,;|\n]+/).map(normalizePunchXArea).filter(Boolean);
+}
+
+export function isServiceAreaMatch(customerLocationLabel: string | string[] | undefined, serviceAreas: string[] | undefined): boolean {
+  // Nationwide named-area rules only; GPS distance never decides coverage.
+  const areas = new Set((Array.isArray(serviceAreas) ? serviceAreas : []).flatMap(value => expandServiceAreaLabel(String(value || ''))).filter(Boolean));
+  const candidates = new Set((Array.isArray(customerLocationLabel) ? customerLocationLabel : [customerLocationLabel || '']).flatMap(value => expandServiceAreaLabel(String(value || ''))).filter(Boolean));
+  if (!areas.size || !candidates.size) return false;
+  return Array.from(areas).some(area => candidates.has(area));
+}
+
+/**
+ * Discovery-only fallback: when the GPS label does not yet include a PIN/state/district,
+ * show relevant broad-area workers provisionally. Checkout must always use isServiceAreaMatch
+ * against the full residential address before accepting a booking.
+ */
+export function isPotentialServiceAreaMatch(customerLocationLabel: string | string[] | undefined, serviceAreas: string[] | undefined): boolean {
+  if (isServiceAreaMatch(customerLocationLabel, serviceAreas)) return true;
+  const candidates = new Set((Array.isArray(customerLocationLabel) ? customerLocationLabel : [customerLocationLabel || ''])
+    .flatMap(value => expandServiceAreaLabel(String(value || ''))).filter(Boolean));
+  const hasPin = Array.from(candidates).some(value => /^pin \d{6}$/.test(value) || /^\d{6}$/.test(value));
+  const hasState = Array.from(candidates).some(value => value.startsWith('state '));
+  const hasDistrict = Array.from(candidates).some(value => value.startsWith('district '));
+  const hasCity = Array.from(candidates).some(value => value.startsWith('city '));
+  return (Array.isArray(serviceAreas) ? serviceAreas : []).some(rule => {
+    const normalized = normalizePunchXArea(rule);
+    if (/^pin \d{6}$/.test(normalized) || /^\d{6}$/.test(normalized)) return !hasPin;
+    if (normalized.startsWith('state ')) return !hasState;
+    if (normalized.startsWith('district ')) {
+      const compositeDistrict = normalized.split(' ').length > 2;
+      const sameDistrictKnown = Array.from(candidates).some(value => value === 'district ' + normalized.split(' ')[1]);
+      return !hasDistrict || (compositeDistrict && sameDistrictKnown && !hasState);
+    }
+    if (normalized.startsWith('city ') && normalized.split(' ').length > 2) return !hasState && hasCity;
+    return false;
+  });
+}
+
+
+export function getStoredCustomerCity(): string {
+  try {
+    const saved = JSON.parse(localStorage.getItem('punchx_user_location') || '{}');
+    return typeof saved.city === 'string' ? saved.city : (typeof saved.area === 'string' ? saved.area : '');
+  } catch {
+    return '';
+  }
+}

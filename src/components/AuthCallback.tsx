@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNamoID } from "@namoidhq/react";
 import { useAuth } from '../lib/authContext';
+import { db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AppScreen } from '../types';
 
 async function completePunchXAuthRedirect(client: any, callbackUrl: string = window.location.href) {
@@ -49,8 +51,8 @@ async function completePunchXAuthRedirect(client: any, callbackUrl: string = win
 
   const transaction = JSON.parse(raw);
 
-  if (returnedState && transaction.state && transaction.state !== returnedState) {
-    console.warn("Notice: Authorization state mismatch:", returnedState, transaction.state);
+  if (!returnedState || !transaction.state || transaction.state !== returnedState) {
+    throw new Error("NamoID security check failed (state mismatch). Please restart sign-in.");
   }
 
   const authError = url.searchParams.get("error");
@@ -117,12 +119,14 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
         const result = await completePunchXAuthRedirect(client, callbackUrl);
         const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
 
-        let profile;
-        if (result.tokens?.id_token) {
-          profile = await loginWithNamoID(result.identity, 'citizen', result.tokens.id_token);
-        } else {
-          profile = await loginWithNamoID(result.identity, 'citizen');
-        }
+        // Access tokens are required for the server to verify the identity with
+        // NamoID UserInfo. Pass it whether or not this tenant returns an ID token.
+        const profile = await loginWithNamoID(
+          result.identity,
+          'citizen',
+          result.tokens?.id_token,
+          result.tokens?.access_token,
+        );
         window.history.replaceState({}, document.title, '/');
 
         if (rawRole === 'admin') {
@@ -132,10 +136,47 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
             onTransition('home');
           }
         } else if (rawRole === 'worker') {
-          // Check worker status: verify whether this account is an approved specialist
+          // Check worker status: verify whether this account is an existing specialist
           let workerStatus: string = profile?.status || 'NOT_REGISTERED';
           let hasWorkerApp = false;
 
+          // 1. Check local storage cache of worker applications
+          const cachedApps = localStorage.getItem('punchx_worker_applications');
+          const cachedAppId = localStorage.getItem('punchx_worker_app_id');
+          if (cachedApps || cachedAppId) {
+            try {
+              const parsed = JSON.parse(cachedApps || '[]');
+              if (Array.isArray(parsed) && parsed.length > 0 && (parsed[0].skill || parsed[0].address)) {
+                hasWorkerApp = true;
+              }
+            } catch {}
+          }
+
+          // 2. Check Firestore directly
+          const uid = profile?.uid || (result.identity as any)?.sub || (result.identity as any)?.id;
+          if (db && uid) {
+            try {
+              const [userSnap, appSnap] = await Promise.all([
+                getDoc(doc(db, 'users', uid)),
+                getDoc(doc(db, 'workerApplications', uid))
+              ]);
+              if (userSnap.exists()) {
+                const uData = userSnap.data();
+                if (uData?.role === 'worker' || uData?.workerSkill || (uData?.categories && uData.categories.length > 0) || uData?.applicationId) {
+                  hasWorkerApp = true;
+                  workerStatus = 'APPROVED';
+                }
+              }
+              if (appSnap.exists()) {
+                hasWorkerApp = true;
+                workerStatus = appSnap.data()?.status || 'APPROVED';
+              }
+            } catch (fsErr) {
+              console.warn('Firestore worker check notice:', fsErr);
+            }
+          }
+
+          // 3. Check backend API
           try {
             const backendBase = import.meta.env.VITE_BACKEND_URL || '';
             const headers: Record<string, string> = {};
@@ -145,17 +186,30 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
               const data = await statusRes.json();
               if (data.registered) {
                 hasWorkerApp = true;
-                workerStatus = data.status;
+                workerStatus = data.status || 'APPROVED';
               }
             }
           } catch (statusErr) {
             console.warn('Worker status backend check notice:', statusErr);
           }
 
-          if (profile?.role === 'worker' || hasWorkerApp || workerStatus === 'APPROVED' || workerStatus === 'PENDING') {
+          // Only route straight to dashboard if this account has ALREADY submitted worker registration details
+          const isRegisteredSpecialist = Boolean(
+            hasWorkerApp ||
+            profile?.applicationId ||
+            profile?.workerSkill ||
+            (profile?.workerCategories && profile.workerCategories.length > 0)
+          );
+
+          if (isRegisteredSpecialist) {
             localStorage.setItem('punchx_auth_role', 'worker');
             localStorage.setItem('punchx_worker_approved', 'true');
             localStorage.setItem('punchx_worker_online_status', 'true');
+            if (db && uid) {
+              try {
+                await setDoc(doc(db, 'users', uid), { role: 'worker', status: 'APPROVED' }, { merge: true });
+              } catch {}
+            }
             onTransition('worker-dashboard');
           } else if (workerStatus === 'REJECTED') {
             localStorage.setItem('punchx_auth_role', 'customer');
@@ -169,15 +223,8 @@ export default function AuthCallback({ onTransition }: { onTransition: (target: 
         }
       } catch (e: any) {
         console.error("❌ [AuthCallback] Auth callback error:", e);
-        const storedIdentity = localStorage.getItem('punchx_namoid_identity');
-        if (storedIdentity) {
-          const rawRole = localStorage.getItem('punchx_auth_role') || 'customer';
-          window.history.replaceState({}, document.title, '/');
-          if (rawRole === 'admin') onTransition('admin-dashboard');
-          else if (rawRole === 'worker') onTransition('worker-signup');
-          else onTransition('home');
-          return;
-        }
+        // Never treat a cached identity as an authenticated session. Firebase
+        // must confirm the session before routing the user into a protected panel.
         setErrorMessage(e?.message || "Authentication callback could not be completed.");
       }
     }

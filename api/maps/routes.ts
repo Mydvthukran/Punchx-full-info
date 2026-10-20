@@ -5,6 +5,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { origin, destination, travelMode = 'DRIVE' } = req.body || {};
+    // Route distance/ETA is informational only; serviceability is checked by named areas at booking time.
     if (!origin || !destination) {
       return res.status(400).json({ error: 'Origin and destination coordinates are required' });
     }
@@ -73,7 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       directDistanceKm: directKm,
       durationMinutes,
       etaText,
-      isWithin15Km: routeDistanceKm <= 15,
+      // Deprecated compatibility field: null means this route calculation did not decide serviceability.
+      isWithin15Km: null,
+      serviceableByArea: null,
+      matchType: 'named-area',
       isLiveGoogleRoute,
       waypoints: polylinePoints,
       origin: { lat: originLat, lng: originLng },

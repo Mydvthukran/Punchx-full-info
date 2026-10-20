@@ -12,6 +12,7 @@ export type AppScreen =
   | 'worker-pending-approval'
   | 'home'
   | 'services-categories' 
+  | 'catalogue'
   | 'providers' 
   | 'provider-details' 
   | 'booking' 
@@ -27,16 +28,24 @@ export interface WorkerApplication {
   id: string;
   uid: string;
   legalName: string;
+  dob?: string;
+  birthdate?: string;
   address: string;
+  streetAddress?: string;
   area?: string;
+  city?: string;
   sector?: string;
+  landmark?: string;
   skill: string;
   categories?: string[];
   customSkill?: string;
   experienceYears: string;
+  visitingFee?: number;
+  minimumVisitingFee?: number;
+  maximumVisitingFee?: number;
   phone: string;
   email: string;
-  visitingFee?: number;
+  photoURL?: string;
   termsAccepted: boolean;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   appliedAt: string;
@@ -49,29 +58,54 @@ export interface UserProfile {
   name: string;
   email: string;
   photoURL?: string;
+  avatar?: string;
   role: UserRole;
   dob?: string;
   birthdate?: string;
   isProfileCompleted?: boolean;
   address?: string;
+  streetAddress?: string;
   landmark?: string;
   area?: string;
   sector?: string;
   phone?: string;
+  city?: string;
+  bio?: string;
+  workerAvailability?: boolean;
+  isOnline?: boolean;
+  location?: { lat: number; lng: number };
+  geofenceRadiusKm?: number;
+  geofenceArea?: string;
+  /** Explicit named localities covered by this professional; no radius matching. */
+  serviceAreas?: string[];
+  geofenceAreas?: string[];
+  serviceAreaUpdatedAt?: string;
+  geofenceUpdatedAt?: string;
+  workerStatus?: 'ONLINE' | 'OFFLINE';
   visitingFee?: number;
+  minimumVisitingFee?: number;
+  maximumVisitingFee?: number;
   workerSkill?: string;
+  /** Legacy aliases stored by the worker registration backend. */
+  skill?: string;
+  customSkill?: string;
   workerCategories?: string[];
+  categories?: string[];
   workerExperience?: string;
+  experienceYears?: string;
   workerRating?: number;
   workerCompletedJobs?: number;
   status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
   applicationId?: string;
+  termsAccepted?: boolean;
+  appliedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface Worker {
   id: string;
+  uid?: string;
   name: string;
   category: string;
   categories?: string[];
@@ -82,10 +116,14 @@ export interface Worker {
   price: number;
   visitingFee?: number;
   available?: boolean;
+  isOnline?: boolean;
   phone?: string;
   address?: string;
   area?: string;
   sector?: string;
+  /** Explicit named localities covered by this professional; no radius matching. */
+  serviceAreas?: string[];
+  geofenceAreas?: string[];
   location?: { lat: number; lng: number };
   areaMatch?: boolean;
   distanceKm?: number;
@@ -150,7 +188,10 @@ export interface OrderRecord {
   personalSelectionFee?: number;
   personalSelectionRate?: number;
   priorCompletedBookingsWithWorker?: number;
-  dispatchMode?: 'PERSONAL_SELECT' | 'AUTO_MATCH' | 'BROADCAST_15KM' | 'RANDOM_15KM';
+  dispatchMode?: 'PERSONAL_SELECT' | 'AUTO_MATCH' | 'AREA_MATCH';
+  bookingTiming?: 'instant' | 'later';
+  bookingType?: 'INSTANT' | 'SCHEDULED';
+  isInstantOrder?: boolean;
   isPersonalSelection?: boolean;
   date: string;
   time?: string;
@@ -160,7 +201,36 @@ export interface OrderRecord {
   customerPhone?: string;
   customerLocation?: { lat: number; lng: number };
   customerId?: string;
-  workerId?: string;
+  customerReferenceId?: string;
+  customerEmail?: string;
+  customerProfileSnapshot?: Record<string, unknown> | null;
+  workerEmail?: string;
+  workerCategory?: string;
+  workerAddress?: string;
+  workerArea?: string;
+  description?: string;
+  note?: string;
+  address?: string;
+  serviceSubtotal?: number;
+  bookingCreatedByUid?: string;
+  bookingCreatedByRole?: string;
+  serviceAvailabilityChecked?: boolean;
+  serviceAvailable?: boolean;
+  paymentId?: string | null;
+  bookingTimeline?: { bookedAt?: string; currentStage?: string; stages?: string[]; [key: string]: unknown };
+  workerProfileSnapshot?: Record<string, unknown> | null;
+  serviceName?: string;
+  serviceId?: string | null;
+  serviceItems?: Array<{ id?: string; serviceId?: string; serviceName?: string; category?: string; subcategory?: string; description?: string; price?: number | null; duration?: string; quantity?: number }>;
+  residentialAddress?: Record<string, unknown> | null;
+  addressCoordinates?: { lat: number; lng: number } | null;
+  geofenceArea?: string;
+  geofenceCity?: string;
+  serviceAreaMatch?: string | null;
+  bookedAt?: string;
+  updatedAt?: string;
+  createdAtServerTimestamp?: unknown;
+  workerId?: string | null;
   workerPhone?: string;
   workerIsDemo?: boolean;
   area?: string;

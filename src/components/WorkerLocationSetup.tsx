@@ -8,8 +8,8 @@ import {
   Zap, Droplets, SprayCan as SparkleIcon, Hammer, Phone, Star,
   Briefcase, Users, Clock, Shield, Lock, Radio, Grid, CheckCircle2
 } from 'lucide-react';
-import { db } from '../lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { useAuth } from '../lib/authContext';
 import { 
   requestAndAutoUpdateLocation, 
@@ -36,7 +36,7 @@ export default function WorkerLocationSetup({
   workerApplication,
   setWorkerApplicationData
 }: WorkerLocationSetupProps) {
-  const { currentUser } = useAuth() as any;
+  const { currentUser, updateUserProfile } = useAuth() as any;
   const [legalName, setLegalName] = useState(
     workerApplication?.legalName ||
     (authMethod === 'gmail' && authTarget ? authTarget.split('@')[0] : '') ||
@@ -67,7 +67,7 @@ export default function WorkerLocationSetup({
     if (workerApplication?.skill) {
       return [workerApplication.skill];
     }
-    return ['AC Technician'];
+    return [];
   });
 
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -77,11 +77,11 @@ export default function WorkerLocationSetup({
   const [errorMessage, setErrorMessage] = useState('');
 
   // Location resolution state from backend
-  const [resolvedSector, setResolvedSector] = useState('Sector 2 (Indiranagar)');
-  const [resolvedArea, setResolvedArea] = useState('Indiranagar');
-  const [resolvedCity, setResolvedCity] = useState('Kolkata');
-  const [coverageMessage, setCoverageMessage] = useState('Connecting to location dispatch server...');
-  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
+  const [resolvedSector, setResolvedSector] = useState('');
+  const [resolvedArea, setResolvedArea] = useState('');
+  const [resolvedCity, setResolvedCity] = useState('');
+  const [coverageMessage, setCoverageMessage] = useState('Location will be resolved from your real address or GPS.');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const quickCategories = [
     'Electrician',
@@ -102,17 +102,16 @@ export default function WorkerLocationSetup({
     setIsResolvingBackend(true);
     try {
       const resp = await fetchRegisteredCustomersForWorkerLocation({
-        address: targetAddress || address || 'Indiranagar 100ft Road, Kolkata',
+        address: targetAddress || address,
         landmark: targetLandmark || landmark,
-        lat: lat || coords.lat,
-        lng: lng || coords.lng
+        ...(lat != null && lng != null ? { lat, lng } : coords ? { lat: coords.lat, lng: coords.lng } : {})
       });
 
       if (resp && resp.success) {
-        setResolvedSector(resp.sector || 'Sector 2 (Indiranagar)');
-        setResolvedArea(resp.area || 'Indiranagar');
-        setResolvedCity(resp.city || 'Kolkata');
-        setCoverageMessage(resp.coverageMessage || `Service partner visibility active for ${resp.sector}`);
+        setResolvedSector(resp.sector || '');
+        setResolvedArea(resp.area || '');
+        setResolvedCity(resp.city || '');
+        setCoverageMessage(resp.coverageMessage || (resp.sector ? `Service partner visibility active for ${resp.sector}` : 'Operational location resolved from your submitted details.'));
         if (resp.lat && resp.lng) {
           setCoords({ lat: resp.lat, lng: resp.lng });
         }
@@ -122,11 +121,11 @@ export default function WorkerLocationSetup({
     } finally {
       setIsResolvingBackend(false);
     }
-  }, [address, landmark, coords.lat, coords.lng]);
+  }, [address, landmark, coords]);
 
-  // Initial lookup on mount
+  // Initial lookup only when real address data is available.
   useEffect(() => {
-    resolveWorkerLocationFromBackend(address || 'Indiranagar 100ft Road, Kolkata', landmark);
+    if (address.trim()) resolveWorkerLocationFromBackend(address, landmark);
   }, []);
 
   // Debounced lookup when worker types address or landmark manually
@@ -186,9 +185,9 @@ export default function WorkerLocationSetup({
     }
 
     setIsSubmitting(true);
-    const finalFormattedAddress = landmark.trim() 
-      ? `${address.trim()}, Near ${landmark.trim()}, ${resolvedCity}`
-      : `${address.trim()}, ${resolvedCity}`;
+    const finalFormattedAddress = landmark.trim()
+      ? `${address.trim()}, Near ${landmark.trim()}${resolvedCity ? `, ${resolvedCity}` : ''}`
+      : `${address.trim()}${resolvedCity ? `, ${resolvedCity}` : ''}`;
 
     // Save to LocalStorage
     try {
@@ -197,11 +196,10 @@ export default function WorkerLocationSetup({
       localStorage.setItem('punchx_worker_address', finalFormattedAddress);
       localStorage.setItem('punchx_worker_landmark', landmark.trim());
       localStorage.setItem('punchx_worker_sector', resolvedSector);
-      localStorage.setItem('punchx_worker_skill', selectedCategories.join(', ') || 'AC Technician');
+      localStorage.setItem('punchx_worker_skill', selectedCategories.join(', '));
       localStorage.setItem('punchx_worker_categories', JSON.stringify(selectedCategories));
       localStorage.setItem('punchx_worker_location', JSON.stringify({
-        lat: coords.lat,
-        lng: coords.lng,
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         address: finalFormattedAddress,
         area: resolvedArea,
         city: resolvedCity,
@@ -214,30 +212,50 @@ export default function WorkerLocationSetup({
     }
 
     // Save/Update in Firestore with PENDING status for Admin Approval
-    const activeUid = currentUser?.sub || `worker_${Date.now()}`;
+    const activeUid = auth.currentUser?.uid || currentUser?.sub || currentUser?.id || currentUser?.user_id || '';
     const generatedAppId = workerApplication?.id || `APP-${Date.now().toString().slice(-6)}`;
+    if (!activeUid) { setIsSubmitting(false); setErrorMessage('Your authenticated account ID is unavailable. Please sign in again.'); return; }
 
     const appData: WorkerApplication = {
       id: generatedAppId,
       uid: activeUid,
       legalName: legalName.trim(),
+      dob: dob.trim(),
       address: finalFormattedAddress,
-      area: resolvedArea,
-      sector: resolvedSector,
-      skill: selectedCategories.join(', ') || 'AC Technician',
+      area: resolvedArea || undefined,
+      city: resolvedCity || undefined,
+      landmark: landmark.trim() || undefined,
+      sector: resolvedSector || undefined,
+      skill: selectedCategories.join(', '),
       categories: selectedCategories,
-      experienceYears: workerApplication?.experienceYears || '3-5 Years',
+      experienceYears: workerApplication?.experienceYears || '',
       phone: authMethod === 'phone' ? authTarget : (workerApplication?.phone || currentUser?.phone_number || ''),
-      email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || currentUser?.email || 'partner@punchx.com'),
-      visitingFee: workerApplication?.visitingFee || 199,
+      email: authMethod === 'gmail' ? authTarget : (workerApplication?.email || currentUser?.email || ''),
+      visitingFee: workerApplication?.visitingFee,
       termsAccepted: true,
-      status: 'PENDING',
-      appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', Today'
+      status: 'APPROVED',
+      appliedAt: new Date().toISOString()
     };
 
     try {
-      await setDoc(doc(db, 'users', activeUid), {
-        uid: activeUid,
+      const firebaseUser = auth.currentUser;
+      if (!firebaseUser || firebaseUser.uid !== activeUid) {
+        throw new Error('Your Firebase sign-in session is missing. Please sign in again.');
+      }
+      const token = await firebaseUser.getIdToken();
+      const backendBase = String(import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
+      const applicationResponse = await fetch(`${backendBase}/api/worker-applications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(appData),
+      });
+      const applicationResult = await applicationResponse.json().catch(() => ({}));
+      if (!applicationResponse.ok || applicationResult.success !== true || !applicationResult.application) {
+        throw new Error(applicationResult.error || 'Firebase did not confirm the worker application save.');
+      }
+      const savedApplication = applicationResult.application as WorkerApplication;
+
+      await updateUserProfile({
         name: legalName.trim(),
         dob: dob.trim(),
         birthdate: dob.trim(),
@@ -247,48 +265,47 @@ export default function WorkerLocationSetup({
         area: resolvedArea,
         city: resolvedCity,
         sector: resolvedSector,
-        workerSkill: selectedCategories.join(', ') || 'AC Technician',
-        categories: selectedCategories,
-        skill: selectedCategories[0] || 'AC Technician',
-        location: { lat: coords.lat, lng: coords.lng },
+        workerSkill: selectedCategories.join(', '),
+        workerCategories: selectedCategories,
+        workerExperience: appData.experienceYears,
+        visitingFee: appData.visitingFee,
+        minimumVisitingFee: appData.minimumVisitingFee,
+        maximumVisitingFee: appData.maximumVisitingFee,
+        ...(coords ? { location: { lat: coords.lat, lng: coords.lng } } : {}),
+        phone: appData.phone,
+        email: appData.email,
         role: 'worker',
-        phone: appData.phone,
-        email: appData.email,
-        isProfileCompleted: true,
-        status: 'PENDING',
-        applicationId: generatedAppId,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-
-      // Save application document to Firestore workerApplications collection
-      await setDoc(doc(db, 'workerApplications', generatedAppId), appData, { merge: true });
-
-      if (setWorkerApplicationData) {
-        setWorkerApplicationData(appData);
-      }
-
-      // Update in LocalStorage
-      const existingApps = JSON.parse(localStorage.getItem('punchx_worker_applications') || '[]');
-      const filtered = existingApps.filter((a: WorkerApplication) => a.id !== generatedAppId);
-      localStorage.setItem('punchx_worker_applications', JSON.stringify([appData, ...filtered]));
-
-      // Save credential mapping
-      const workerAccount = {
-        email: appData.email,
-        phone: appData.phone,
-        legalName: appData.legalName,
         status: 'APPROVED',
-        applicationId: generatedAppId
-      };
-      localStorage.setItem(`punchx_worker_cred_${appData.phone}`, JSON.stringify(workerAccount));
+        isProfileCompleted: true,
+        applicationId: savedApplication.id,
+        updatedAt: new Date().toISOString(),
+      } as any);
+
+      if (setWorkerApplicationData) setWorkerApplicationData(savedApplication);
+
+      // Save application document to Firestore workerApplications collection (by savedApplication.id and activeUid)
+      try {
+        await Promise.allSettled([
+          setDoc(doc(db, 'workerApplications', savedApplication.id), { ...appData, id: savedApplication.id, status: 'APPROVED' }, { merge: true }),
+          setDoc(doc(db, 'workerApplications', activeUid), { ...appData, id: savedApplication.id, status: 'APPROVED' }, { merge: true })
+        ]);
+      } catch {}
+
+      const existingApps = JSON.parse(localStorage.getItem('punchx_worker_applications') || '[]');
+      const filtered = existingApps.filter((a: WorkerApplication) => a.id !== savedApplication.id);
+      localStorage.setItem('punchx_worker_applications', JSON.stringify([savedApplication, ...filtered]));
+      localStorage.setItem('punchx_worker_app_id', savedApplication.id);
       localStorage.setItem('punchx_worker_approved', 'true');
       localStorage.setItem('punchx_worker_online_status', 'true');
     } catch (dbErr) {
-      console.warn("Firestore worker profile save error:", dbErr);
+      console.error("Firebase worker profile/application save failed:", dbErr);
+      setIsSubmitting(false);
+      setErrorMessage(dbErr instanceof Error ? dbErr.message : 'Your professional details could not be saved to Firebase. Please retry.');
+      return;
     }
 
     setIsSubmitting(false);
-    showNotification(`✓ Service Hub Location Registered! Welcome to your Specialist Dashboard.`);
+    showNotification(`✓ Service Hub Location Registered! Your profile and application were saved to Firebase.`);
     onTransition('worker-dashboard');
   };
 
@@ -515,7 +532,7 @@ export default function WorkerLocationSetup({
                     {resolvedSector}
                   </div>
                   <div className="text-[10px] text-zinc-400 font-sans">
-                    {resolvedCity} • Lat: {coords.lat.toFixed(4)}, Lng: {coords.lng.toFixed(4)}
+                    {resolvedCity || 'City unavailable'} {coords ? `• Lat: ${coords.lat.toFixed(4)}, Lng: ${coords.lng.toFixed(4)}` : '• GPS coordinates unavailable'}
                   </div>
                 </div>
               </div>
@@ -531,8 +548,8 @@ export default function WorkerLocationSetup({
                 <div className="bg-[#07122a] border border-zinc-800/80 p-2.5 rounded-lg flex items-center gap-2">
                   <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                   <div>
-                    <p className="text-[10px] text-zinc-400 uppercase font-mono">Dispatch Radius</p>
-                    <p className="font-bold text-white text-xs">15-Km High Priority Zone</p>
+                    <p className="text-[10px] text-zinc-400 uppercase font-mono">Service Area Limit</p>
+                    <p className="font-bold text-white text-xs">Named localities · set on dashboard</p>
                   </div>
                 </div>
                 <div className="bg-[#07122a] border border-zinc-800/80 p-2.5 rounded-lg flex items-center gap-2">

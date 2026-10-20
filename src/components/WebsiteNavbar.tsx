@@ -9,6 +9,7 @@ import PUNCHX_LOGO from '../assets/logo';
 import { useAuth } from '../lib/authContext';
 import { getStoredPushNotifications } from '../lib/pushNotifications';
 import ServiceCategoryModal from './ServiceCategoryModal';
+import CitizenCartButton from './CitizenCartButton';
 import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface WebsiteNavbarProps {
@@ -68,7 +69,7 @@ export default function WebsiteNavbar({
     setMobileOpen(false);
     setCategoryModalOpen(false);
     onTransition('providers');
-    showNotification(`Showing verified PunchX professionals for ${name}.`);
+    showNotification(`Showing local PunchX professionals for ${name}.`);
   };
 
   const signOut = async () => {
@@ -85,7 +86,7 @@ export default function WebsiteNavbar({
   return (
     <>
       <header id="punchx-website-navbar" className="sticky top-0 z-[80] w-full border-b border-black/5 bg-white/90 backdrop-blur-2xl">
-        <div className="mx-auto flex h-[68px] max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:h-[76px] lg:px-8">
+        <div className="mx-auto flex w-full h-[68px] max-w-[1440px] items-center gap-3 px-4 sm:px-6 lg:h-[76px] lg:px-8">
           <button
             aria-label="Open navigation"
             onClick={() => setMobileOpen(v => !v)}
@@ -156,12 +157,15 @@ export default function WebsiteNavbar({
               Find a pro
             </button>
 
+            <button onClick={() => go('catalogue')} className={`rounded-xl px-3 py-2 text-xs font-extrabold transition ${currentScreen === 'catalogue' ? 'bg-[#f0ecff] text-[#5b45c7]' : 'text-[#60656f] hover:bg-[#f6f7fa] hover:text-[#17191d]'}`}>Price catalogue</button>
+
             <button onClick={() => go('founder')} className={`hidden rounded-xl px-3 py-2 text-xs font-extrabold transition lg:block ${currentScreen === 'founder' ? 'bg-[#f0ecff] text-[#5b45c7]' : 'text-[#60656f] hover:bg-[#f6f7fa] hover:text-[#17191d]'}`}>
               Team
             </button>
           </nav>
 
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <CitizenCartButton onCheckout={(hasItems) => go(hasItems ? 'booking' : 'providers')} />
             <button onClick={onOpenNotificationCenter} className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#f7f7f8] text-[#5f636d] transition hover:bg-[#efeff3]" aria-label="Notifications">
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#7358d7] px-1 text-[8px] font-black text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>}
@@ -170,16 +174,16 @@ export default function WebsiteNavbar({
             {currentUser ? (
               <div className="relative">
                 <button onClick={() => setProfileOpen(v => !v)} className="flex h-10 items-center gap-2 rounded-xl bg-[#17191d] px-2.5 text-white transition hover:bg-[#24272d]" aria-label="Open profile">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10"><UserRound className="h-4 w-4" /></div>
-                  <span className="hidden max-w-24 truncate text-xs font-extrabold sm:block">{citizenName || userProfile?.name || 'Citizen'}</span>
+                  <div className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-white/10">{userProfile?.photoURL ? <img src={userProfile.photoURL} alt="Profile" className="h-full w-full object-cover" /> : <UserRound className="h-4 w-4" />}</div>
+                  <span className="hidden max-w-24 truncate text-xs font-extrabold sm:block">{citizenName || userProfile?.name || 'Customer'}</span>
                   <ChevronDown className={`h-3.5 w-3.5 transition ${profileOpen ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {profileOpen && (
                     <motion.div initial={{ opacity: 0, y: 7, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 7, scale: .98 }} className="absolute right-0 top-[calc(100%+8px)] w-72 rounded-3xl border border-black/5 bg-white p-3 shadow-[0_24px_70px_rgba(24,24,30,.14)]">
                       <div className="rounded-2xl bg-[#f7f5ff] p-3">
-                        <div className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#17191d] text-white"><UserRound className="h-4 w-4" /></div><div className="min-w-0"><div className="truncate text-xs font-black">{citizenName || 'PunchX Citizen'}</div><div className="truncate text-[10px] text-[#848994]">{citizenAddress || 'Service address not set'}</div></div></div>
-                        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-[9px] font-extrabold text-[#5b45c7] ring-1 ring-[#7358d7]/10"><ShieldCheck className="h-3 w-3" /> PunchX verified account</div>
+                        <div className="flex items-center gap-2"><div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-[#17191d] text-white">{userProfile?.photoURL ? <img src={userProfile.photoURL} alt="Profile" className="h-full w-full object-cover" /> : <UserRound className="h-4 w-4" />}</div><div className="min-w-0"><div className="truncate text-xs font-black">{citizenName || 'PunchX Customer'}</div><div className="truncate text-[10px] text-[#848994]">{citizenAddress || 'Service address not set'}</div></div></div>
+                        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-2 py-1 text-[9px] font-extrabold text-[#5b45c7] ring-1 ring-[#7358d7]/10"><ShieldCheck className="h-3 w-3" /> PunchX account</div>
                       </div>
                       <div className="mt-2 space-y-1">
                         <button onClick={() => { setProfileOpen(false); onOpenProfile?.(); }} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-xs font-bold text-[#4b4f58] hover:bg-[#f7f7f9]"><UserRound className="h-4 w-4 text-[#7358d7]" /> Manage account & bookings</button>
@@ -205,6 +209,7 @@ export default function WebsiteNavbar({
             <span className="truncate text-[10px] font-bold text-[#6d727c]">{citizenAddress || 'Set your service location'}</span>
           </button>
           <button onClick={() => go('providers')} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f0ecff] text-[#7358d7]" aria-label="Find a professional"><Search className="h-4 w-4" /></button>
+          <button onClick={() => go('catalogue')} className="rounded-xl bg-[#171c35] px-3 py-2 text-[10px] font-extrabold text-white" aria-label="Open price catalogue">₹ Prices</button>
         </div>
 
         <AnimatePresence>
