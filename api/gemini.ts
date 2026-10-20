@@ -178,7 +178,7 @@ async function generateWithGemini(prompt: string, context: string): Promise<stri
         config: {
           systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
           maxOutputTokens: 700,
-          thinkingConfig: { thinkingLevel: 'low' },
+          thinkingConfig: { thinkingLevel: 'low' as any },
         },
       });
 
@@ -219,7 +219,7 @@ async function streamWithGemini(prompt: string, context: string, res: VercelResp
         config: {
           systemInstruction: DRAGO_SYSTEM_INSTRUCTION,
           maxOutputTokens: 700,
-          thinkingConfig: { thinkingLevel: 'low' },
+          thinkingConfig: { thinkingLevel: 'low' as any },
         },
       });
 

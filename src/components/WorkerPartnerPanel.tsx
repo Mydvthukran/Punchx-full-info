@@ -1,13 +1,17 @@
-import React, { useMemo, useState } from 'react';
-import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus, Timer, Package } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { db } from '../lib/firebase';
 import { collection, doc, onSnapshot, runTransaction, updateDoc } from 'firebase/firestore';
+import { OrderRecord } from '../types';
 import './worker-partner-panel.css';
 
 type Tab = 'home'|'orders'|'schedule'|'earnings'|'performance'|'training'|'inventory'|'profile'|'notifications'|'incentives'|'support'|'settings';
 type Status = 'NEW'|'ACCEPTED'|'TRAVELLING'|'ARRIVED'|'SERVICE_STARTED'|'COMPLETED'|'CANCELLED';
 type Order = { id:string; customer:string; service:string; address:string; distance:number; time:string; date:string; duration:string; price:number; earning:number; status:Status; payment:string; avatar:string; raw?:OrderRecord };
+
+const normalise = (v?: any): string => String(v || '').trim().toLowerCase();
+const pending = (s?: any): boolean => ['NEW', 'Pending', 'PENDING', 'DISPATCHING'].includes(s || '');
 
 const seed:Order[] = [
  {id:'PX10245',customer:'Amit Sharma',service:'AC Repair',address:'Salt Lake, Kolkata',distance:3.2,time:'3:30 PM',date:'Today',duration:'1h 30m',price:600,earning:450,status:'NEW',payment:'Paid',avatar:'AS'},
@@ -18,6 +22,8 @@ const seed:Order[] = [
 
 const next:Record<Status,Status|null> = {NEW:'ACCEPTED',ACCEPTED:'TRAVELLING',TRAVELLING:'ARRIVED',ARRIVED:'SERVICE_STARTED',SERVICE_STARTED:'COMPLETED',COMPLETED:null,CANCELLED:null};
 const labels:Record<Status,string> = {NEW:'New',ACCEPTED:'Accepted',TRAVELLING:'Travelling',ARRIVED:'Arrived',SERVICE_STARTED:'Service started',COMPLETED:'Completed',CANCELLED:'Cancelled'};
+const statusLabel: Record<string, string> = { ...labels, NEW: 'New', ACCEPTED: 'Accepted', TRAVELLING: 'Travelling', ARRIVED: 'Arrived', SERVICE_STARTED: 'In Service', COMPLETED: 'Completed', CANCELLED: 'Cancelled' };
+const statusText = (s: string) => statusLabel[s] || s;
 const week=[1200,1850,900,2100,1650,2450,1300];
 
 const money=(n:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
@@ -35,9 +41,9 @@ export default function WorkerPartnerPanel({onTransition,showNotification}:{onTr
  const [withdraw,setWithdraw]=useState(false);
  const [loading,setLoading]=useState(true);
  const name=userProfile?.name||'Professional';
- const workerCategories=useMemo(function(){
-   const raw=userProfile?.workerCategories || userProfile?.categories || [];
-   return Array.from(new Set([...(Array.isArray(raw)?raw:[]),userProfile?.workerSkill,userProfile?.skill].map(normalise).filter(Boolean)));
+ const workerCategories = useMemo<string[]>(function(){
+   const raw = userProfile?.workerCategories || userProfile?.categories || [];
+   return Array.from<string>(new Set([...(Array.isArray(raw)?raw:[]),userProfile?.workerSkill,userProfile?.skill].map(normalise).filter(Boolean)));
  },[userProfile]);
  const workerArea=normalise(userProfile?.area);
  const workerSector=normalise(userProfile?.sector);
