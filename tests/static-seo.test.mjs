@@ -11,9 +11,9 @@ const sitemap = readFileSync(resolve(root, 'public/sitemap.xml'), 'utf8');
 const llms = readFileSync(resolve(root, 'public/llms.txt'), 'utf8');
 
 test('landing page has one semantic H1 and useful no-JavaScript content', () => {
-  assert.equal((html.match(/<h1\\b/gi) || []).length, 1, 'expected exactly one H1 in static HTML');
+  assert.equal((html.match(/<h1\b/gi) || []).length, 1, 'expected exactly one H1 in static HTML');
   assert.match(html, /id="static-seo-fallback"/);
-  assert.match(html, /Book home services with local professionals through PunchX\\./);
+  assert.match(html, /Book home services with local professionals through PunchX\./);
   for (const service of ['Electrical', 'Plumbing', 'AC repair', 'Cleaning', 'Carpentry', 'Painting']) {
     assert.match(html, new RegExp(service, 'i'), 'missing expected service');
   }
@@ -21,18 +21,18 @@ test('landing page has one semantic H1 and useful no-JavaScript content', () => 
 });
 
 test('SEO metadata is present and avoids obsolete keywords metadata', () => {
-  assert.match(html, /<title>PunchX \\| Book Home Services, Electricians &amp; Plumbers<\\/title>/);
+  assert.match(html, /<title>PunchX \| Book Home Services, Electricians &amp; Plumbers<\/title>/);
   assert.match(html, /<meta name="description" content="[^"]+"/);
-  assert.match(html, /<link rel="canonical" href="https:\\/\\/www\\.punchxapp\\.co\\.in\\/"\\s*\\/>/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.punchxapp\.co\.in\/"\s*\/>/);
   assert.match(html, /property="og:title"/);
   assert.match(html, /property="og:description"/);
-  assert.match(html, /og-image\\.png/);
+  assert.match(html, /og-image\.png/);
   assert.match(html, /name="twitter:card"/);
-  assert.doesNotMatch(html, /<meta\\s+name="keywords"/i);
+  assert.doesNotMatch(html, /<meta\s+name="keywords"/i);
 });
 
 test('JSON-LD is valid and includes Organization, WebSite and Service', () => {
-  const match = html.match(/<script type="application\\/ld\\+json">([\\s\\S]*?)<\\/script>/i);
+  const match = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/i);
   assert.ok(match, 'missing JSON-LD script');
   const data = JSON.parse(match[1]);
   const types = data['@graph'].map((entry) => entry['@type']);
@@ -42,15 +42,15 @@ test('JSON-LD is valid and includes Organization, WebSite and Service', () => {
 });
 
 test('robots.txt points to the sitemap and sitemap excludes the login route', () => {
-  assert.match(robots, /Sitemap:\\s*https:\\/\\/www\\.punchxapp\\.co\\.in\\/sitemap\\.xml/i);
-  assert.match(sitemap, /<loc>https:\\/\\/www\\.punchxapp\\.co\\.in\\/<\\/loc>/);
-  assert.doesNotMatch(sitemap, /<loc>https:\\/\\/www\\.punchxapp\\.co\\.in\\/(auth|login)<\\/loc>/i);
+  assert.match(robots, /Sitemap:\s*https:\/\/www\.punchxapp\.co\.in\/sitemap\.xml/i);
+  assert.match(sitemap, /<loc>https:\/\/www\.punchxapp\.co\.in\/<\/loc>/);
+  assert.doesNotMatch(sitemap, /<loc>https:\/\/www\.punchxapp\.co\.in\/(auth|login)<\/loc>/i);
 });
 
 test('llms.txt gives AI systems accurate context and links to public pages', () => {
   assert.match(llms, /^# PunchX/m);
-  assert.match(llms, /https:\\/\\/www\\.punchxapp\\.co\\.in\\//);
+  assert.match(llms, /https:\/\/www\.punchxapp\.co\.in\//);
   assert.match(llms, /availability varies by location and service/i);
   assert.match(llms, /Do not invent prices, customer counts, ratings/i);
-  assert.match(llms, /sitemap\\.xml/);
+  assert.match(llms, /sitemap\.xml/);
 });
