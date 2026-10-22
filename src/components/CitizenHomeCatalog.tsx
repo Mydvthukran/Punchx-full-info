@@ -143,58 +143,21 @@ export default function CitizenHomeCatalog({
                      bg-white p-3 sm:p-4 text-center transition-all duration-200
                      hover:${color.border} hover:shadow-lg cursor-pointer`}
       >
-        <div className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center
-                         rounded-xl ${color.bg} transition-colors duration-200
-                         group-hover:ring-2 ${color.ring}`}>
-          <IconComp className={`h-6 w-6 sm:h-7 sm:w-7 ${color.icon} transition-transform
-                                duration-200 group-hover:scale-110`} />
-        </div>
-        <span className="text-[11px] sm:text-xs font-semibold leading-tight text-[#334155]
-                         line-clamp-2 min-h-[28px] flex items-center">
-          {cat.name}
-        </span>
-        <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600">
-          <Info className="h-3 w-3" /> View details
-        </span>
-      </motion.button>
-    );
-  };
-
-  return (
-    <div className="punchx-citizen-shell min-h-screen bg-[#f5f2eb] pb-24 text-[#171813]">
-      <style>{".punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(196,165,104,.09),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(92,111,80,.05),transparent 30%)}.punchx-citizen-shell .px-page-in{animation:px-page-in .48s cubic-bezier(.2,.7,.2,1) both}.punchx-citizen-shell .px-lift{transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s ease}.punchx-citizen-shell .px-lift:active{transform:scale(.985)}.punchx-citizen-shell .px-nav-active{box-shadow:0 8px 24px rgba(196,165,104,.2)}@keyframes px-page-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"} </style>
-      <style>{".punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(196,165,104,.09),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(92,111,80,.05),transparent 30%)}.punchx-citizen-shell .px-premium-hero{box-shadow:0 24px 65px rgba(28,29,23,.2)}.punchx-citizen-shell .px-photo-card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s ease}.punchx-citizen-shell .px-photo-card:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(27,29,22,.13)}.punchx-citizen-shell .px-shine{position:relative;isolation:isolate;overflow:hidden}.punchx-citizen-shell .px-shine:after{content:'';position:absolute;inset:-30% auto -30% -70%;width:38%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:px-home-shine 6.5s ease-in-out infinite;pointer-events:none}@keyframes px-home-shine{0%,58%{left:-70%}100%{left:140%}}@keyframes px-home-glow{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.65;transform:scale(1.05)}}.punchx-citizen-shell .px-glow{animation:px-home-glow 7s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"} </style>
-      {/* ── HEADER ── */}
-      <header className="sticky top-0 z-40 border-b border-[#e5dfd1] bg-[#f8f6f0]/90 backdrop-blur-2xl shadow-[0_5px_24px_rgba(30,28,22,.035)]">
-        <div className="mx-auto flex min-h-[62px] max-w-5xl items-center gap-3 px-4 py-2">
-          <img src={PUNCHX_LOGO} alt="PUNCHX" className="h-9 w-9 rounded-xl object-cover ring-1 ring-[#c4a568]/50 shadow-sm" />
-          <span className="text-lg font-black tracking-[-.06em] text-[#24251f]">PUNCHX</span>
-
-          <button
-            onClick={() => onTransition('customer-setup')}
-            className="ml-1 flex min-w-0 max-w-[50%] items-center gap-1.5 rounded-xl border border-[#e5dfd1] bg-white/70 px-2.5 py-1.5 text-left transition-colors hover:bg-[#f2ead8]"
-          >
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#80663a]" />
-            <span className="min-w-0">
-              <span className="block text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                Service area
-              </span>
-              <span className="block truncate text-xs font-bold text-gray-800">{area}</span>
-            </span>
-            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />}
-          </button>
-
-          <button
-            onClick={onOpenProfile}
-            aria-label="Open profile"
-            className="ml-auto flex h-9 items-center gap-2 rounded-xl bg-gray-50 px-3
-                       text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            <UserRound className="h-4 w-4" />
-            <span className="hidden max-w-24 truncate text-xs font-semibold sm:block">
-              {citizenName || 'Profile'}
-            </span>
-          </button>
+        <div className="relative mb-1 h-[72px] w-full overflow-hidden rounded-xl bg-[#e8e0cf] sm:h-[88px]">
+          <img src={({
+            electrician: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=360&q=72',
+            plumber: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=360&q=72',
+            carpenter: 'https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=360&q=72',
+            painter: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=360&q=72',
+            'ac-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=360&q=72',
+            'cleaner-housekeeper': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=360&q=72',
+            beautician: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=360&q=72',
+            cook: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=360&q=72',
+            'interior-decorator': 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=360&q=72',
+            'packer-mover': 'https://images.unsplash.com/photo-1600518464441-9306b6a7a4c3?auto=format&fit=crop&w=360&q=72'
+          } as Record<string, string>)[cat.id] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=360&q=72'} alt="" aria-hidden="true" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#171813]/65 via-transparent to-transparent" />
+          <div className="absolute bottom-1.5 left-1.5 flex h-7 w-7 items-center justify-center rounded-lg border border-white/30 bg-[#171813]/80 text-[#e7d4a7] backdrop-blur"><IconComp className="h-3.5 w-3.5" /></div>
         </div>
       </header>
 
