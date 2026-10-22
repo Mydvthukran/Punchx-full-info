@@ -134,26 +134,44 @@ export default function CitizenHomeCatalog({
       <motion.button
         key={cat.id}
         onClick={() => openCategory(cat.name)}
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.04, duration: 0.35, ease: [.25, .46, .45, .94] }}
+        initial={{ opacity: 0, y: 18, scale: .97 }}
+        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+        viewport={{ once: true, amount: .15 }}
+        transition={{ delay: Math.min(index * 0.035, .28), duration: 0.42, ease: [.22, 1, .36, 1] }}
         whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(0,0,0,.08)' }}
         whileTap={{ scale: 0.97 }}
-        className={`group flex flex-col items-center gap-2.5 rounded-2xl border ${color.border}
-                     bg-white p-3 sm:p-4 text-center transition-all duration-200
-                     hover:${color.border} hover:shadow-lg cursor-pointer`}
+        className={`px-service-card group flex flex-col items-center gap-2 rounded-[1.2rem] border ${color.border}
+                     bg-white p-2.5 sm:p-3 text-center transition-all duration-300 cursor-pointer`}
       >
-        <div className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center
-                         rounded-xl ${color.bg} transition-colors duration-200
-                         group-hover:ring-2 ${color.ring}`}>
-          <IconComp className={`h-6 w-6 sm:h-7 sm:w-7 ${color.icon} transition-transform
-                                duration-200 group-hover:scale-110`} />
+        <div className="relative mb-1 h-[76px] w-full overflow-hidden rounded-xl bg-[#e8e0cf] sm:h-[90px]">
+          <img
+            src={({
+              electrician: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=360&q=72',
+              plumber: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=360&q=72',
+              carpenter: 'https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=360&q=72',
+              painter: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=360&q=72',
+              'ac-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=360&q=72',
+              'cleaner-housekeeper': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=360&q=72',
+              beautician: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=360&q=72',
+              cook: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=360&q=72',
+              'interior-decorator': 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=360&q=72',
+              'packer-mover': 'https://images.unsplash.com/photo-1600518464441-9306b6a7a4c3?auto=format&fit=crop&w=360&q=72',
+              'appliance-repair-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=360&q=72'
+            } as Record<string, string>)[cat.id] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=360&q=72'}
+            alt="" aria-hidden="true" loading="lazy"
+            className="px-service-photo h-full w-full object-cover"
+            onError={(event) => { event.currentTarget.style.display = 'none'; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#171813]/70 via-[#171813]/5 to-transparent" />
+          <div className="absolute bottom-1.5 left-1.5 flex h-7 w-7 items-center justify-center rounded-lg border border-white/30 bg-[#171813]/85 text-[#e7d4a7] backdrop-blur">
+            <IconComp className="h-3.5 w-3.5" />
+          </div>
         </div>
-        <span className="text-[11px] sm:text-xs font-semibold leading-tight text-[#334155]
-                         line-clamp-2 min-h-[28px] flex items-center">
+        <span className="text-[11px] sm:text-xs font-bold leading-tight text-[#343329]
+                         line-clamp-2 min-h-[30px] flex items-center">
           {cat.name}
         </span>
-        <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600">
+        <span className="flex items-center gap-1 text-[9px] font-bold text-[#80663a]">
           <Info className="h-3 w-3" /> View details
         </span>
       </motion.button>
@@ -162,17 +180,16 @@ export default function CitizenHomeCatalog({
 
   return (
     <div className="punchx-citizen-shell min-h-screen bg-[#f5f2eb] pb-24 text-[#171813]">
-      <style>{".punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(196,165,104,.09),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(92,111,80,.05),transparent 30%)}.punchx-citizen-shell .px-premium-hero{box-shadow:0 24px 65px rgba(28,29,23,.2)}.punchx-citizen-shell .px-photo-card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s ease}.punchx-citizen-shell .px-photo-card:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(27,29,22,.13)}.punchx-citizen-shell .px-shine{position:relative;isolation:isolate;overflow:hidden}.punchx-citizen-shell .px-shine:after{content:'';position:absolute;inset:-30% auto -30% -70%;width:38%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:px-home-shine 6.5s ease-in-out infinite;pointer-events:none}@keyframes px-home-shine{0%,58%{left:-70%}100%{left:140%}}@keyframes px-home-glow{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.65;transform:scale(1.05)}}.punchx-citizen-shell .px-glow{animation:px-home-glow 7s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"} </style>
+      <style>{".punchx-citizen-shell .px-page-enter{animation:px-page-enter .42s cubic-bezier(.2,.7,.2,1) both}.punchx-citizen-shell .px-service-card{position:relative;overflow:hidden;isolation:isolate;border-color:#e5dfd1!important;box-shadow:0 7px 20px rgba(35,33,26,.045)}.punchx-citizen-shell .px-service-card:after{content:'';position:absolute;inset:0;background:linear-gradient(145deg,rgba(255,255,255,.22),transparent 46%);opacity:0;transition:opacity .3s ease;pointer-events:none}.punchx-citizen-shell .px-service-card:hover:after{opacity:1}.punchx-citizen-shell .px-service-photo{transition:transform .65s cubic-bezier(.2,.7,.2,1),filter .4s ease}.punchx-citizen-shell .px-service-card:hover .px-service-photo{transform:scale(1.08);filter:saturate(1.08)}.punchx-citizen-shell .px-tab-panel{animation:px-page-enter .38s cubic-bezier(.2,.7,.2,1) both}.punchx-citizen-shell .px-order-card{animation:px-page-enter .4s cubic-bezier(.2,.7,.2,1) both;transition:transform .25s ease,box-shadow .25s ease}.punchx-citizen-shell .px-order-card:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(35,33,26,.09)}.punchx-citizen-shell .px-premium-hero h1{color:#fff!important;text-shadow:0 2px 24px rgba(0,0,0,.3)}.punchx-citizen-shell .px-premium-hero p{color:rgba(255,255,255,.82)!important}@keyframes px-page-enter{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:translate3d(0,0,0)}}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell .px-page-enter,.punchx-citizen-shell .px-tab-panel,.punchx-citizen-shell .px-order-card{animation:none!important}.punchx-citizen-shell .px-service-photo,.punchx-citizen-shell .px-order-card{transition:none!important}}.punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(196,165,104,.09),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(92,111,80,.05),transparent 30%)}.punchx-citizen-shell .px-premium-hero{box-shadow:0 24px 65px rgba(28,29,23,.2)}.punchx-citizen-shell .px-photo-card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s ease}.punchx-citizen-shell .px-photo-card:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(27,29,22,.13)}.punchx-citizen-shell .px-shine{position:relative;isolation:isolate;overflow:hidden}.punchx-citizen-shell .px-shine:after{content:'';position:absolute;inset:-30% auto -30% -70%;width:38%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:px-home-shine 6.5s ease-in-out infinite;pointer-events:none}@keyframes px-home-shine{0%,58%{left:-70%}100%{left:140%}}@keyframes px-home-glow{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.65;transform:scale(1.05)}}.punchx-citizen-shell .px-glow{animation:px-home-glow 7s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"} "}</style>
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100">
-        <div className="mx-auto flex min-h-[56px] max-w-5xl items-center gap-3 px-4 py-2">
-          <img src={PUNCHX_LOGO} alt="PUNCHX" className="h-8 w-8 rounded-xl object-cover" />
-          <span className="text-lg font-extrabold tracking-tight">PUNCHX</span>
+      <header className="sticky top-0 z-40 border-b border-[#e5dfd1] bg-[#f8f6f0]/90 backdrop-blur-2xl shadow-[0_5px_24px_rgba(30,28,22,.035)]">
+        <div className="mx-auto flex min-h-[62px] max-w-5xl items-center gap-3 px-4 py-2">
+          <img src={PUNCHX_LOGO} alt="PUNCHX" className="h-9 w-9 rounded-xl object-cover ring-1 ring-[#c4a568]/50 shadow-sm" />
+          <span className="text-lg font-black tracking-[-.06em] text-[#24251f]">PUNCHX</span>
 
           <button
             onClick={() => onTransition('customer-setup')}
-            className="ml-1 flex min-w-0 max-w-[50%] items-center gap-1.5 rounded-xl px-2.5 py-1.5
-                       text-left hover:bg-blue-50/60 transition-colors"
+            className="ml-1 flex min-w-0 max-w-[50%] items-center gap-1.5 rounded-xl border border-[#e5dfd1] bg-white/70 px-2.5 py-1.5 text-left transition-colors hover:bg-[#f2ead8]"
           >
             <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-600" />
             <span className="min-w-0">
@@ -187,8 +204,7 @@ export default function CitizenHomeCatalog({
           <button
             onClick={onOpenProfile}
             aria-label="Open profile"
-            className="ml-auto flex h-9 items-center gap-2 rounded-xl bg-gray-50 px-3
-                       text-gray-700 hover:bg-gray-100 transition-colors"
+            className="ml-auto flex h-9 items-center gap-2 rounded-xl border border-[#e5dfd1] bg-white px-3 text-[#343329] shadow-sm transition-colors hover:bg-[#f2ead8]"
           >
             <UserRound className="h-4 w-4" />
             <span className="hidden max-w-24 truncate text-xs font-semibold sm:block">
@@ -290,7 +306,7 @@ export default function CitizenHomeCatalog({
         {/* ── POPULAR CAROUSEL ── */}
         <section className="pt-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-extrabold text-[#24251f]">Popular services</h2>
+            <h2 className="text-lg font-black tracking-tight text-[#24251f]">Popular services</h2>
             <button
               onClick={() => { setQuery(''); setSearchOpen(true); }}
               className="flex items-center gap-1 text-xs font-bold text-blue-600
@@ -376,7 +392,7 @@ export default function CitizenHomeCatalog({
                   {groupCats.length} services
                 </span>
               </motion.div>
-              <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {groupCats.map((catId, ci) => (
                   <ServiceCard key={catId} catId={catId} index={ci} color={color} />
                 ))}
@@ -412,8 +428,8 @@ export default function CitizenHomeCatalog({
         )}
 
         {activeTab === 'bookings' && (
-          <section className="pt-6 pb-20">
-            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Your Bookings</h2>
+          <section className="px-tab-panel pt-6 pb-20">
+            <div className="mb-6 rounded-[1.6rem] bg-gradient-to-br from-[#25241e] via-[#171813] to-[#383226] p-5 text-white shadow-[0_20px_50px_rgba(28,29,23,.18)]"><span className="text-[10px] font-bold uppercase tracking-[.22em] text-[#d8c18d]">YOUR PUNCHX JOURNEY</span><h2 className="mt-2 text-2xl font-extrabold text-[#f5f0e6]">Your Bookings</h2><p className="mt-1 text-xs leading-relaxed text-[#c2bba9]">Every service, all in one place. Your next little win starts here.</p><div className="mt-4 flex items-center gap-2 text-xs text-[#e7d4a7]"><CalendarDays className="h-4 w-4"/>{orderHistory.length} booking{orderHistory.length===1?'':'s'} in your history</div></div>
             {orderHistory.length === 0 ? (
               <div className="rounded-3xl bg-white p-10 text-center shadow-sm border border-gray-100">
                 <CalendarDays className="mx-auto h-12 w-12 text-gray-300 mb-4" />
@@ -424,7 +440,7 @@ export default function CitizenHomeCatalog({
             ) : (
               <div className="space-y-4">
                 {orderHistory.map((order, i) => (
-                  <div key={i} className="rounded-2xl bg-white p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div key={i} className="px-order-card rounded-[1.4rem] bg-white p-5 shadow-[0_8px_26px_rgba(30,28,22,.05)] border border-[#e5dfd1] flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-bold text-gray-900">{order.category || 'Service Booking'}</span>
@@ -443,8 +459,8 @@ export default function CitizenHomeCatalog({
         )}
 
         {activeTab === 'profile' && (
-          <section className="pt-6 pb-20">
-            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Your Profile</h2>
+          <section className="px-tab-panel pt-6 pb-20">
+            <div className="mb-6 rounded-[1.6rem] bg-gradient-to-br from-[#25241e] via-[#171813] to-[#383226] p-5 text-white shadow-[0_20px_50px_rgba(28,29,23,.18)]"><span className="text-[10px] font-bold uppercase tracking-[.22em] text-[#d8c18d]">YOUR SPACE</span><h2 className="mt-2 text-2xl font-extrabold text-[#f5f0e6]">Your Profile</h2><p className="mt-1 text-xs text-[#c2bba9]">Your details, your preferences, your PunchX.</p></div>
             <div className="rounded-3xl bg-white p-8 shadow-sm border border-gray-100 flex flex-col items-center text-center">
               <div className="h-24 w-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-5 ring-4 ring-white shadow-md">
                 <UserRound className="h-10 w-10" />
