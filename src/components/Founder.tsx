@@ -165,6 +165,7 @@ export default function Founder({ onTransition, showNotification }: FounderProps
   };
 
   return (
+    <>
       <style>{`
         #punchx-founder-leadership-page {
           background: radial-gradient(ellipse at 8% 0%, rgba(185,154,98,.12), transparent 34%), radial-gradient(ellipse at 96% 22%, rgba(255,255,255,.035), transparent 28%), linear-gradient(160deg, #171612 0%, #11110f 48%, #191813 100%) !important;
@@ -539,5 +540,6 @@ export default function Founder({ onTransition, showNotification }: FounderProps
 
       </div>
     </div>
+    </>
   );
 }
