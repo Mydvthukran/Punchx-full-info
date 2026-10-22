@@ -439,6 +439,40 @@ export default function Founder({ onTransition, showNotification }: FounderProps
           </div>
         </section>
 
+        <section id="founder-background" className="rounded-2xl bg-[#0a152e]/90 border border-zinc-800 p-6 sm:p-8 space-y-6">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Founder Background, Skills &amp; Projects</h2>
+            <p className="text-sm text-zinc-300 mt-2">The founding team combines startup operations, product development, frontend projects, and technology experimentation.</p>
+          </div>
+          <article id="rimil-das-background" className="space-y-3">
+            <h3 className="text-lg font-bold text-white">Rimil Das — Founder &amp; COO</h3>
+            <p className="text-sm text-zinc-300 leading-relaxed">Rimil Das is a student entrepreneur and the Founder &amp; Chief Operating Officer of PunchX. His work at PunchX includes startup operations, product development, team coordination, technology and AI integration, partnerships, fundraising activities, market execution, and validating the service marketplace with customers and professionals.</p>
+            <h4 className="text-sm font-semibold text-[#e9c176]">Areas of focus</h4>
+            <ul className="list-disc pl-5 text-sm text-zinc-300 space-y-1">
+              <li>Startup operations and product execution</li><li>Team coordination, partnerships and market development</li><li>Technology and AI integration for a local-services marketplace</li><li>Customer and professional validation</li>
+            </ul>
+            <p className="text-sm text-zinc-300">Education and interests: student; interested in software, smart technology and product building. No degree or graduation credential is claimed here.</p>
+            <a href="https://www.linkedin.com/in/rimil-das-a0537a3ba/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-sky-300 underline underline-offset-4">Rimil Das on LinkedIn <ExternalLink className="w-3.5 h-3.5" /></a>
+          </article>
+          <div className="border-t border-zinc-800" />
+          <article id="abhradip-ghosh-background" className="space-y-3">
+            <h3 className="text-lg font-bold text-white">Abhradip Ghosh — Co-Founder &amp; CEO</h3>
+            <p className="text-sm text-zinc-300 leading-relaxed">Abhradip Ghosh is the Co-Founder &amp; CEO of PunchX and a student based in West Bengal. His project experience includes frontend development for a restaurant website, an online examination platform and a car-dealer delivery platform, alongside experimental work in computer vision and AI assistants.</p>
+            <h4 className="text-sm font-semibold text-[#e9c176]">Education</h4>
+            <p className="text-sm text-zinc-300">Completed Class 10 at Bethany School with 88.4% and currently studies at Narayani School, West Bengal, according to the information provided for his resume.</p>
+            <h4 className="text-sm font-semibold text-[#e9c176]">Selected projects</h4>
+            <ul className="list-disc pl-5 text-sm text-zinc-300 space-y-1">
+              <li><strong>Autonomous vehicle (Expo competition):</strong> a project using computer vision for autonomous road navigation and object detection.</li>
+              <li><strong>Ultron AI assistant:</strong> an AI smart-assistant project inspired by voice assistants such as Alexa.</li>
+              <li><strong>Web projects:</strong> frontend work on a restaurant website, an online examination platform and a car-dealer delivery platform.</li>
+            </ul>
+            <h4 className="text-sm font-semibold text-[#e9c176]">Languages</h4>
+            <p className="text-sm text-zinc-300">Bengali and English (fluent); Hindi (conversational).</p>
+            <a href="https://www.linkedin.com/in/abhradip-ghosh-858383404/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-sky-300 underline underline-offset-4">Abhradip Ghosh on LinkedIn <ExternalLink className="w-3.5 h-3.5" /></a>
+          </article>
+          <p className="text-xs text-zinc-400 border-t border-zinc-800 pt-4">Founder photos can be added after the founders provide approved images. No unverified legal entity or registration number is claimed on this page.</p>
+        </section>
+
         {/* Company Overview & Relationship Summary */}
         <section id="about-punchx-leadership-context" className="rounded-2xl bg-[#0a152e]/90 border border-zinc-800 p-6 sm:p-8 space-y-5">
           <div className="flex items-center gap-3">
