@@ -35,13 +35,13 @@ const POPULAR_IDS = ['electrician', 'plumber', 'carpenter', 'ac-technician', 'cl
 /* ── Accent color per group for visual variety ── */
 const GROUP_COLORS = [
   { bg: 'bg-[#F7EFE7]', text: 'text-[#6B5560]', border: 'border-[#E8D2C4]', icon: 'text-[#9E8189]', ring: 'ring-[#C7A9A3]' },
-  { bg: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-100', icon: 'text-violet-500', ring: 'ring-violet-200' },
-  { bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100', icon: 'text-pink-500', ring: 'ring-pink-200' },
-  { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100', icon: 'text-amber-500', ring: 'ring-amber-200' },
-  { bg: 'bg-[#F7EFE7]', text: 'text-[#6B5560]', border: 'border-emerald-100', icon: 'text-emerald-500', ring: 'ring-emerald-200' },
-  { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-100', icon: 'text-orange-500', ring: 'ring-orange-200' },
-  { bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100', icon: 'text-cyan-500', ring: 'ring-cyan-200' },
-  { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-100', icon: 'text-rose-500', ring: 'ring-rose-200' },
+  { bg: 'bg-[#F0E4E2]', text: 'text-[#6B5560]', border: 'border-[#E8D2C4]', icon: 'text-[#9E8189]', ring: 'ring-[#C7A9A3]' },
+  { bg: 'bg-[#F7EFE7]', text: 'text-[#3E3239]', border: 'border-[#C7A9A3]', icon: 'text-[#6B5560]', ring: 'ring-[#E8D2C4]' },
+  { bg: 'bg-[#E8D2C4]', text: 'text-[#3E3239]', border: 'border-[#C7A9A3]', icon: 'text-[#6B5560]', ring: 'ring-[#9E8189]' },
+  { bg: 'bg-[#F7EFE7]', text: 'text-[#6B5560]', border: 'border-[#E8D2C4]', icon: 'text-[#9E8189]', ring: 'ring-[#C7A9A3]' },
+  { bg: 'bg-[#F0E4E2]', text: 'text-[#3E3239]', border: 'border-[#C7A9A3]', icon: 'text-[#6B5560]', ring: 'ring-[#E8D2C4]' },
+  { bg: 'bg-[#E8D2C4]', text: 'text-[#3E3239]', border: 'border-[#C7A9A3]', icon: 'text-[#6B5560]', ring: 'ring-[#9E8189]' },
+  { bg: 'bg-[#F7EFE7]', text: 'text-[#6B5560]', border: 'border-[#E8D2C4]', icon: 'text-[#9E8189]', ring: 'ring-[#C7A9A3]' },
 ];
 
 interface Props {
@@ -143,7 +143,7 @@ export default function CitizenHomeCatalog({
         className={`px-service-card group flex flex-col items-center gap-2 rounded-[1.2rem] border ${color.border}
                      bg-[#FFFCF8] p-2.5 sm:p-3 text-center transition-all duration-300 cursor-pointer`}
       >
-        <div className="relative mb-1 h-[76px] w-full overflow-hidden rounded-xl bg-[#e8e0cf] sm:h-[90px]">
+        <div className="relative mb-1 h-[76px] w-full overflow-hidden rounded-xl bg-[#E8D2C4] sm:h-[90px]" style={{backgroundImage:"linear-gradient(135deg,#E8D2C4,#C7A9A3)"}}>
           <img
             src={({
               electrician: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=360&q=72',
@@ -223,11 +223,11 @@ export default function CitizenHomeCatalog({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="px-premium-hero px-shine rounded-[1.8rem] bg-[#171813] p-5 sm:p-8 text-white relative overflow-hidden border border-[#C7A9A3]/45"
+            className="px-premium-hero px-shine rounded-[1.8rem] bg-[#3E3239] p-5 sm:p-8 text-white relative overflow-hidden border border-[#C7A9A3]/45" style={{backgroundImage:"linear-gradient(125deg,#3E3239 0%,#6B5560 54%,#9E8189 100%)"}}
           >
             <div className="absolute inset-0">
               <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=82" alt="" aria-hidden="true" className="h-full w-full object-cover opacity-35" />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#3E3239] via-[#3E3239]/90 to-[#6B5560]/55" />
+              <div className="absolute inset-0" style={{background:"linear-gradient(125deg,rgba(62,50,57,.18),rgba(107,85,96,.08),rgba(158,129,137,.02))"}} />
               <div className="px-glow absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#c4a568]/20 blur-3xl" />
               <div className="absolute -bottom-20 right-8 h-48 w-48 rounded-full border border-[#d8c18d]/25" />
               <div className="absolute -bottom-12 right-16 h-32 w-32 rounded-full border border-[#d8c18d]/20" />
@@ -284,7 +284,7 @@ export default function CitizenHomeCatalog({
 
         {/* ── HOMEPAGE FEATURED AD SLOT ── */}
         <section aria-label="Featured advertising" className="pt-3">
-          <div className="px-shine relative overflow-hidden rounded-[1.6rem] border border-[#C7A9A3]/50 bg-gradient-to-br from-[#3E3239] via-[#6B5560] to-[#9E8189] p-4 text-white shadow-[0_16px_38px_rgba(27,29,22,.12)] sm:p-5">
+          <div className="px-shine relative overflow-hidden rounded-[1.6rem] border border-[#C7A9A3]/50 p-4 text-white shadow-[0_16px_38px_rgba(62,50,57,.12)] sm:p-5" style={{backgroundImage:"linear-gradient(125deg,#3E3239 0%,#6B5560 54%,#9E8189 100%)"}}>
             <div className="px-glow absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#c4a568]/20 blur-2xl" />
             <div className="relative flex items-center gap-3 sm:gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#c4a568] text-[#171813] shadow-sm">
@@ -332,7 +332,7 @@ export default function CitizenHomeCatalog({
                   whileTap={{ scale: 0.97 }}
                   className="px-photo-card group flex shrink-0 w-[152px] flex-col rounded-[1.25rem] border border-[#e5dfd1] bg-[#FFFCF8] p-2.5 shadow-[0_5px_18px_rgba(35,33,26,.05)] transition-all cursor-pointer"
                 >
-                  <div className="relative mb-3 h-[92px] overflow-hidden rounded-xl bg-[#e8e0cf]">
+                  <div className="relative mb-3 h-[92px] overflow-hidden rounded-xl bg-[#E8D2C4]" style={{backgroundImage:"linear-gradient(135deg,#E8D2C4,#C7A9A3)"}}>
                     <img
                       src={({
                         electrician: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=420&q=75',
