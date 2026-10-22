@@ -162,19 +162,19 @@ export default function CitizenHomeCatalog({
 
   return (
     <div className="punchx-citizen-shell min-h-screen bg-[#f5f2eb] pb-24 text-[#171813]">
+      <style>{".punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(196,165,104,.09),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(92,111,80,.05),transparent 30%)}.punchx-citizen-shell .px-page-in{animation:px-page-in .48s cubic-bezier(.2,.7,.2,1) both}.punchx-citizen-shell .px-lift{transition:transform .28s cubic-bezier(.2,.7,.2,1),box-shadow .28s ease}.punchx-citizen-shell .px-lift:active{transform:scale(.985)}.punchx-citizen-shell .px-nav-active{box-shadow:0 8px 24px rgba(196,165,104,.2)}@keyframes px-page-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"} </style>
       <style>{".punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(196,165,104,.09),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(92,111,80,.05),transparent 30%)}.punchx-citizen-shell .px-premium-hero{box-shadow:0 24px 65px rgba(28,29,23,.2)}.punchx-citizen-shell .px-photo-card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s ease}.punchx-citizen-shell .px-photo-card:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(27,29,22,.13)}.punchx-citizen-shell .px-shine{position:relative;isolation:isolate;overflow:hidden}.punchx-citizen-shell .px-shine:after{content:'';position:absolute;inset:-30% auto -30% -70%;width:38%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:px-home-shine 6.5s ease-in-out infinite;pointer-events:none}@keyframes px-home-shine{0%,58%{left:-70%}100%{left:140%}}@keyframes px-home-glow{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.65;transform:scale(1.05)}}.punchx-citizen-shell .px-glow{animation:px-home-glow 7s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"} </style>
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100">
-        <div className="mx-auto flex min-h-[56px] max-w-5xl items-center gap-3 px-4 py-2">
-          <img src={PUNCHX_LOGO} alt="PUNCHX" className="h-8 w-8 rounded-xl object-cover" />
-          <span className="text-lg font-extrabold tracking-tight">PUNCHX</span>
+      <header className="sticky top-0 z-40 border-b border-[#e5dfd1] bg-[#f8f6f0]/90 backdrop-blur-2xl shadow-[0_5px_24px_rgba(30,28,22,.035)]">
+        <div className="mx-auto flex min-h-[62px] max-w-5xl items-center gap-3 px-4 py-2">
+          <img src={PUNCHX_LOGO} alt="PUNCHX" className="h-9 w-9 rounded-xl object-cover ring-1 ring-[#c4a568]/50 shadow-sm" />
+          <span className="text-lg font-black tracking-[-.06em] text-[#24251f]">PUNCHX</span>
 
           <button
             onClick={() => onTransition('customer-setup')}
-            className="ml-1 flex min-w-0 max-w-[50%] items-center gap-1.5 rounded-xl px-2.5 py-1.5
-                       text-left hover:bg-blue-50/60 transition-colors"
+            className="ml-1 flex min-w-0 max-w-[50%] items-center gap-1.5 rounded-xl border border-[#e5dfd1] bg-white/70 px-2.5 py-1.5 text-left transition-colors hover:bg-[#f2ead8]"
           >
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#80663a]" />
             <span className="min-w-0">
               <span className="block text-[9px] font-bold uppercase tracking-wider text-gray-400">
                 Service area
@@ -412,8 +412,13 @@ export default function CitizenHomeCatalog({
         )}
 
         {activeTab === 'bookings' && (
-          <section className="pt-6 pb-20">
-            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Your Bookings</h2>
+          <motion.section initial={{opacity:0,x:18}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-12}} transition={{duration:.32}} className="px-page-in pt-6 pb-20">
+            <div className="mb-6 rounded-[1.6rem] bg-gradient-to-br from-[#25241e] via-[#171813] to-[#383226] p-5 text-white shadow-[0_20px_50px_rgba(28,29,23,.18)]">
+              <span className="text-[10px] font-bold uppercase tracking-[.22em] text-[#d8c18d]">YOUR PUNCHX JOURNEY</span>
+              <h2 className="mt-2 text-2xl font-extrabold text-[#f5f0e6]">Your Bookings</h2>
+              <p className="mt-1 text-xs leading-relaxed text-[#c2bba9]">Every service, all in one place. Your next little win starts here.</p>
+              <div className="mt-4 flex items-center gap-2 text-xs text-[#e7d4a7]"><CalendarDays className="h-4 w-4"/>{orderHistory.length} booking{orderHistory.length===1?'':'s'} in your history</div>
+            </div>
             {orderHistory.length === 0 ? (
               <div className="rounded-3xl bg-white p-10 text-center shadow-sm border border-gray-100">
                 <CalendarDays className="mx-auto h-12 w-12 text-gray-300 mb-4" />
@@ -443,8 +448,12 @@ export default function CitizenHomeCatalog({
         )}
 
         {activeTab === 'profile' && (
-          <section className="pt-6 pb-20">
-            <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Your Profile</h2>
+          <motion.section initial={{opacity:0,x:18}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-12}} transition={{duration:.32}} className="px-page-in pt-6 pb-20">
+            <div className="mb-6 rounded-[1.6rem] bg-gradient-to-br from-[#25241e] via-[#171813] to-[#383226] p-5 text-white shadow-[0_20px_50px_rgba(28,29,23,.18)]">
+              <span className="text-[10px] font-bold uppercase tracking-[.22em] text-[#d8c18d]">YOUR SPACE</span>
+              <h2 className="mt-2 text-2xl font-extrabold text-[#f5f0e6]">Your Profile</h2>
+              <p className="mt-1 text-xs text-[#c2bba9]">Your details, your preferences, your PunchX.</p>
+            </div>
             <div className="rounded-3xl bg-white p-8 shadow-sm border border-gray-100 flex flex-col items-center text-center">
               <div className="h-24 w-24 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-5 ring-4 ring-white shadow-md">
                 <UserRound className="h-10 w-10" />
@@ -503,7 +512,7 @@ export default function CitizenHomeCatalog({
                 </button>
               </div>
             </div>
-          </section>
+          </motion.section>
         )}
       </main>
 
@@ -598,16 +607,16 @@ export default function CitizenHomeCatalog({
         )}
       </AnimatePresence>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 grid h-[68px] grid-cols-3 border-t border-gray-100 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
-        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'home' ? 'text-blue-600' : 'text-gray-500'}`}>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 grid h-[72px] grid-cols-3 border-t border-[#e5dfd1] bg-[#fbf9f4]/90 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_35px_rgba(30,28,22,.08)] backdrop-blur-2xl md:hidden">
+        <button onClick={() => setActiveTab('home')} className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl active:scale-95 transition-all duration-300 ${activeTab === 'home' ? 'px-nav-active text-[#80663a]' : 'text-[#898577]'}`}>
           <HomeIcon className="h-5 w-5" />
           <span className="text-[10px] font-bold">Home</span>
         </button>
-        <button onClick={() => setActiveTab('bookings')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'bookings' ? 'text-blue-600' : 'text-gray-500'}`}>
+        <button onClick={() => setActiveTab('bookings')} className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl active:scale-95 transition-all duration-300 ${activeTab === 'bookings' ? 'px-nav-active text-[#80663a]' : 'text-[#898577]'}`}>
           <CalendarDays className="h-5 w-5" />
           <span className="text-[10px] font-bold">Bookings</span>
         </button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center justify-center gap-1 active:scale-95 ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-500'}`}>
+        <button onClick={() => setActiveTab('profile')} className={`relative flex flex-col items-center justify-center gap-1 rounded-2xl active:scale-95 transition-all duration-300 ${activeTab === 'profile' ? 'px-nav-active text-[#80663a]' : 'text-[#898577]'}`}>
           <UserRound className="h-5 w-5" />
           <span className="text-[10px] font-bold">Profile</span>
         </button>
