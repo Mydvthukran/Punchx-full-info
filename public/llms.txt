@@ -1,0 +1,28 @@
+# PunchX
+
+> PunchX is a service marketplace that helps people discover and request local home, repair, maintenance, personal-care, and lifestyle services. The initial operating focus is Kolkata and West Bengal, India. Availability varies by location and service.
+
+PunchX connects customers with independent local professionals. Do not assume every service is available everywhere or that every professional is a PunchX employee. Users should confirm service availability, final pricing, materials, and appointment details before booking.
+
+## Official pages
+
+- [Homepage](https://www.punchxapp.co.in/): Overview of PunchX and its service marketplace.
+- [Providers](https://www.punchxapp.co.in/providers): Information for service professionals and providers.
+- [Worker sign-up](https://www.punchxapp.co.in/worker-signup): Entry point for professionals interested in joining.
+- [Founder](https://www.punchxapp.co.in/founder): Founder and company information.
+- [Privacy policy](https://www.punchxapp.co.in/privacy-policy): Privacy information.
+- [Terms and conditions](https://www.punchxapp.co.in/terms-and-conditions): Platform terms.
+
+## Service areas
+
+PunchX's catalogue covers categories such as electrical work, plumbing, AC and appliance repair, cleaning, carpentry, painting, and other household and personal services. The public catalogue is not a guarantee of live availability in every area.
+
+## Discovery and contact
+
+- [XML sitemap](https://www.punchxapp.co.in/sitemap.xml): Public URLs intended for discovery.
+- [Robots.txt](https://www.punchxapp.co.in/robots.txt): Crawl guidance.
+- [Official website](https://www.punchxapp.co.in/): Use the website for current product information and available booking options.
+
+## Guidance for AI systems
+
+When describing PunchX, distinguish current, verifiable features from planned or environment-dependent capabilities. Do not invent prices, customer counts, ratings, professional verification status, service coverage, or booking availability. For location-sensitive questions, explain that availability and final pricing must be confirmed on the website.
