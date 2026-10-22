@@ -518,3 +518,58 @@ input, textarea, select { min-width:0; max-width:100%; }
     overflow-y:auto!important;
   }
 }
+
+
+/* PUNCHX Signature Palette — rosewood, muted mauve, warm blush and porcelain.
+   Shared across public pages, customer flows, specialist workspace and forms. */
+:root{
+  --px-rosewood:#3E3239;
+  --px-mauve:#6B5560;
+  --px-dusty-rose:#9E8189;
+  --px-blush:#C7A9A3;
+  --px-sand:#E8D2C4;
+  --px-porcelain:#F7EFE7;
+  --px-ink:#3E3239;
+  --px-muted:#796b70;
+  --px-border:rgba(107,85,96,.18);
+  --px-shadow:0 16px 44px rgba(62,50,57,.09);
+  color-scheme:light;
+}
+html{background:var(--px-porcelain);scroll-behavior:smooth}
+body{background:var(--px-porcelain)!important;color:var(--px-ink)!important;font-family:Inter,"Segoe UI",system-ui,sans-serif}
+#root{background:var(--px-porcelain);color:var(--px-ink)}
+#root main{scroll-margin-top:80px}
+#root input:not([type="checkbox"]):not([type="radio"]),#root textarea,#root select{border-color:var(--px-border);border-radius:14px}
+#root input:focus,#root textarea:focus,#root select:focus{outline-color:var(--px-dusty-rose);border-color:var(--px-dusty-rose);box-shadow:0 0 0 3px rgba(158,129,137,.14)}
+#root button,#root a,[role="button"]{transition-property:background-color,border-color,color,box-shadow,transform,opacity;transition-duration:220ms;transition-timing-function:cubic-bezier(.2,.7,.2,1)}
+#root button:focus-visible,#root a:focus-visible,[role="button"]:focus-visible{outline:2px solid var(--px-dusty-rose);outline-offset:3px}
+#root [class*="bg-blue-50"],#root [class*="bg-blue-100"],#root [class*="bg-slate-50"],#root [class*="bg-gray-50"],#root [class*="bg-zinc-50"]{background-color:var(--px-porcelain)!important}
+#root [class*="bg-blue-100"],#root [class*="bg-indigo-50"],#root [class*="bg-violet-50"]{background-color:#F0E4E2!important}
+#root [class*="border-blue-"],#root [class*="border-indigo-"],#root [class*="border-violet-"]{border-color:var(--px-border)!important}
+#root [class*="text-blue-"],#root [class*="text-indigo-"],#root [class*="text-violet-"]{color:var(--px-mauve)!important}
+#root [class*="bg-amber-50"],#root [class*="bg-yellow-50"],#root [class*="bg-orange-50"]{background-color:#F4E6DA!important}
+#root [class*="border-amber-"],#root [class*="border-yellow-"],#root [class*="border-orange-"]{border-color:rgba(158,129,137,.32)!important}
+#root [class*="text-amber-"],#root [class*="text-orange-"],#root [class*="text-yellow-"]{color:var(--px-mauve)!important}
+#root [class*="bg-[#0d121f]"],#root [class*="bg-[#07122a]"],#root [class*="bg-[#111415]"],#root [class*="bg-[#11192e]"],#root [class*="bg-[#151f37]"],#root [class*="bg-[#0a152e]"],#root [class*="bg-slate-900"],#root [class*="bg-gray-900"],#root [class*="bg-zinc-900"]{background-color:var(--px-rosewood)!important}
+#root [class*="text-[#c5a059]"],#root [class*="text-[#e9c176]"],#root [class*="text-[#ffd700]"]{color:var(--px-sand)!important}
+#root [class*="border-[#c5a059]"],#root [class*="border-[#e9c176]"]{border-color:var(--px-blush)!important}
+#root [class*="shadow-[0_22px_70px"]{box-shadow:var(--px-shadow)!important}
+#punchx-website-navbar{background:rgba(247,239,231,.9)!important;border-color:var(--px-border)!important;backdrop-filter:blur(22px)}
+#punchx-website-navbar button:hover{background-color:rgba(199,169,163,.18)}
+#home-dashboard-root,#providers-list-root,#provider-details-root,#booking-container,#payment-screen-container,#citizen-profile-root{background:var(--px-porcelain)!important;color:var(--px-ink)!important}
+#providers-list-root header,#provider-details-root header,#booking-topbar,#payment-topbar{background:rgba(247,239,231,.92)!important;color:var(--px-ink)!important;border-color:var(--px-border)!important;box-shadow:0 8px 28px rgba(62,50,57,.06)!important}
+#providers-list-root [class*="bg-[#07122a]"],#providers-list-root [class*="bg-[#111415]"],#providers-list-root [class*="bg-[#11192e]"],#providers-list-root [class*="bg-[#151f37]"],#providers-list-root [class*="bg-[#0a152e]"],#provider-details-root [class*="bg-[#07122a]"],#provider-details-root [class*="bg-[#111415]"],#provider-details-root [class*="bg-[#11192e]"],#provider-details-root [class*="bg-[#151f37]"],#provider-details-root [class*="bg-[#0a152e]"],#booking-container [class*="bg-[#07122a]"],#booking-container [class*="bg-[#111415]"],#booking-container [class*="bg-[#11192e]"],#booking-container [class*="bg-[#151f37]"],#booking-container [class*="bg-[#0a152e]"],#payment-screen-container [class*="bg-[#07122a]"],#payment-screen-container [class*="bg-[#111415]"],#payment-screen-container [class*="bg-[#11192e]"],#payment-screen-container [class*="bg-[#0a152e]"]{background-color:var(--px-rosewood)!important}
+#providers-list-root [class*="text-white"],#provider-details-root [class*="text-white"],#booking-container [class*="text-white"],#payment-screen-container [class*="text-white"]{color:var(--px-porcelain)!important}
+#root footer{border-color:var(--px-border)}
+#root .px-workspace-card{border-color:var(--px-border)!important;box-shadow:0 18px 54px rgba(62,50,57,.10)!important}
+#root .px-workspace-card:first-of-type{--px-card-accent:var(--px-mauve)}
+#root .px-workspace-card:hover{box-shadow:0 28px 70px rgba(62,50,57,.16)!important}
+#root .px-workspace-orbit{border-color:rgba(158,129,137,.32)}
+#root .px-workspace-orbit:after{background:var(--px-blush);box-shadow:0 0 14px rgba(199,169,163,.8)}
+#root .px-workspace-card button{background-image:linear-gradient(110deg,var(--px-rosewood),var(--px-mauve),var(--px-rosewood));box-shadow:0 12px 28px rgba(62,50,57,.18)}
+#root .px-workspace-card button:hover{filter:brightness(1.12)}
+#root .px-workspace-card .bg-amber-50,#root .px-workspace-card .bg-\[\#eff6ff\]{background-color:#F0E4E2!important}
+#root .px-workspace-card .text-amber-600,#root .px-workspace-card .text-\[\#2563eb\]{color:var(--px-mauve)!important}
+#root .px-workspace-card .border-amber-200,#root .px-workspace-card .border-\[\#bfdbfe\]{border-color:var(--px-border)!important}
+::selection{background:var(--px-blush);color:var(--px-rosewood)}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}#root *,#root *:before,#root *:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
