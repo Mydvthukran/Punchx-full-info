@@ -608,3 +608,18 @@ body{background-image:radial-gradient(ellipse at 8% 0%,rgba(199,169,163,.18),tra
 #root .punchx-citizen-shell nav{background:rgba(247,239,231,.94)!important;border-color:rgba(107,85,96,.18)!important;backdrop-filter:blur(18px)}
 #root [class*="shadow-"]{--tw-shadow-color:rgba(62,50,57,.08)}
 ::selection{background:#C7A9A3;color:#3E3239}
+
+
+/* Cross-platform interaction motion: customer, worker, auth, booking and admin views. */
+#root button,#root a,[role="button"]{transform-origin:center;transition:transform .22s cubic-bezier(.2,.7,.2,1),box-shadow .25s ease,background-color .25s ease,border-color .25s ease,filter .25s ease}
+#root button:active,#root a:active,#root [role="button"]:active{transform:scale(.975)}
+#root button:focus-visible,#root a:focus-visible,#root [role="button"]:focus-visible{outline:2px solid #9E8189;outline-offset:3px}
+#root button:disabled{transform:none;filter:saturate(.65);cursor:not-allowed}
+#root main>section,#root main>[data-motion-section="true"]{animation:px-route-section-enter .48s cubic-bezier(.22,1,.36,1) both}
+@keyframes px-route-section-enter{from{opacity:0;transform:translate3d(0,12px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+#root [class*="rounded-"][class*="shadow-sm"]:not(button):not(a),#root [class*="rounded-"][class*="shadow-md"]:not(button):not(a){transition:box-shadow .28s ease,border-color .28s ease,transform .28s cubic-bezier(.2,.7,.2,1)}
+#root [class*="rounded-"][class*="shadow-sm"]:not(button):not(a):hover,#root [class*="rounded-"][class*="shadow-md"]:not(button):not(a):hover{box-shadow:0 14px 34px rgba(62,50,57,.10)}
+#root input,#root textarea,#root select{transition:border-color .2s ease,box-shadow .2s ease,background-color .2s ease}
+#root img[loading="lazy"]{transition:filter .35s ease}
+#root img[loading="lazy"]:hover{filter:saturate(1.04)}
+@media(prefers-reduced-motion:reduce){#root main>section,#root main>[data-motion-section="true"]{animation:none!important}#root button,#root a,[role="button"],#root [class*="rounded-"][class*="shadow-sm"],#root [class*="rounded-"][class*="shadow-md"],#root input,#root textarea,#root select{transition:none!important}#root button:active,#root a:active,#root [role="button"]:active{transform:none!important}}
