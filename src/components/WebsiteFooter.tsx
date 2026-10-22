@@ -50,8 +50,20 @@ export default function WebsiteFooter({ onTransition, onSelectCategory, showNoti
               <div><div className="text-xl font-black tracking-[-0.03em]">PunchX</div><div className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/45">Customer × professional network</div></div>
             </div>
             <p className="mt-4 max-w-md text-xs leading-6 text-white/60">A service marketplace being built to help customers discover local professionals, understand booking details, and stay connected throughout the service journey.</p>
+            <a
+              href="/founder"
+              onClick={(event) => {
+                event.preventDefault();
+                onTransition('founder');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              aria-label="Meet PunchX founders Rimil Das and Abhradip Ghosh"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#b9adff]/30 bg-[#7358d7]/15 px-4 py-3 text-xs font-extrabold text-[#d7d0ff] transition hover:border-[#b9adff]/60 hover:bg-[#7358d7]/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b9adff]"
+            >
+              Meet the founders <ArrowRight className="h-4 w-4" />
+            </a>
             <div className="mt-5 flex flex-wrap gap-2">
-              {['Local service options', 'Booking details', 'Service status'].map(x => <span key={x} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[9px] font-bold text-white/70">{x}</span>)}
+              {[''Local service options', 'Booking details', 'Service status'].map(x => <span key={x} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[9px] font-bold text-white/70">{x}</span>)}
             </div>
           </div>
 
