@@ -63,7 +63,7 @@ export default function WebsiteFooter({ onTransition, onSelectCategory, showNoti
               Meet the founders <ArrowRight className="h-4 w-4" />
             </a>
             <div className="mt-5 flex flex-wrap gap-2">
-              {[''Local service options', 'Booking details', 'Service status'].map(x => <span key={x} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[9px] font-bold text-white/70">{x}</span>)}
+              {['Local service options', 'Booking details', 'Service status'].map(x => <span key={x} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[9px] font-bold text-white/70">{x}</span>)}
             </div>
           </div>
 
