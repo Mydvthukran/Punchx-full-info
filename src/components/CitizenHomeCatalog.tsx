@@ -429,7 +429,7 @@ export default function CitizenHomeCatalog({
             ) : (
               <div className="space-y-4">
                 {orderHistory.map((order, i) => (
-                  <div key={i} className="rounded-2xl bg-white p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <motion.div key={i} initial={{opacity:0,y:14}} animate={{opacity:1,y:0}} transition={{delay:Math.min(i*.06,.3)}} whileHover={{y:-3}} className="rounded-[1.4rem] bg-white p-5 shadow-[0_8px_26px_rgba(30,28,22,.05)] border border-[#e5dfd1] flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-sm font-bold text-gray-900">{order.category || 'Service Booking'}</span>
@@ -440,11 +440,11 @@ export default function CitizenHomeCatalog({
                     <div className="flex items-center gap-3">
                       <button onClick={() => onTransition('tracking')} className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 transition">Track Status</button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
-          </section>
+          </motion.section>
         )}
 
         {activeTab === 'profile' && (
