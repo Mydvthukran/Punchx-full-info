@@ -272,7 +272,7 @@ export default function CitizenHomeCatalog({
           {[
             { icon: <ShieldCheck className="h-3.5 w-3.5 text-[#6B5560]" />, text: 'Service details before booking' },
             
-            { icon: <MapPin className="h-3.5 w-3.5 text-violet-600" />, text: residential || 'Add address for visits' },
+            { icon: <MapPin className="h-3.5 w-3.5 text-[#6B5560]" />, text: residential || 'Add address for visits' },
           ].map((pill, i) => (
             <div key={i} className="flex shrink-0 items-center gap-2 rounded-full border border-[#E8D2C4]
                                     bg-[#FFFCF8] px-3.5 py-2 text-[11px] font-semibold text-[#796B70] shadow-sm">
@@ -363,7 +363,7 @@ export default function CitizenHomeCatalog({
                   </span>
                   <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-[#80663a]">
                     <Info className="h-3 w-3" /> View details
-                    <span className="ml-auto flex items-center gap-0.5 text-amber-500">
+                    <span className="ml-auto flex items-center gap-0.5 text-[#9E8189]">
 
                     </span>
                   </div>
@@ -406,7 +406,7 @@ export default function CitizenHomeCatalog({
           {[
             { icon: <ShieldCheck className="h-5 w-5 text-[#6B5560]" />,
               title: 'Professional information', desc: 'Review the available profile information before booking.' },
-            { icon: <CalendarDays className="h-5 w-5 text-violet-600" />,
+            { icon: <CalendarDays className="h-5 w-5 text-[#6B5560]" />,
               title: 'Easy booking flow', desc: 'Pick service → facility → exact work → confirm.' },
             { icon: <CheckCircle2 className="h-5 w-5 text-[#6B5560]" />,
               title: 'Door-step service', desc: 'The professional visits your confirmed address.' },
@@ -473,7 +473,7 @@ export default function CitizenHomeCatalog({
                   <div className="text-sm font-semibold text-gray-800 ml-6">{citizenAddress || 'Not specified'}</div>
                 </div>
                 <div className="rounded-2xl bg-[#F7EFE7] p-4 border border-[#E8D2C4]">
-                  <div className="flex items-center gap-2 mb-1"><ShieldCheck className="h-4 w-4 text-emerald-500" /><span className="text-[10px] font-bold uppercase tracking-wider text-[#9E8189]">Account Status</span></div>
+                  <div className="flex items-center gap-2 mb-1"><ShieldCheck className="h-4 w-4 text-[#9E8189]" /><span className="text-[10px] font-bold uppercase tracking-wider text-[#9E8189]">Account Status</span></div>
                   <div className="text-sm font-semibold text-gray-800 ml-6">Customer account</div>
                 </div>
               </div>
@@ -500,15 +500,15 @@ export default function CitizenHomeCatalog({
                     localStorage.removeItem('punchx_worker_approved');
                   } catch {}
                   onTransition('worker-signup');
-                }} className="w-full flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50/60 p-4 hover:bg-amber-100/70 transition">
+                }} className="w-full flex items-center justify-between rounded-xl border border-[#C7A9A3] bg-[#F7EFE7] p-4 hover:bg-[#E8D2C4] transition">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center"><Wrench className="h-4 w-4" /></div>
+                    <div className="h-8 w-8 rounded-lg bg-[#E8D2C4] text-[#6B5560] flex items-center justify-center"><Wrench className="h-4 w-4" /></div>
                     <div className="text-left">
-                      <span className="block text-sm font-bold text-amber-900">Apply as Professional Specialist</span>
-                      <span className="block text-[11px] text-amber-700">Register your trade, set visiting fee, and start getting bookings</span>
+                      <span className="block text-sm font-bold text-[#3E3239]">Apply as Professional Specialist</span>
+                      <span className="block text-[11px] text-[#6B5560]">Register your trade, set visiting fee, and start getting bookings</span>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-amber-700" />
+                  <ChevronRight className="h-4 w-4 text-[#6B5560]" />
                 </button>
                 <button onClick={() => onTransition('panel-select')} className="w-full flex items-center justify-between rounded-xl border border-gray-200 p-4 hover:bg-[#F7EFE7] transition">
                   <div className="flex items-center gap-3">
