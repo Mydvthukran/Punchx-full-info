@@ -161,7 +161,8 @@ export default function CitizenHomeCatalog({
   };
 
   return (
-    <div className="punchx-citizen-shell min-h-screen bg-[#f7faff] pb-24 text-[#0f172a]">
+    <div className="punchx-citizen-shell min-h-screen bg-[#f5f2eb] pb-24 text-[#171813]">
+      <style>{".punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(196,165,104,.09),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(92,111,80,.05),transparent 30%)}.punchx-citizen-shell .px-premium-hero{box-shadow:0 24px 65px rgba(28,29,23,.2)}.punchx-citizen-shell .px-photo-card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s ease}.punchx-citizen-shell .px-photo-card:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(27,29,22,.13)}.punchx-citizen-shell .px-shine{position:relative;isolation:isolate;overflow:hidden}.punchx-citizen-shell .px-shine:after{content:'';position:absolute;inset:-30% auto -30% -70%;width:38%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:px-home-shine 6.5s ease-in-out infinite;pointer-events:none}@keyframes px-home-shine{0%,58%{left:-70%}100%{left:140%}}@keyframes px-home-glow{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.65;transform:scale(1.05)}}.punchx-citizen-shell .px-glow{animation:px-home-glow 7s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"} </style>
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100">
         <div className="mx-auto flex min-h-[56px] max-w-5xl items-center gap-3 px-4 py-2">
@@ -206,22 +207,25 @@ export default function CitizenHomeCatalog({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="rounded-3xl bg-gradient-to-br from-[#1e3a5f] via-[#1a365d] to-[#2563eb]
-                       p-6 sm:p-8 text-white relative overflow-hidden"
+            className="px-premium-hero px-shine rounded-[1.8rem] bg-[#171813] p-5 sm:p-8 text-white relative overflow-hidden border border-[#c4a568]/35"
           >
-            {/* Subtle decorative circle */}
-            <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/5" />
-            <div className="absolute -left-8 -bottom-12 h-36 w-36 rounded-full bg-white/[.03]" />
+            <div className="absolute inset-0">
+              <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=82" alt="" aria-hidden="true" className="h-full w-full object-cover opacity-35" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#171813] via-[#171813]/95 to-[#171813]/45" />
+              <div className="px-glow absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#c4a568]/20 blur-3xl" />
+              <div className="absolute -bottom-20 right-8 h-48 w-48 rounded-full border border-[#d8c18d]/25" />
+              <div className="absolute -bottom-12 right-16 h-32 w-32 rounded-full border border-[#d8c18d]/20" />
+            </div>
 
             <div className="relative z-10">
               <div className="flex items-center gap-2 text-xs font-semibold text-blue-200">
-                <ShieldCheck className="h-4 w-4" /> Local service professionals
+                <ShieldCheck className="h-4 w-4" /> THE PUNCHX EXPERIENCE
               </div>
               <h1 className="mt-3 text-2xl sm:text-4xl font-extrabold leading-tight">
-                What service do<br className="sm:hidden" /> you need today?
+                Your home. Your time.<br className="sm:hidden" /> Consider it handled.
               </h1>
               <p className="mt-2 max-w-md text-sm text-blue-100/80 leading-relaxed">
-                Explore local professionals for home, vehicle, and personal care services.
+                Thoughtfully chosen local services, designed around the way you live.
               </p>
 
               {/* Search bar */}
@@ -238,7 +242,7 @@ export default function CitizenHomeCatalog({
                 <span className="flex-1 text-sm font-medium text-gray-400">
                   Search 50+ services…
                 </span>
-                <span className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white
+                <span className="rounded-xl bg-[#c4a568] px-4 py-2.5 text-xs font-bold text-[#171813]
                                  mr-0.5">
                   Search
                 </span>
@@ -264,21 +268,21 @@ export default function CitizenHomeCatalog({
 
         {/* ── HOMEPAGE FEATURED AD SLOT ── */}
         <section aria-label="Featured advertising" className="pt-3">
-          <div className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-r from-[#eff6ff] via-white to-[#f5f3ff] p-4 shadow-sm sm:p-5">
-            <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-blue-100/70 blur-2xl" />
+          <div className="px-shine relative overflow-hidden rounded-[1.6rem] border border-[#d8c9a6]/55 bg-gradient-to-br from-[#28271f] via-[#1b1c17] to-[#343025] p-4 text-white shadow-[0_16px_38px_rgba(27,29,22,.12)] sm:p-5">
+            <div className="px-glow absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#c4a568]/20 blur-2xl" />
             <div className="relative flex items-center gap-3 sm:gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#c4a568] text-[#171813] shadow-sm">
                 <Megaphone className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-white px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider text-blue-700 ring-1 ring-blue-100">Featured</span>
-                  <span className="text-[10px] font-semibold text-slate-500">PunchX spotlight</span>
+                  <span className="rounded-full bg-[#d8c18d]/15 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider text-[#e7d4a7] ring-1 ring-[#d8c18d]/30">Featured</span>
+                  <span className="text-[10px] font-semibold text-[#c2bba9]">PUNCHX SPOTLIGHT</span>
                 </div>
-                <h2 className="mt-1 text-base font-extrabold leading-5 text-slate-900 sm:text-lg">Need a trusted local professional?</h2>
-                <p className="mt-1 text-xs leading-5 text-slate-600">Explore plumbing, electrical, cleaning and repair services in one place.</p>
+                <h2 className="mt-1 text-base font-extrabold leading-5 text-[#f5f0e6] sm:text-lg">A little help changes everything.</h2>
+                <p className="mt-1 text-xs leading-5 text-[#c2bba9]">Discover skilled local professionals for the things that matter at home.</p>
               </div>
-              <button type="button" onClick={() => { setQuery(''); setSearchOpen(true); }} className="relative shrink-0 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-blue-700 sm:px-4">Explore <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => { setQuery(''); setSearchOpen(true); }} className="relative shrink-0 rounded-xl bg-[#c4a568] px-3 py-2.5 text-xs font-extrabold text-[#171813] shadow-sm transition hover:bg-[#d8c18d] sm:px-4">Explore <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></button>
             </div>
           </div>
         </section>
@@ -286,7 +290,7 @@ export default function CitizenHomeCatalog({
         {/* ── POPULAR CAROUSEL ── */}
         <section className="pt-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-extrabold text-gray-900">Popular services</h2>
+            <h2 className="text-lg font-extrabold text-[#24251f]">Popular services</h2>
             <button
               onClick={() => { setQuery(''); setSearchOpen(true); }}
               className="flex items-center gap-1 text-xs font-bold text-blue-600
@@ -310,20 +314,38 @@ export default function CitizenHomeCatalog({
                   transition={{ delay: i * 0.06, duration: 0.4 }}
                   whileHover={{ y: -4 }}
                   whileTap={{ scale: 0.97 }}
-                  className="group flex shrink-0 w-[140px] flex-col rounded-2xl border border-gray-100
-                             bg-white p-3 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                  className="px-photo-card group flex shrink-0 w-[152px] flex-col rounded-[1.25rem] border border-[#e5dfd1] bg-white p-2.5 shadow-[0_5px_18px_rgba(35,33,26,.05)] transition-all cursor-pointer"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50
-                                  group-hover:bg-blue-100 transition-colors mb-3">
-                    <IconComp className="h-7 w-7 text-blue-600 group-hover:scale-110 transition-transform" />
+                  <div className="relative mb-3 h-[92px] overflow-hidden rounded-xl bg-[#e8e0cf]">
+                    <img
+                      src={({
+                        electrician: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=420&q=75',
+                        plumber: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=420&q=75',
+                        carpenter: 'https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=420&q=75',
+                        'ac-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=420&q=75',
+                        'cleaner-housekeeper': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=420&q=75',
+                        painter: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=420&q=75',
+                        'appliance-repair-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=420&q=75',
+                        beautician: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=420&q=75',
+                      } as Record<string, string>)[cat.id] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=420&q=75'}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#171813]/65 via-transparent to-transparent" />
+                    <div className="absolute bottom-2 left-2 flex h-8 w-8 items-center justify-center rounded-lg border border-white/30 bg-[#171813]/75 text-[#e7d4a7] backdrop-blur">
+                      <IconComp className="h-4 w-4" />
+                    </div>
                   </div>
-                  <span className="text-[13px] font-bold text-gray-900 leading-tight text-left line-clamp-2">
+                  <span className="text-[13px] font-bold text-[#24251f] leading-tight text-left line-clamp-2">
                     {cat.name}
                   </span>
-                  <span className="mt-1 text-[10px] text-gray-400 text-left line-clamp-1">
+                  <span className="mt-1 text-[10px] text-[#898577] text-left line-clamp-1">
                     {cat.shortDesc}
                   </span>
-                  <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
+                  <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-[#80663a]">
                     <Info className="h-3 w-3" /> View details
                     <span className="ml-auto flex items-center gap-0.5 text-amber-500">
 
