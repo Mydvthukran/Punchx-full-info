@@ -47,12 +47,20 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
   }, []);
 
   const count = cart.reduce((sum, item) => sum + Math.max(1, Number(item.quantity || 1)), 0);
-  const total = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
 
   const changeQuantity = (id: string, delta: number) => {
-    const next = cart.map(item => item.id === id
-      ? { ...item, quantity: Math.max(1, Math.min(99, Number(item.quantity || 1) + delta)), price: Math.round((Number(item.price || 0) / Math.max(1, Number(item.quantity || 1))) * Math.max(1, Math.min(99, Number(item.quantity || 1) + delta))), priceMin: typeof item.priceMin === 'number' ? Math.round((item.priceMin / Math.max(1, Number(item.quantity || 1))) * Math.max(1, Math.min(99, Number(item.quantity || 1) + delta))) : item.priceMin, priceMax: typeof item.priceMax === 'number' ? Math.round((item.priceMax / Math.max(1, Number(item.quantity || 1))) * Math.max(1, Math.min(99, Number(item.quantity || 1) + delta))) : item.priceMax }
-      : item);
+    const next = cart.map(item => {
+      if (item.id !== id) return item;
+      const oldQuantity = Math.max(1, Number(item.quantity || 1));
+      const quantity = Math.max(1, Math.min(99, oldQuantity + delta));
+      return {
+        ...item,
+        quantity,
+        price: typeof item.price === 'number' ? Math.round((item.price / oldQuantity) * quantity) : item.price,
+        priceMin: typeof item.priceMin === 'number' ? Math.round((item.priceMin / oldQuantity) * quantity) : item.priceMin,
+        priceMax: typeof item.priceMax === 'number' ? Math.round((item.priceMax / oldQuantity) * quantity) : item.priceMax,
+      };
+    });
     setCart(next);
     try { localStorage.setItem('punchx_cart', JSON.stringify(next)); } catch {}
   };
@@ -95,9 +103,12 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                           <h3 className="break-words text-sm font-black text-[#20232b]">{item.serviceName}</h3>
                           <p className="mt-1 text-[10px] text-[#777b86]">{[item.category, item.subcategory].filter(Boolean).join(' · ') || (item.itemType === 'product' ? 'Product / material' : 'Service')}</p>
                           {item.description && <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#777b86]">{item.description}</p>}
-                          {typeof item.priceMin === 'number' && typeof item.priceMax === 'number'
-                            ? <p className="mt-2 text-sm font-black text-[#17191d]">{money(item.priceMin)}–{money(item.priceMax)} <span className="text-[10px] font-medium text-[#858995]">estimate</span></p>
-                            : <p className="mt-2 text-sm font-black text-[#17191d]">{money(Number(item.price || 0))} <span className="text-[10px] font-medium text-[#858995]">indicative</span></p>}
+                          <div className="mt-3 rounded-xl border border-[#e8e2ff] bg-[#f8f6ff] p-3">
+                            <p className="text-xs font-black text-[#5b45c7]">Price not defined yet</p>
+                            {typeof item.priceMin === 'number' && typeof item.priceMax === 'number'
+                              ? <p className="mt-1 text-xs leading-5 text-[#656a75]">The final price will be confirmed after inspection or supplier confirmation and will be within {money(item.priceMin)}–{money(item.priceMax}, subject to the exact work/materials required.</p>
+                              : <p className="mt-1 text-xs leading-5 text-[#656a75]">The final price will be confirmed after professional inspection or supplier confirmation. It will be communicated before any additional work or material is approved.</p>}
+                          </div>
                           <div className="mt-3 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-1 rounded-xl border border-[#e6e6ee] p-1">
                               <button type="button" aria-label={`Decrease ${item.serviceName} quantity`} onClick={() => changeQuantity(item.id, -1)} disabled={Number(item.quantity || 1) <= 1} className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-[#f4f2ff] disabled:opacity-30"><Minus className="h-3.5 w-3.5" /></button>
@@ -112,8 +123,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                   ))}
                 </div>
                 <footer className="shrink-0 border-t border-[#ececf2] bg-white px-4 py-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.06)] sm:px-8 sm:py-6">
-                  <div className="flex items-center justify-between"><span className="text-sm font-bold text-[#656a75]">Indicative service total</span><span className="text-xl font-black text-[#17191d]">{money(total)}</span></div>
-                  <p className="mt-2 text-[10px] leading-4 text-[#858995]">Final service/material price may change after professional inspection or supplier confirmation.</p>
+                  <p className="text-xs leading-5 text-[#656a75]">Service and product/material prices are not included in the cart total. The final amount will be confirmed with you before work or materials are approved.</p>
                   <button type="button" onClick={() => { setOpen(false); onCheckout(true); }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7358d7] px-5 py-3.5 text-sm font-black text-white hover:bg-[#5b45c7]">Continue to booking <ArrowRight className="h-4 w-4" /></button>
                 </footer>
               </>
