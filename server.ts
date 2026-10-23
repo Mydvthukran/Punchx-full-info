@@ -456,6 +456,11 @@ async function startServer() {
       const workerApplication = requestedWorkerId ? await dbAdapter.getWorkerApplicationByUid(requestedWorkerId) : null;
       const nowIso = new Date().toISOString();
 
+      // First booking welcome offer: waive the customer platform fee once per authenticated account.
+      // Check server-side order history; never trust a client-supplied "first booking" flag.
+      const existingCustomerOrders = await dbAdapter.listOrders({ customerId: uid });
+      const isFirstCustomerBooking = existingCustomerOrders.length === 0;
+
       // 1. Authoritative Server-Side Pricing Calculation (Never trust client prices)
       const quote = calculateAuthoritativeQuote({
         serviceId: orderData.serviceId,
@@ -463,6 +468,7 @@ async function startServer() {
         isEmergency: Boolean(orderData.emergencySurcharge || orderData.isEmergency),
         couponCode: orderData.couponUsed || orderData.couponCode,
         customVisitingFee: orderData.visitingFee,
+        waivePlatformFee: isFirstCustomerBooking,
       });
 
       // 2. Initial state determination
