@@ -22,15 +22,12 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 
 /* ── Semantic groupings for the category grid ── */
 const CATEGORY_GROUPS: { title: string; emoji: string; ids: string[] }[] = [
-  { title: 'Home Repairs', emoji: '🏠', ids: ['electrician', 'plumber', 'carpenter', 'painter', 'mason', 'welder', 'locksmith', 'pop-false-ceiling-worker', 'glass-glazier-worker', 'waterproofing-specialist'] },
-  { title: 'Appliances & Technology', emoji: '🔧', ids: ['ac-technician', 'appliance-repair-technician', 'ro-water-purifier-technician', 'electronics-repair-technician', 'computer-laptop-technician', 'mobile-repair-technician', 'cctv-technician', 'solar-technician'] },
-  { title: 'Cleaning & Home Care', emoji: '🧹', ids: ['cleaner-housekeeper', 'upholstery-sofa-cleaner', 'pest-control-worker', 'gardener', 'laundry-dry-cleaner', 'home-disinfection', 'vehicle-detailing'] },
-  { title: 'Beauty & Personal Care', emoji: '✨', ids: ['beautician', 'massage-spa', 'tailor', 'cobbler-shoe-repairer'] },
-  { title: 'Daily Help & Moving', emoji: '📦', ids: ['packer-mover', 'delivery-driver', 'domestic-help', 'cook', 'caterer', 'security-guard'] },
-  { title: 'Design & Events', emoji: '🎬', ids: ['interior-decorator', 'event-decorator', 'photographer', 'videographer', 'dj-sound-technician'] },
+  { title: 'Home Repairs', emoji: '🏠', ids: ['electrician', 'plumber', 'carpenter', 'painter'] },
+  { title: 'Cleaning & Appliances', emoji: '🧹', ids: ['cleaner-housekeeper', 'ac-technician', 'pest-control-worker'] },
+  { title: 'Lifestyle & Care', emoji: '✨', ids: ['beautician', 'cook', 'home-care-physiotherapy'] },
 ];
 
-const POPULAR_IDS = ['electrician', 'plumber', 'carpenter', 'ac-technician', 'cleaner-housekeeper', 'painter', 'appliance-repair-technician', 'beautician'];
+const POPULAR_IDS = ['electrician', 'plumber', 'cleaner-housekeeper', 'ac-technician', 'pest-control-worker', 'beautician', 'carpenter', 'painter', 'cook', 'home-care-physiotherapy'];
 
 /* ── Accent color per group for visual variety ── */
 const GROUP_COLORS = [
@@ -166,19 +163,7 @@ export default function CitizenHomeCatalog({
       >
         <div className="relative mb-1 h-[76px] w-full overflow-hidden rounded-xl bg-[#E8D2C4] sm:h-[90px]" style={{backgroundImage:"linear-gradient(135deg,#E8D2C4,#C7A9A3)"}}>
           <img
-            src={({
-              electrician: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=360&q=72',
-              plumber: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=360&q=72',
-              carpenter: 'https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=360&q=72',
-              painter: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=360&q=72',
-              'ac-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=360&q=72',
-              'cleaner-housekeeper': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=360&q=72',
-              beautician: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=360&q=72',
-              cook: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=360&q=72',
-              'interior-decorator': 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=360&q=72',
-              'packer-mover': 'https://images.unsplash.com/photo-1600518464441-9306b6a7a4c3?auto=format&fit=crop&w=360&q=72',
-              'appliance-repair-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=360&q=72'
-            } as Record<string, string>)[cat.id] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=360&q=72'}
+            src={cat.imageUrl}
             alt="" aria-hidden="true" loading="lazy"
             className="px-service-photo h-full w-full object-cover"
             onError={(event) => { event.currentTarget.style.display = 'none'; }}
@@ -355,16 +340,7 @@ export default function CitizenHomeCatalog({
                 >
                   <div className="relative mb-3 h-[92px] overflow-hidden rounded-xl bg-[#E8D2C4]" style={{backgroundImage:"linear-gradient(135deg,#E8D2C4,#C7A9A3)"}}>
                     <img
-                      src={({
-                        electrician: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=420&q=75',
-                        plumber: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=420&q=75',
-                        carpenter: 'https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=420&q=75',
-                        'ac-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=420&q=75',
-                        'cleaner-housekeeper': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=420&q=75',
-                        painter: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=420&q=75',
-                        'appliance-repair-technician': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=420&q=75',
-                        beautician: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=420&q=75',
-                      } as Record<string, string>)[cat.id] || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=420&q=75'}
+                      src={cat.imageUrl}
                       alt=""
                       aria-hidden="true"
                       loading="lazy"
