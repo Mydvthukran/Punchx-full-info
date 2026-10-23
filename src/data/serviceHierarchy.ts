@@ -89,6 +89,16 @@ const specific: Record<string, Array<[string, LeafSeed[]]>> = {
   'domestic-help': [['Routine Household Help', [['Sweeping and mopping', 249], ['Dishwashing', 199], ['Dusting and surface cleaning', 199], ['Laundry folding assistance', 199]]], ['Scheduled Assistance', [['Part-time household helper visit', 299], ['Kitchen cleanup assistance', 249], ['Move-in household setup help', 399]]]],
   'massage-spa': [['Wellness Massage', [['Relaxation massage session', 799], ['Head and shoulder massage', 399], ['Foot massage session', 399]]], ['Spa Services', [['Appointment-based spa treatment', 999], ['Wellness consultation and session selection', 199]]]],
   'home-disinfection': [['Home Sanitisation', [['High-touch surface disinfection', 399], ['Kitchen surface sanitisation', 299], ['Bathroom surface disinfection', 299]]], ['Property Disinfection', [['Full-home surface disinfection', 699], ['Small-office disinfection', 799], ['Post-move-in sanitisation', 599]]]],
+  cook: [
+    ['Meal Preparation', [['Breakfast preparation', 249], ['Lunch or dinner preparation', 299], ['Family meal preparation', 399], ['Weekly meal-prep visit', 599]]],
+    ['Kitchen & Household Assistance', [['Kitchen cleanup assistance', 249], ['Dishwashing assistance', 199], ['Routine household help visit', 299]]],
+    ['Scheduled Home Help', [['Part-time cook visit', 299], ['Daily cooking arrangement consultation', 99]]]
+  ],
+  'home-care-physiotherapy': [
+    ['Physiotherapy at Home', [['Initial physiotherapy assessment', 699, '60 mins'], ['Physiotherapy follow-up visit', 599, '45 mins'], ['Mobility and flexibility session', 499, '45 mins'], ['Post-surgery recovery session', 699, '60 mins']]],
+    ['Elderly & Daily Care', [['Elderly assistance visit', 399, '60 mins'], ['Walking and mobility support', 299, '45 mins'], ['Daily living assistance visit', 399, '60 mins'], ['Caregiver relief visit', 499, '120 mins']]],
+    ['Recovery Support', [['Home exercise guidance', 399, '45 mins'], ['Balance and coordination practice', 499, '45 mins'], ['Recovery progress review', 299, '30 mins']]]
+  ],
 };
 
 const genericGroups = [
@@ -111,12 +121,12 @@ const appendLegacyGroups = (targetId: string, sourceIds: string[]) => {
   });
   specific[targetId] = merged;
 };
-appendLegacyGroups('appliance-repair-technician', ['refrigerator-technician', 'washing-machine-technician']);
+appendLegacyGroups('ac-technician', ['appliance-repair-technician', 'refrigerator-technician', 'washing-machine-technician', 'ro-water-purifier-technician', 'electronics-repair-technician']);
+appendLegacyGroups('cleaner-housekeeper', ['upholstery-sofa-cleaner', 'home-disinfection']);
+appendLegacyGroups('carpenter', ['locksmith', 'glass-glazier-worker', 'welder', 'fabricator']);
 appendLegacyGroups('beautician', ['hair-stylist', 'barber']);
-appendLegacyGroups('laundry-dry-cleaner', ['ironing-worker']);
-appendLegacyGroups('painter', ['house-painter']);
-appendLegacyGroups('mason', ['tile-marble-installer']);
-appendLegacyGroups('welder', ['fabricator']);
+appendLegacyGroups('cook', ['domestic-help', 'caterer', 'tiffin-home-food-provider']);
+appendLegacyGroups('painter', ['house-painter', 'mason', 'tile-marble-installer', 'waterproofing-specialist', 'pop-false-ceiling-worker']);
 
 function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
