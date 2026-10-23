@@ -13,7 +13,7 @@ interface WebsiteFooterProps {
 export default function WebsiteFooter({ onTransition, onSelectCategory, showNotification }: WebsiteFooterProps) {
   const [refundOpen, setRefundOpen] = useState(false);
 
-  const serviceLinks = PUNCHX_50_CATEGORIES.slice(0, 8);
+  const serviceLinks = PUNCHX_50_CATEGORIES;
 
   const jump = (category: string) => {
     onSelectCategory?.(category);
