@@ -547,7 +547,7 @@ export default function CitizenHomeCatalog({
                   autoFocus
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  placeholder="Search all 50 services…"
+                  placeholder="Search the 10 service categories…"
                   className="min-w-0 flex-1 text-sm font-medium outline-none placeholder:text-gray-400"
                 />
                 <span className="hidden sm:flex items-center gap-1 rounded-full bg-[#F7EFE7] px-3 py-1
@@ -583,11 +583,8 @@ export default function CitizenHomeCatalog({
                                      hover:bg-[#FFFCF8] hover:shadow-md hover:border-[#E8D2C4]
                                      transition-all cursor-pointer"
                         >
-                          <div className="flex h-11 w-11 items-center justify-center rounded-xl
-                                          bg-[#FFFCF8] shadow-sm group-hover:shadow
-                                          transition-all">
-                            <IconComp className="h-5 w-5 text-[#6B5560] group-hover:scale-110
-                                                 transition-transform" />
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white shadow-sm">
+                            <img src={cat.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                           </div>
                           <span className="text-[11px] font-semibold leading-tight text-[#6B5560]
                                            line-clamp-2">
