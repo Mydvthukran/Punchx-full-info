@@ -26,7 +26,7 @@ interface WebsiteNavbarProps {
   hasActiveBooking?: boolean;
 }
 
-const QUICK_CATEGORIES = PUNCHX_50_CATEGORIES.slice(0, 8);
+const QUICK_CATEGORIES = PUNCHX_50_CATEGORIES;
 
 export default function WebsiteNavbar({
   currentScreen,
@@ -133,7 +133,7 @@ export default function WebsiteNavbar({
                   >
                     <div className="mb-2 flex items-center justify-between rounded-2xl bg-[#f7f5ff] px-3 py-2">
                       <div className="flex items-center gap-2 text-xs font-black text-[#2d2d34]"><Grid2X2 className="h-4 w-4 text-[#7358d7]" /> Quick services</div>
-                      <button onClick={() => { setServicesOpen(false); setCategoryModalOpen(true); }} className="text-[10px] font-extrabold text-[#7358d7]">Browse all 50</button>
+                      <button onClick={() => { setServicesOpen(false); setCategoryModalOpen(true); }} className="text-[10px] font-extrabold text-[#7358d7]">Browse all 10</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {QUICK_CATEGORIES.map(cat => (
