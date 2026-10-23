@@ -37,8 +37,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
   const [isLocating, setIsLocating] = useState(false);
 
   // 3. Trade & Technical Skills
-  const [primaryService, setPrimaryService] = useState('Electrician');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Electrician']);
+  const [primaryService, setPrimaryService] = useState('Electrician Services');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Electrician Services']);
   const [customSkill, setCustomSkill] = useState('');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
@@ -166,16 +166,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     }
   };
 
-  const quickCategories = [
-    'Electrician',
-    'Plumber',
-    'AC Technician',
-    'Carpenter',
-    'Painter',
-    'CCTV Technician',
-    'Solar Technician',
-    'Mechanic'
-  ];
+  const quickCategories = PUNCHX_50_CATEGORIES.map((category) => category.name);
 
   const toggleCategory = (catName: string) => {
     if (selectedCategories.includes(catName)) {
@@ -711,6 +702,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {quickCategories.map((cat) => {
                     const isSelected = selectedCategories.includes(cat);
+                    const categoryData = PUNCHX_50_CATEGORIES.find((category) => category.name === cat);
                     return (
                       <button
                         key={cat}
@@ -722,7 +714,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
                             : 'bg-[#07122a] text-zinc-300 border-zinc-800 hover:border-[#c5a059]/40'
                         }`}
                       >
-                        <span className="truncate">{cat}</span>
+                        <span className="flex min-w-0 items-center gap-2 truncate"><img src={categoryData?.imageUrl} alt="" loading="lazy" className="h-8 w-8 shrink-0 rounded-lg object-cover" /><span className="truncate">{cat}</span></span>
                         {isSelected ? (
                           <CheckCircle2 className="w-3.5 h-3.5 text-black flex-shrink-0" />
                         ) : (
