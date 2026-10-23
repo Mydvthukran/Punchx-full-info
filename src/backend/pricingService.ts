@@ -9,6 +9,7 @@ export interface PricingQuoteRequest {
   couponCode?: string;
   customVisitingFee?: number;
   workerVisitingFee?: number;
+  waivePlatformFee?: boolean;
 }
 
 export interface PricingQuoteResult {
@@ -143,7 +144,7 @@ export function calculateAuthoritativeQuote(request: PricingQuoteRequest): Prici
   const subtotalAfterDiscount = subtotalBeforeDiscount - discountApplied;
 
   // 3. Platform Fee
-  const customerPlatformFee = rawCoupon === 'FREESHIP' ? 0 : PLATFORM_FEE;
+  const customerPlatformFee = request.waivePlatformFee === true || rawCoupon === 'FREESHIP' ? 0 : PLATFORM_FEE;
 
   // 4. GST Calculation (18% on discounted services + convenience fee)
   const taxableAmount = subtotalAfterDiscount + customerPlatformFee;
