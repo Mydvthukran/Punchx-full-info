@@ -28,7 +28,7 @@ export default function ChoosePayment({onTransition,selectedWorker,onOrderFinali
       if(!user){if(!cancelled)setIsFirstBooking(false);return;}
       try{
         const token=await user.getIdToken();
-        const backendBase=String(import.meta.env.VITE_BACKEND_URL||'').replace(/\\/$/,'');
+        const backendBase=String(import.meta.env.VITE_BACKEND_URL||'').replace(/\/$/,'');
         const response=await fetch(`${backendBase}/api/orders`,{headers:{Authorization:`Bearer ${token}`}});
         if(!response.ok)throw new Error('Could not verify booking history');
         const result=await response.json();
