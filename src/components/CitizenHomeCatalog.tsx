@@ -298,11 +298,11 @@ export default function CitizenHomeCatalog({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[#d8c18d]/15 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider text-[#E8D2C4] ring-1 ring-[#d8c18d]/30">Featured</span>
+                  <span className="rounded-full bg-emerald-300/15 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-200/30">₹0 PLATFORM FEE</span>
                   <span className="text-[10px] font-semibold text-[#E8D2C4]">PUNCHX SPOTLIGHT</span>
                 </div>
-                <h2 className="mt-1 text-base font-extrabold leading-5 text-[#F7EFE7] sm:text-lg">A little help changes everything.</h2>
-                <p className="mt-1 text-xs leading-5 text-[#E8D2C4]">Discover skilled local professionals for the things that matter at home.</p>
+                <h2 className="mt-1 text-base font-extrabold leading-5 text-[#F7EFE7] sm:text-lg">Your first booking, platform-fee free.</h2>
+                <p className="mt-1 text-xs leading-5 text-[#E8D2C4]">Welcome to PUNCHX! Pay no platform charge on your first booking. Visiting fees and product/material costs may still apply.</p>
               </div>
               <button type="button" onClick={() => { setQuery(''); setSearchOpen(true); }} className="relative shrink-0 rounded-xl bg-[#c4a568] px-3 py-2.5 text-xs font-extrabold text-[#171813] shadow-sm transition hover:bg-[#d8c18d] sm:px-4">Explore <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></button>
             </div>
