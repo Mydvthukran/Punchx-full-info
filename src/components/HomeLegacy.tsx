@@ -40,16 +40,7 @@ interface HomeProps {
   setIsProfileDrawerOpen?: (val: boolean) => void;
 }
 
-const CATEGORIES: ServiceCategory[] = [
-  { id: 'electrical', name: 'Electrical', icon: 'electrical_services' },
-  { id: 'plumbing', name: 'Plumbing', icon: 'plumbing' },
-  { id: 'cleaning', name: 'Cleaning', icon: 'cleaning_services' },
-  { id: 'ac', name: 'AC Repair', icon: 'ac_unit' },
-  { id: 'painting', name: 'Painting', icon: 'format_paint' },
-  { id: 'carpentry', name: 'Carpentry', icon: 'carpenter' },
-  { id: 'pest', name: 'Pest Control', icon: 'pest_control' },
-  { id: 'moving', name: 'Moving', icon: 'local_shipping' },
-];
+const CATEGORIES = PUNCHX_50_CATEGORIES;
 
 const EXPERTS: Worker[] = [];
 
@@ -215,7 +206,7 @@ export default function HomeDashboard(props: HomeProps) {
 
         <section className="rounded-3xl border border-white/10 bg-[#0a152e] p-5 sm:p-7">
           <div className="flex items-center justify-between gap-3 mb-4"><div><h2 className="text-xl font-black">Popular services</h2><p className="text-xs text-gray-400 mt-1">Choose a category to find professionals.</p></div><button type="button" onClick={handleOpenCategories} className="text-sm font-bold text-[#e9c176]">View all</button></div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{CATEGORIES.map(cat => <button key={cat.id} type="button" onClick={() => handleCategoryClick(cat.name)} className="min-h-24 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left hover:border-[#c5a059]/60 hover:bg-[#c5a059]/10 focus:outline-none focus:ring-2 focus:ring-[#c5a059]"><CategoryIcon category={cat.name} className="w-7 h-7 mb-2 text-[#e9c176]" /><span className="block text-sm font-bold">{cat.name}</span></button>)}</div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{CATEGORIES.map(cat => <button key={cat.id} type="button" onClick={() => handleCategoryClick(cat.name)} className="group min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] text-left transition hover:-translate-y-1 hover:border-[#c5a059]/60 hover:bg-[#c5a059]/10 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#c5a059]"><div className="h-24 overflow-hidden bg-[#0a152e]"><img src={cat.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"/></div><div className="p-3"><span className="block text-sm font-bold">{cat.name}</span><span className="mt-1 block line-clamp-2 text-[10px] leading-4 text-gray-400">{cat.shortDesc}</span></div></button>)}</div>
         </section>
 
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-3"><div className="rounded-2xl border border-white/10 p-5 bg-[#0a152e]"><ShieldCheck className="text-[#e9c176]"/><h3 className="font-bold mt-3">Local professionals</h3><p className="text-xs text-gray-400 mt-1">Explore available local service providers.</p></div><div className="rounded-2xl border border-white/10 p-5 bg-[#0a152e]"><CreditCard className="text-[#e9c176]"/><h3 className="font-bold mt-3">Secure booking</h3><p className="text-xs text-gray-400 mt-1">Keep booking and payment steps clear.</p></div><div className="rounded-2xl border border-white/10 p-5 bg-[#0a152e]"><Navigation className="text-[#e9c176]"/><h3 className="font-bold mt-3">Service tracking</h3><p className="text-xs text-gray-400 mt-1">Follow active jobs from your account.</p></div></section>
