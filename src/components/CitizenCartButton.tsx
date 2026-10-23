@@ -106,7 +106,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                           <div className="mt-3 rounded-xl border border-[#e8e2ff] bg-[#f8f6ff] p-3">
                             <p className="text-xs font-black text-[#5b45c7]">Price not defined yet</p>
                             {typeof item.priceMin === 'number' && typeof item.priceMax === 'number'
-                              ? <p className="mt-1 text-xs leading-5 text-[#656a75]">The final price will be confirmed after inspection or supplier confirmation and will be within {money(item.priceMin)}–{money(item.priceMax}, subject to the exact work/materials required.</p>
+                              ? <p className="mt-1 text-xs leading-5 text-[#656a75]">The final price will be confirmed after inspection or supplier confirmation and will be within {money(item.priceMin)}–{money(item.priceMax)}, subject to the exact work/materials required.</p>
                               : <p className="mt-1 text-xs leading-5 text-[#656a75]">The final price will be confirmed after professional inspection or supplier confirmation. It will be communicated before any additional work or material is approved.</p>}
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3">
