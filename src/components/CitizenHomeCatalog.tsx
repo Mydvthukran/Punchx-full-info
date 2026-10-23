@@ -568,8 +568,7 @@ export default function CitizenHomeCatalog({
                 {matches.length ? (
                   <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
                     {matches.map((cat, i) => {
-                      const IconComp = ICON_MAP[cat.iconName] || Wrench;
-                      return (
+                                            return (
                         <motion.button
                           key={cat.id}
                           onClick={() => openCategory(cat.name)}
