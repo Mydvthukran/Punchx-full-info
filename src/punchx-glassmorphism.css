@@ -1,0 +1,340 @@
+/* PunchX Glassmorphism System — shared across landing, citizen, worker, admin, auth and booking.
+   Brand direction: warm ivory, champagne and olive. Existing React flows are intentionally untouched. */
+
+:root {
+  --px-glass-ink: #24221c;
+  --px-glass-muted: #777265;
+  --px-glass-gold: #a98a52;
+  --px-glass-gold-light: #ddc79a;
+  --px-glass-olive: #64745d;
+  --px-glass-paper: #fbf8f1;
+  --px-glass-tint: rgba(255, 252, 246, .66);
+  --px-glass-tint-strong: rgba(255, 253, 249, .84);
+  --px-glass-stroke: rgba(255, 255, 255, .76);
+  --px-glass-stroke-warm: rgba(169, 138, 82, .19);
+  --px-glass-shadow: 0 18px 48px rgba(69, 54, 31, .10);
+  --px-glass-shadow-hover: 0 24px 56px rgba(69, 54, 31, .15);
+  --px-glass-blur: 22px;
+}
+
+html {
+  background: var(--px-glass-paper);
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--px-glass-ink);
+  background:
+    radial-gradient(ellipse at 7% 7%, rgba(221, 199, 154, .42), transparent 31rem),
+    radial-gradient(ellipse at 93% 12%, rgba(100, 116, 93, .17), transparent 30rem),
+    radial-gradient(ellipse at 62% 84%, rgba(200, 161, 111, .16), transparent 34rem),
+    linear-gradient(145deg, #fcfaf5 0%, #f6f1e7 52%, #f9f6ef 100%) !important;
+  background-attachment: fixed !important;
+  overflow-x: clip;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  opacity: .72;
+  background:
+    radial-gradient(circle at 18% 32%, rgba(255, 255, 255, .72), transparent 22rem),
+    radial-gradient(circle at 84% 66%, rgba(255, 255, 255, .43), transparent 25rem);
+}
+
+#root {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  background: transparent !important;
+  color: var(--px-glass-ink);
+}
+
+#root::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(125deg, rgba(255,255,255,.12), transparent 42%, rgba(255,255,255,.08));
+}
+
+/* Shared frosted surfaces: cards, tiles, dashboard panels and content containers. */
+#root [class*="rounded-"][class*="shadow-"]:not(button):not(a):not(img),
+#root [class*="rounded-"][class*="bg-white/"]:not(button):not(a),
+#root [class*="rounded-"][class*="bg-white"]:not(button):not(a),
+#root [class*="rounded-"][class*="bg-[#fff"]:not(button):not(a),
+#root [class*="rounded-"][class*="bg-[#fbfaf7]"]:not(button):not(a),
+#root [class*="rounded-"][class*="bg-[#f7efe7]"]:not(button):not(a) {
+  background-color: var(--px-glass-tint) !important;
+  border-color: var(--px-glass-stroke) !important;
+  box-shadow: var(--px-glass-shadow), inset 0 1px 0 rgba(255,255,255,.82) !important;
+  -webkit-backdrop-filter: blur(var(--px-glass-blur)) saturate(145%);
+  backdrop-filter: blur(var(--px-glass-blur)) saturate(145%);
+}
+
+/* Large app panels should reveal the ambient light without losing their visual boundaries. */
+#root .punchx-citizen-main,
+#root .punchx-citizen-shell,
+#root #providers-list-root,
+#root #provider-details-root,
+#root #booking-container,
+#root #payment-screen-container {
+  background-color: transparent !important;
+}
+
+#root .punchx-citizen-shell main > section:first-child > div {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.84), rgba(250,245,234,.61) 58%, rgba(237,241,233,.60)) !important;
+  border: 1px solid rgba(255,255,255,.86) !important;
+  box-shadow: 0 24px 64px rgba(69,54,31,.10), inset 0 1px 0 rgba(255,255,255,.96) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  backdrop-filter: blur(26px) saturate(150%);
+}
+
+/* Legacy dark surfaces become smoked, translucent glass, so their existing light labels stay legible. */
+#root [class*="bg-[#07122a]"],
+#root [class*="bg-[#081226]"],
+#root [class*="bg-[#0c1020]"],
+#root [class*="bg-[#0c0f10]"],
+#root [class*="bg-[#0e1b38]"],
+#root [class*="bg-[#101525]"],
+#root [class*="bg-[#111415]"],
+#root [class*="bg-[#11192e]"],
+#root [class*="bg-[#151f37]"],
+#root [class*="bg-[#171c35]"],
+#root [class*="bg-[#0a152e]"],
+#root [class*="bg-[#0d121f]"] {
+  background-color: rgba(55, 47, 34, .76) !important;
+  background-image: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.035)) !important;
+  border-color: rgba(255, 255, 255, .17) !important;
+  box-shadow: 0 18px 44px rgba(44, 33, 19, .16), inset 0 1px 0 rgba(255,255,255,.16) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+
+/* Glass navigation and sticky bars across public pages, booking, worker and admin views. */
+#root nav,
+#root [id*="topbar"],
+#root [class*="navbar"],
+#root [class*="navigation"],
+#root .punchx-citizen-shell > header,
+#root #providers-list-root header,
+#root #provider-details-root header,
+#root #booking-topbar,
+#root #payment-topbar,
+#root #punchx-website-footer {
+  background: rgba(255, 251, 243, .76) !important;
+  color: var(--px-glass-ink) !important;
+  border-color: rgba(255,255,255,.80) !important;
+  box-shadow: 0 10px 34px rgba(69,54,31,.075), inset 0 1px 0 rgba(255,255,255,.9) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+
+/* Keep dark navigation bars dark-glass when they are part of a deliberately dark panel. */
+#root [class*="bg-[#07122a]"] nav,
+#root [class*="bg-[#0c1020]"] nav,
+#root [class*="bg-[#101525]"] nav,
+#root [class*="bg-[#171c35]"] nav {
+  background: rgba(48, 41, 30, .72) !important;
+  color: #fffaf0 !important;
+  border-color: rgba(255,255,255,.15) !important;
+}
+
+/* Inputs, search fields and booking forms: translucent, tactile, and easy to focus. */
+#root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+#root textarea,
+#root select {
+  background-color: rgba(255, 253, 249, .78) !important;
+  color: #29261f !important;
+  border-color: rgba(169, 138, 82, .27) !important;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 3px rgba(74,58,33,.035), 0 5px 16px rgba(69,54,31,.035);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: border-color .22s ease, box-shadow .22s ease, background-color .22s ease, transform .22s ease;
+}
+
+#root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):focus,
+#root textarea:focus,
+#root select:focus {
+  background-color: rgba(255,255,255,.94) !important;
+  border-color: rgba(169,138,82,.66) !important;
+  box-shadow: 0 0 0 4px rgba(185,154,98,.13), 0 9px 22px rgba(69,54,31,.07) !important;
+  outline: none;
+}
+
+#root input::placeholder,
+#root textarea::placeholder {
+  color: #8a8375 !important;
+  opacity: 1;
+}
+
+/* Public footer uses the same bright glass instead of an isolated opaque block. */
+#root #punchx-website-footer {
+  background:
+    linear-gradient(135deg, rgba(255,253,248,.86), rgba(246,240,229,.78)) !important;
+  color: var(--px-glass-ink) !important;
+  border-top: 1px solid rgba(255,255,255,.84) !important;
+}
+#root #punchx-website-footer [class*="text-white"],
+#root #punchx-website-footer [class*="text-white/"] {
+  color: #3b352a !important;
+}
+#root #punchx-website-footer a:hover {
+  color: var(--px-glass-gold) !important;
+}
+
+/* Glass dialog surfaces and drawers; overlays remain dark enough to anchor the focus. */
+#root [role="dialog"],
+#root [aria-modal="true"],
+#root [data-radix-dialog-content],
+#root [class*="modal-content"],
+#root [class*="drawer-content"] {
+  border: 1px solid rgba(255,255,255,.82);
+  border-radius: 24px;
+  box-shadow: 0 28px 80px rgba(42,32,18,.22), inset 0 1px 0 rgba(255,255,255,.76);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  backdrop-filter: blur(26px) saturate(150%);
+}
+
+/* Primary CTAs retain a solid branded anchor; secondary controls become quieter glass. */
+#root button[class*="bg-[#c5a059]"],
+#root button[class*="bg-[#b99a62]"],
+#root button[class*="bg-[#80663a]"],
+#root button[class*="bg-[#2563eb]"],
+#root button[class*="bg-[#3478f6]"],
+#root button[class*="bg-[#7358d7]"],
+#root button[class*="bg-[#5b45c7]"],
+#root button[class*="bg-blue-"],
+#root button[class*="bg-sky-"],
+#root button[class*="bg-indigo-"],
+#root button[class*="bg-violet-"],
+#root button[class*="bg-purple-"] {
+  background: linear-gradient(135deg, #927343 0%, #b99a62 54%, #c8ad79 100%) !important;
+  border-color: rgba(128,102,58,.44) !important;
+  color: #fffdf7 !important;
+  box-shadow: 0 10px 26px rgba(128,102,58,.22), inset 0 1px 0 rgba(255,255,255,.25) !important;
+}
+
+#root button[class*="bg-white"],
+#root button[class*="bg-gray-"],
+#root button[class*="bg-slate-"],
+#root button[class*="bg-stone-"],
+#root a[class*="bg-white"],
+#root a[class*="bg-gray-"],
+#root a[class*="bg-slate-"] {
+  background-color: rgba(255,253,248,.64) !important;
+  border-color: rgba(255,255,255,.82) !important;
+  color: #393429 !important;
+  box-shadow: 0 8px 20px rgba(69,54,31,.06), inset 0 1px 0 rgba(255,255,255,.86);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* Rich but restrained motion: lift, sheen and a softer entrance for interactive surfaces. */
+#root button,
+#root a,
+#root [role="button"] {
+  transition:
+    transform .24s cubic-bezier(.2,.7,.2,1),
+    box-shadow .28s ease,
+    border-color .24s ease,
+    background-color .24s ease,
+    filter .24s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root button:hover:not(:disabled),
+#root a:hover,
+#root [role="button"]:hover {
+  filter: saturate(1.035);
+}
+
+#root button:active:not(:disabled),
+#root a:active,
+#root [role="button"]:active {
+  transform: translateY(1px) scale(.985);
+}
+
+#root button:focus-visible,
+#root a:focus-visible,
+#root [role="button"]:focus-visible,
+#root input:focus-visible,
+#root textarea:focus-visible,
+#root select:focus-visible {
+  outline: 2px solid rgba(169,138,82,.72) !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(185,154,98,.12);
+}
+
+#root [class*="rounded-"][class*="shadow-"]:not(button):not(a):not(img):hover {
+  box-shadow: var(--px-glass-shadow-hover), inset 0 1px 0 rgba(255,255,255,.88) !important;
+}
+
+#root .punchx-citizen-shell section button > div.rounded-2xl,
+#root .punchx-citizen-shell section button > div.rounded-3xl {
+  border-color: rgba(255,255,255,.82) !important;
+  box-shadow: 0 10px 26px rgba(69,54,31,.07), inset 0 1px 0 rgba(255,255,255,.9) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+
+/* Keep media crisp and add a polished edge without washing out service photos. */
+#root .punchx-category-hero-media,
+#root .px-service-photo,
+#root [class*="service-image"],
+#root [class*="service-photo"] {
+  overflow: hidden;
+  border-color: rgba(255,255,255,.62);
+}
+#root img {
+  -webkit-user-drag: none;
+}
+#root img[loading="lazy"] {
+  transition: transform .38s cubic-bezier(.2,.7,.2,1), filter .38s ease;
+}
+
+/* Scrollbars and selection follow the warm branded palette. */
+* {
+  scrollbar-color: rgba(169,138,82,.46) rgba(255,255,255,.22);
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: rgba(255,255,255,.24); }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #d5c092, #9d804d);
+  border: 2px solid rgba(255,255,255,.5);
+  border-radius: 999px;
+}
+::selection { background: rgba(185,154,98,.28); color: #29261f; }
+
+/* Mobile: maintain the blur while preventing wide panels and side-scroll overflow. */
+@media (max-width: 768px) {
+  body { background-attachment: scroll !important; }
+  #root [class*="rounded-"][class*="shadow-"]:not(button):not(a):not(img) {
+    box-shadow: 0 12px 32px rgba(69,54,31,.08), inset 0 1px 0 rgba(255,255,255,.78) !important;
+  }
+  #root [role="dialog"],
+  #root [aria-modal="true"],
+  #root [data-radix-dialog-content] {
+    border-radius: 20px;
+    max-width: calc(100vw - 24px);
+  }
+  #root nav { -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+}
+@supports not ((backdrop-filter: blur(1px))) {
+  #root [class*="rounded-"][class*="shadow-"]:not(button):not(a):not(img),
+  #root nav,
+  #root [id*="topbar"],
+  #root [class*="navbar"],
+  #root [class*="navigation"] { background-color: rgba(255,252,246,.94) !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root button, #root a, #root [role="button"], #root input, #root textarea, #root select,
+  #root [class*="rounded-"][class*="shadow-"] { transition: none !important; animation: none !important; }
+  #root button:active:not(:disabled), #root a:active, #root [role="button"]:active { transform: none !important; }
+}
