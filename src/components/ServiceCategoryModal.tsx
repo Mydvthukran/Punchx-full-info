@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { Search, X, Check, ArrowRight, Sparkles, CheckCircle2, Plus, AlertCircle, ArrowLeft, ChevronDown, ShieldCheck, UsersRound } from 'lucide-react';
+import { Search, X, Check, ArrowRight, Sparkles, CheckCircle2, AlertCircle, ArrowLeft, ChevronDown, ShieldCheck, UsersRound } from 'lucide-react';
 import { PUNCHX_50_CATEGORIES, filterCategories } from '../data/categories';
 import { serviceCategories, ServiceCategory, ServiceItem } from '../data/serviceCatalogs';
 import { db } from '../lib/firebase';
@@ -49,8 +49,6 @@ export default function ServiceCategoryModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterTab, setActiveFilterTab] = useState('all');
   const [workerSelectedList, setWorkerSelectedList] = useState<string[]>([]);
-  const [customSkillText, setCustomSkillText] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
   const [catalogCategory, setCatalogCategory] = useState<ServiceCategory | null>(null);
   const [expandedSubcategory, setExpandedSubcategory] = useState<string | null>(null);
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -68,8 +66,6 @@ export default function ServiceCategoryModal({
     if (!isOpen) return;
     setSearchQuery('');
     setActiveFilterTab('all');
-    setShowCustomInput(false);
-    setCustomSkillText('');
     setCatalogCategory(null);
     setExpandedSubcategory(null);
     setCatalogSearch('');
@@ -189,20 +185,9 @@ export default function ServiceCategoryModal({
     setWorkerSelectedList((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]);
   };
 
-  const saveCustomSkill = () => {
-    const value = customSkillText.trim();
-    if (!value) return;
-    if (mode === 'citizen') {
-      onSelectCategory?.(value);
-    } else {
-      const updated = Array.from(new Set([...workerSelectedList, value]));
-      onSaveWorkerCategories?.(updated, value);
-    }
-    onClose();
-  };
-
   const saveWorkerCategories = () => {
-    onSaveWorkerCategories?.(workerSelectedList.length ? workerSelectedList : ['Handyman'], customSkillText.trim() || undefined);
+    if (!workerSelectedList.length) return;
+    onSaveWorkerCategories?.(workerSelectedList);
     onClose();
   };
 
@@ -298,7 +283,7 @@ export default function ServiceCategoryModal({
               </div>
               <div className="flex-1 overflow-y-auto p-4 sm:p-6">
                 {filteredList.length === 0 ? (
-                  <div className="space-y-3 py-12 text-center"><AlertCircle className="mx-auto h-10 w-10 text-[#c5a059]" /><p className="text-sm text-zinc-300">No category found matching “{searchQuery}”.</p><button onClick={() => setShowCustomInput(true)} className="rounded-xl border border-[#c5a059]/40 bg-[#c5a059]/20 px-4 py-2 text-xs font-bold text-[#e9c176]">+ Add Custom Service</button></div>
+                  <div className="space-y-3 py-12 text-center"><AlertCircle className="mx-auto h-10 w-10 text-[#c5a059]" /><p className="text-sm text-zinc-300">No category found matching “{searchQuery}”.</p><p className="text-xs text-zinc-500">Choose from the ten available categories or try another search.</p></div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                     {filteredList.map((category, index) => {
@@ -308,8 +293,8 @@ export default function ServiceCategoryModal({
                   </div>
                 )}
               </div>
-              {showCustomInput && <div className="border-t border-[#c5a059]/30 bg-[#111f3d] p-4"><div className="flex flex-col gap-2 sm:flex-row"><input value={customSkillText} onChange={(event) => setCustomSkillText(event.target.value)} placeholder="Enter custom service" className="flex-1 rounded-xl border border-zinc-700 bg-[#070e1d] px-4 py-2 text-xs text-white outline-none" /><button onClick={saveCustomSkill} className="rounded-xl bg-[#c5a059] px-5 py-2 text-xs font-bold text-black"><Plus className="mr-1 inline h-4 w-4" />Use Service</button></div></div>}
-              <footer className="flex flex-col items-center justify-between gap-3 border-t border-zinc-800 bg-[#070e1d] p-4 sm:flex-row sm:p-5"><div className="flex items-center gap-2 text-xs text-zinc-400"><Sparkles className="h-4 w-4 text-[#c5a059]" />{mode === 'worker' ? `${workerSelectedList.length} services selected` : 'Select a main service to open its full catalogue.'}</div><div className="flex w-full gap-2 sm:w-auto"><button onClick={onClose} className="w-1/2 rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-zinc-300 sm:w-auto">Cancel</button>{mode === 'worker' && <button onClick={saveWorkerCategories} className="flex w-1/2 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c5a059] to-[#e9c176] px-6 py-2.5 text-xs font-extrabold uppercase text-black sm:w-auto"><CheckCircle2 className="h-4 w-4" /> Save Services</button>}</div></footer>
+              
+              <footer className="flex flex-col items-center justify-between gap-3 border-t border-zinc-800 bg-[#070e1d] p-4 sm:flex-row sm:p-5"><div className="flex items-center gap-2 text-xs text-zinc-400"><Sparkles className="h-4 w-4 text-[#c5a059]" />{mode === 'worker' ? `${workerSelectedList.length} categories selected` : 'Select a main service to open its full catalogue.'}</div><div className="flex w-full gap-2 sm:w-auto"><button onClick={onClose} className="w-1/2 rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-zinc-300 sm:w-auto">Cancel</button>{mode === 'worker' && <button disabled={!workerSelectedList.length} onClick={saveWorkerCategories} className="flex w-1/2 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c5a059] to-[#e9c176] px-6 py-2.5 text-xs font-extrabold uppercase text-black disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"><CheckCircle2 className="h-4 w-4" /> Save Services</button>}</div></footer>
             </>
           )}
         </motion.div>
