@@ -4,7 +4,6 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 import './punchx-marketplace.css';
-import './punchx-blue-theme.css';
 import './punchx-motion-fixes.css';
 import './punchx-pro-max.css';
 import './punchx-glassmorphism.css';
