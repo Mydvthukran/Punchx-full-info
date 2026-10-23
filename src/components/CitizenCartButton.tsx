@@ -106,8 +106,8 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                           <div className="mt-3 rounded-xl border border-[#e8e2ff] bg-[#f8f6ff] p-3">
                             <p className="text-xs font-black text-[#5b45c7]">Price not defined yet</p>
                             {typeof item.priceMin === 'number' && typeof item.priceMax === 'number'
-                              ? <p className="mt-1 text-xs leading-5 text-[#656a75]">The final price will be confirmed after inspection or supplier confirmation and will be within {money(item.priceMin)}–{money(item.priceMax)}, subject to the exact work/materials required.</p>
-                              : <p className="mt-1 text-xs leading-5 text-[#656a75]">The final price will be confirmed after professional inspection or supplier confirmation. It will be communicated before any additional work or material is approved.</p>}
+                              ? <p className="mt-1 text-xs leading-5 text-[#656a75]">Product/material costs are not included in this pricing. The worker will charge separately for products according to the quality you choose. Please confirm the product and its price with the worker before purchase.</p>
+                              : <p className="mt-1 text-xs leading-5 text-[#656a75]">Product/material costs are not included in this pricing. The worker will charge separately for products according to the quality you choose. Please confirm the product and its price with the worker before purchase.</p>}
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-1 rounded-xl border border-[#e6e6ee] p-1">
@@ -123,7 +123,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
                   ))}
                 </div>
                 <footer className="shrink-0 border-t border-[#ececf2] bg-white px-4 py-4 pb-[max(16px,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.06)] sm:px-8 sm:py-6">
-                  <p className="text-xs leading-5 text-[#656a75]">Service and product/material prices are not included in the cart total. The final amount will be confirmed with you before work or materials are approved.</p>
+                  <p className="text-xs leading-5 text-[#656a75]">Product/material costs are not included in this pricing. The worker will charge separately for products according to the quality you choose. Please confirm the product and its price with the worker before purchase.</p>
                   <button type="button" onClick={() => { setOpen(false); onCheckout(true); }} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7358d7] px-5 py-3.5 text-sm font-black text-white hover:bg-[#5b45c7]">Continue to booking <ArrowRight className="h-4 w-4" /></button>
                 </footer>
               </>
