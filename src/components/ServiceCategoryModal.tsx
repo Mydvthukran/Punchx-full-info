@@ -4,7 +4,6 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { Search, X, Check, ArrowRight, Sparkles, CheckCircle2, Plus, AlertCircle, ArrowLeft, ChevronDown, ShieldCheck, UsersRound } from 'lucide-react';
 import { PUNCHX_50_CATEGORIES, filterCategories } from '../data/categories';
 import { serviceCategories, ServiceCategory, ServiceItem } from '../data/serviceCatalogs';
-import CategoryIcon from './CategoryIcon';
 import { db } from '../lib/firebase';
 
 export interface ServiceCategoryModalProps {
@@ -19,13 +18,11 @@ export interface ServiceCategoryModalProps {
 }
 
 const QUICK_FILTERS = [
-  { id: 'all', label: 'All (50)' },
-  { id: 'repairs', label: 'Home Repairs', keywords: ['electrician', 'plumber', 'carpenter', 'painter', 'mason', 'locksmith', 'handyman'] },
-  { id: 'tech', label: 'Tech & Appliances', keywords: ['ac', 'refrigerator', 'washing', 'mobile', 'computer', 'laptop', 'electronics', 'cctv', 'solar', 'ro', 'appliance', 'wifi'] },
-  { id: 'personal', label: 'Personal & Care', keywords: ['barber', 'hair', 'beautician', 'makeup', 'mehendi', 'tailor', 'cleaner', 'tutor'] },
-  { id: 'transport', label: 'Vehicles & Logistics', keywords: ['bike', 'car', 'delivery', 'driver', 'tractor'] },
-  { id: 'food', label: 'Food & Events', keywords: ['cook', 'baker', 'caterer', 'tiffin', 'photographer', 'videographer', 'event'] },
-  { id: 'rural', label: 'Agri & Construction', keywords: ['construction', 'agricultural', 'tractor', 'pump', 'welder', 'shoe'] },
+  { id: 'all', label: 'All (10)' },
+  { id: 'repairs', label: 'Home Repairs', keywords: ['electrician', 'plumber', 'carpenter', 'painter'] },
+  { id: 'appliances', label: 'Appliances', keywords: ['ac-technician'] },
+  { id: 'cleaning', label: 'Cleaning & Safety', keywords: ['cleaner-housekeeper', 'pest-control-worker'] },
+  { id: 'lifestyle', label: 'Lifestyle & Care', keywords: ['beautician', 'cook', 'home-care-physiotherapy'] },
 ];
 
 const normalize = (value: string) => value.trim().toLowerCase();
@@ -225,7 +222,7 @@ export default function ServiceCategoryModal({
               <div className="flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-widest text-[#e9c176]">
                 <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#c5a059]" />
                 {catalogCategory ? 'PUNCHX SERVICE CATALOGUE' : mode === 'worker' ? 'WORKER SERVICE SELECTION' : 'CITIZEN INSTANT BOOKING'}
-                <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-zinc-400">50 Services</span>
+                <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-zinc-400">{PUNCHX_50_CATEGORIES.length} Categories</span>
               </div>
               <h2 className="mt-1 truncate text-xl font-black text-white sm:text-2xl">
                 {catalogCategory ? catalogCategory.name : titleOverride || (mode === 'worker' ? 'What service do you provide?' : 'What service do you need?')}
@@ -306,7 +303,7 @@ export default function ServiceCategoryModal({
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                     {filteredList.map((category, index) => {
                       const selected = mode === 'worker' ? workerSelectedList.includes(category.name) : false;
-                      return <motion.button key={category.id} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={() => mode === 'worker' ? toggleWorkerCategory(category.name) : handleCitizenSelect(category.name)} className={`relative flex items-start gap-3 rounded-2xl border p-3.5 text-left ${selected ? 'border-[#c5a059] bg-[#152342]' : 'border-zinc-800 bg-[#0e1933]/70 hover:border-[#c5a059]/40'}`}><div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${selected ? 'border-white bg-[#c5a059] text-black' : 'border-zinc-700 bg-[#070e1d] text-[#e9c176]'}`}><CategoryIcon category={category.name} className="h-5 w-5" /></div><div className="min-w-0 flex-1 pr-4"><div className="flex items-center gap-1.5"><span className="font-mono text-[10px] text-zinc-400">#{index + 1}</span><h3 className="truncate text-sm font-bold text-white">{category.name}</h3></div><p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-400">{category.shortDesc}</p></div><div className="absolute right-3 top-3.5">{mode === 'worker' ? <div className={`flex h-5 w-5 items-center justify-center rounded-lg border ${selected ? 'border-emerald-400 bg-emerald-500 text-black' : 'border-zinc-700 bg-[#070e1d] text-transparent'}`}><Check className="h-3.5 w-3.5" /></div> : <ArrowRight className="h-4 w-4 text-zinc-600" />}</div></motion.button>;
+                      return <motion.button key={category.id} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={() => mode === 'worker' ? toggleWorkerCategory(category.name) : handleCitizenSelect(category.name)} className={`relative flex items-start gap-3 rounded-2xl border p-3.5 text-left ${selected ? 'border-[#c5a059] bg-[#152342]' : 'border-zinc-800 bg-[#0e1933]/70 hover:border-[#c5a059]/40'}`}><div className={`h-14 w-14 shrink-0 overflow-hidden rounded-xl border ${selected ? 'border-[#ffdea5]' : 'border-zinc-700'} bg-[#070e1d]`}><img src={category.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /></div><div className="min-w-0 flex-1 pr-4"><div className="flex items-center gap-1.5"><span className="font-mono text-[10px] text-zinc-400">#{index + 1}</span><h3 className="truncate text-sm font-bold text-white">{category.name}</h3></div><p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-400">{category.shortDesc}</p></div><div className="absolute right-3 top-3.5">{mode === 'worker' ? <div className={`flex h-5 w-5 items-center justify-center rounded-lg border ${selected ? 'border-emerald-400 bg-emerald-500 text-black' : 'border-zinc-700 bg-[#070e1d] text-transparent'}`}><Check className="h-3.5 w-3.5" /></div> : <ArrowRight className="h-4 w-4 text-zinc-600" />}</div></motion.button>;
                     })}
                   </div>
                 )}
