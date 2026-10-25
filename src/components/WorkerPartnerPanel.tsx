@@ -101,7 +101,23 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
  }, [uid, workerId, userProfile?.workerId, userProfile?.partnerId]);
  const [tab,setTab]=useState<Tab>('home');
  const [reportPeriod,setReportPeriod]=useState<ReportPeriod>(7);
- const [online,setOnline]=useState(false);
+ const [online, setOnline] = useState<boolean>(() => {
+    if (typeof userProfile?.workerAvailability === 'boolean') return userProfile.workerAvailability;
+    if (typeof userProfile?.isOnline === 'boolean') return userProfile.isOnline;
+    if (typeof userProfile?.workerStatus === 'string') return userProfile.workerStatus.toUpperCase() === 'ONLINE';
+    try {
+      const stored = localStorage.getItem('punchx_worker_online_status');
+      if (stored === 'true') return true;
+      if (stored === 'false') return false;
+      const cached = localStorage.getItem('punchx_namoid_profile');
+      if (cached) {
+        const p = JSON.parse(cached);
+        if (typeof p?.workerAvailability === 'boolean') return p.workerAvailability;
+        if (typeof p?.isOnline === 'boolean') return p.isOnline;
+      }
+    } catch {}
+    return false;
+  });
  const [orders,setOrders]=useState<Order[]>([]);
  const [selected,setSelected]=useState<Order|null>(null);
  const [query,setQuery]=useState('');
@@ -122,10 +138,11 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
  },[]);
  const name=userProfile?.name||'Professional';
  useEffect(function(){
-   if(typeof userProfile?.workerAvailability==='boolean'){setOnline(userProfile.workerAvailability);return;}
-   if(typeof userProfile?.isOnline==='boolean'){setOnline(userProfile.isOnline);return;}
-   if(typeof userProfile?.workerStatus==='string')setOnline(userProfile.workerStatus.toUpperCase()==='ONLINE');
- },[userProfile?.workerAvailability,userProfile?.isOnline,userProfile?.workerStatus]);
+    if (availabilitySaving || availabilityWriteRef.current) return;
+    if(typeof userProfile?.workerAvailability==='boolean'){setOnline(userProfile.workerAvailability);return;}
+    if(typeof userProfile?.isOnline==='boolean'){setOnline(userProfile.isOnline);return;}
+    if(typeof userProfile?.workerStatus==='string')setOnline(userProfile.workerStatus.toUpperCase()==='ONLINE');
+  },[userProfile?.workerAvailability,userProfile?.isOnline,userProfile?.workerStatus,availabilitySaving]);
  useEffect(function(){
    if(!uid||typeof navigator==='undefined'||!navigator.geolocation)return;
    let cancelled=false; let watchId:number|null=null; let lastReverse=0;
@@ -236,48 +253,76 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
  const availabilityWriteRef=useRef(false);
  const [availabilitySaving,setAvailabilitySaving]=useState(false);
  const persistAvailability=async function(nextOnline:boolean){
-   if(availabilityWriteRef.current || nextOnline===online)return;
-   availabilityWriteRef.current=true;
-   setAvailabilitySaving(true);
-   const previous=online;
-   setOnline(nextOnline);
-   try{
-     const targetUid=auth.currentUser?.uid||uid;
-     if(!targetUid||!auth.currentUser)throw new Error('Your secure sign-in session is not ready. Please sign in again.');
-     const token=await auth.currentUser.getIdToken();
-     const backendBase=import.meta.env.VITE_BACKEND_URL||'';
-     const response=await fetch(`${backendBase}/api/workers/availability`,{
-       method:'PATCH',
-       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
-       body:JSON.stringify({online:nextOnline})
-     });
-     const result=await response.json().catch(()=>({}));
-     if(!response.ok||result?.success!==true){
-       throw new Error(result?.error||'The server could not save your availability.');
-     }
-     const updatedAt=result.availabilityUpdatedAt||new Date().toISOString();
-     try{
-       const cached=localStorage.getItem('punchx_namoid_profile');
-       const profile=cached?JSON.parse(cached):(userProfile||{});
-       localStorage.setItem('punchx_namoid_profile',JSON.stringify({
-         ...profile,workerAvailability:nextOnline,isOnline:nextOnline,
-         workerStatus:nextOnline?'ONLINE':'OFFLINE',availabilityUpdatedAt:updatedAt,updatedAt,uid:targetUid
-       }));
-     }catch{}
-     // Keep the server-confirmed state in this panel. A profile refresh can return a
-     // stale cached profile and immediately flip the control back before Firestore listeners catch up.
-     setOnline(result.online===true);
-     showNotification?.(result.online===true?'You are now ONLINE. Your availability has been saved.':'You are now OFFLINE. Your availability has been saved.');
-   }catch(error:any){
-     setOnline(previous);
-     console.error('Worker availability update failed:',error);
-     showNotification?.(error?.message||'Could not save availability. Check your connection and try again.');
-   }finally{
-     availabilityWriteRef.current=false;
-     setAvailabilitySaving(false);
-   }
- };
- const nav=function(t:Tab){setTab(t);setSelected(null);setMobile(false);window.scrollTo({top:0,behavior:'smooth'});};
+    if(availabilityWriteRef.current || nextOnline===online) return;
+    availabilityWriteRef.current=true;
+    setAvailabilitySaving(true);
+    const previous=online;
+    setOnline(nextOnline);
+    const updatedAt=new Date().toISOString();
+    const targetUid=auth.currentUser?.uid||uid;
+
+    try{
+      if(!targetUid) throw new Error('Your sign-in session is not ready. Please refresh.');
+
+      // 1. Immediately persist to localStorage
+      try{
+        localStorage.setItem('punchx_worker_online_status', nextOnline ? 'true' : 'false');
+        const cached=localStorage.getItem('punchx_namoid_profile');
+        const profile=cached?JSON.parse(cached):(userProfile||{});
+        localStorage.setItem('punchx_namoid_profile',JSON.stringify({
+          ...profile,workerAvailability:nextOnline,isOnline:nextOnline,
+          workerStatus:nextOnline?'ONLINE':'OFFLINE',availabilityUpdatedAt:updatedAt,updatedAt,uid:targetUid
+        }));
+      }catch{}
+
+      // 2. Direct Firestore write
+      let firestoreSaved = false;
+      if (db && targetUid) {
+        try {
+          await updateDoc(doc(db, 'users', targetUid), {
+            workerAvailability: nextOnline,
+            isOnline: nextOnline,
+            workerStatus: nextOnline ? 'ONLINE' : 'OFFLINE',
+            availabilityUpdatedAt: updatedAt,
+            updatedAt
+          });
+          firestoreSaved = true;
+        } catch (fsErr) {
+          console.warn('Direct Firestore availability update notice:', fsErr);
+        }
+      }
+
+      // 3. API endpoint call (background sync)
+      try{
+        if (auth.currentUser) {
+          const token=await auth.currentUser.getIdToken();
+          const backendBase=import.meta.env.VITE_BACKEND_URL||'';
+          const response=await fetch(`${backendBase}/api/workers/availability`,{
+            method:'PATCH',
+            headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+            body:JSON.stringify({online:nextOnline})
+          });
+          if (response.ok) firestoreSaved = true;
+        }
+      }catch(apiErr){
+        // Non-fatal if firestore succeeded
+      }
+
+      if (!firestoreSaved && !db) {
+        throw new Error('Unable to save availability. Check your internet connection.');
+      }
+
+      showNotification?.(nextOnline ? '🟢 You are now ONLINE. You can receive new bookings.' : '⚪ You are now OFFLINE. New bookings are paused.');
+    }catch(error:any){
+      setOnline(previous);
+      console.error('Worker availability update failed:',error);
+      showNotification?.(error?.message||'Could not save availability. Try again.');
+    }finally{
+      availabilityWriteRef.current=false;
+      setAvailabilitySaving(false);
+    }
+  };
+  const nav=function(t:Tab){setTab(t);setSelected(null);setMobile(false);window.scrollTo({top:0,behavior:'smooth'});};
  const handleLogout=async function(){
    if(loggingOut)return;
    setLoggingOut(true);
