@@ -101,7 +101,18 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <button type="button" onClick={this.handleHome} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[#dbeafe] bg-[#f8fbff] px-4 py-3 text-sm font-bold text-[#2563eb] transition hover:bg-[#eef6ff]"><Home className="h-4 w-4" /> Open PunchX Home</button>
             <button id="btn-error-reset" type="button" onClick={this.handleResetAndReload} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-black/10 bg-[#f6f7f9] px-4 py-3 text-sm font-bold text-[#475569] transition hover:bg-[#eceff3] active:scale-[.99]"><Trash2 className="h-4 w-4" /> Reset PunchX session</button>
           </div>
-          {import.meta.env.DEV && (<details className="mt-6 rounded-2xl border border-[#dbeafe] bg-[#f7fbff] p-3 text-left"><summary className="cursor-pointer text-xs font-bold text-[#64748b]">Developer error details</summary><pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-5 text-[#334155]">{errorMessage}</pre>{this.state.errorInfo?.componentStack && <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-words text-[10px] leading-4 text-[#64748b]">{this.state.errorInfo.componentStack}</pre>}</details>)}
+          {Boolean(errorMessage) && (
+            <details className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left">
+              <summary className="cursor-pointer text-xs font-bold text-slate-500">Error diagnostic details</summary>
+              <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-red-600">{errorMessage}</pre>
+              {this.state.error?.stack && (
+                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-4 text-slate-500">{this.state.error.stack}</pre>
+              )}
+              {this.state.errorInfo?.componentStack && (
+                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-4 text-slate-500">{this.state.errorInfo.componentStack}</pre>
+              )}
+            </details>
+          )}
         </div>
       </main>
     );

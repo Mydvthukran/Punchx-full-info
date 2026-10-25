@@ -101,6 +101,8 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
  }, [uid, workerId, userProfile?.workerId, userProfile?.partnerId]);
  const [tab,setTab]=useState<Tab>('home');
  const [reportPeriod,setReportPeriod]=useState<ReportPeriod>(7);
+ const availabilityWriteRef = useRef(false);
+ const [availabilitySaving, setAvailabilitySaving] = useState(false);
  const [online, setOnline] = useState<boolean>(() => {
     if (typeof userProfile?.workerAvailability === 'boolean') return userProfile.workerAvailability;
     if (typeof userProfile?.isOnline === 'boolean') return userProfile.isOnline;
@@ -250,8 +252,6 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
  const todayPayouts=today.filter(function(o){return o.status==='COMPLETED'&&o.earning!==null});
  const todayEarn=todayPayouts.length?todayPayouts.reduce(function(s,o){return s+(o.earning||0)},0):null;
  const filtered=useMemo(function(){return orders.filter(function(o){return (filter==='ALL'||(filter==='NEW'&&o.status==='NEW')||(filter==='ACCEPTED'&&o.status==='ACCEPTED')||(filter==='TRAVELLING'&&o.status==='TRAVELLING')||(filter==='ARRIVED'&&o.status==='ARRIVED')||(filter==='SERVICE_STARTED'&&o.status==='SERVICE_STARTED')||(filter==='COMPLETED'&&o.status==='COMPLETED')||(filter==='CANCELLED'&&o.status==='CANCELLED'))&&(o.id+' '+o.customer+' '+o.service+' '+o.address).toLowerCase().includes(query.toLowerCase())})},[orders,filter,query]);
- const availabilityWriteRef=useRef(false);
- const [availabilitySaving,setAvailabilitySaving]=useState(false);
  const persistAvailability=async function(nextOnline:boolean){
     if(availabilityWriteRef.current || nextOnline===online) return;
     availabilityWriteRef.current=true;
