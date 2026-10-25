@@ -92,6 +92,13 @@ function WorkerAvailabilitySlider({
 export default function WorkerPartnerPanel({ onTransition, showNotification }: WorkerPartnerPanelProps) {
  const {currentUser,userProfile,refreshProfile,logout}=useAuth() as any;
  const uid=auth.currentUser?.uid || userProfile?.uid || currentUser?.sub || currentUser?.id || '';
+ const workerId = useMemo(() => getOrDeriveWorkerId(userProfile || { uid }), [userProfile, uid]);
+
+ useEffect(() => {
+   if (uid && (!userProfile?.workerId || !userProfile?.partnerId)) {
+     syncWorkerId(uid, workerId, db);
+   }
+ }, [uid, workerId, userProfile?.workerId, userProfile?.partnerId]);
  const [tab,setTab]=useState<Tab>('home');
  const [reportPeriod,setReportPeriod]=useState<ReportPeriod>(7);
  const [online,setOnline]=useState(false);
@@ -720,6 +727,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification,onTransiti
    appliedAt:p.appliedAt||application?.appliedAt||''
  };
  const initials=String(source.name||'P').trim().slice(0,2).toUpperCase();
+ const profileWorkerId = useMemo(() => getOrDeriveWorkerId(source || { uid }), [source, uid]);
 
  const readPhoto=function(file:File){
    return new Promise<string>(function(resolve,reject){
@@ -837,7 +845,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification,onTransiti
      </div>
      <div className="wx-profile-hero-copy">
        <h2>{source.name||'Name unavailable'}</h2>
-       <p>{source.workerSkill||categories.join(', ')||application?.skill||'Professional service not configured'} · Partner ID <span className="wx-partner-id-badge">{source.workerId||source.partnerId||workerId}</span></p>
+       <p>{source.workerSkill||categories.join(', ')||application?.skill||'Professional service not configured'} · Partner ID <span className="wx-partner-id-badge">{source.workerId||source.partnerId||profileWorkerId}</span></p>
        <div className="wx-profile-meta">
          <span><Star size={15} fill="currentColor"/> {source.workerRating?Number(source.workerRating).toFixed(1):'—'}</span>
          <span>{source.workerCompletedJobs??application?.completedJobs??'—'} completed jobs</span>
@@ -874,7 +882,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification,onTransiti
        <span>Custom skill <b>{source.customSkill||'—'}</b></span>
        <span>Experience <b>{source.workerExperience||'—'}</b></span>
        <span>Visiting / inspection fee range <b>{source.minimumVisitingFee!=null&&source.maximumVisitingFee!=null?`${money(Number(source.minimumVisitingFee))} – ${money(Number(source.maximumVisitingFee))}`:source.visitingFee!=null?money(Number(source.visitingFee)):'—'}</b></span>
-       <span>Partner ID <b>{source.workerId||source.partnerId||workerId}</b></span>
+       <span>Partner ID <b>{source.workerId||source.partnerId||profileWorkerId}</b></span>
        <span>Partner status <b>{source.status||'—'}</b></span>
        <span>Application ID <b>{source.applicationId||application?.id||'—'}</b></span>
        <span>Terms accepted <b>{source.termsAccepted===true?'Yes':source.termsAccepted===false?'No':'—'}</b></span>
