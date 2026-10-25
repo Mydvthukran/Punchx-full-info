@@ -816,3 +816,334 @@
 @media(prefers-reduced-motion:reduce) {
   .wx-sidebar nav button,.wx-mobile-nav button,.wx-mobile-nav button::before,.wx-card,.wx-order-card { transition:none!important;animation:none!important;scroll-behavior:auto!important; }
 }
+
+
+/* ==========================================================================
+   PUNCHX PROFESSIONAL ONLINE / OFFLINE SLIDER BUTTON & ANIMATIONS
+   ========================================================================== */
+
+.wx-availability-slider {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+}
+
+.wx-availability-slider:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.wx-availability-slider:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.wx-availability-slider:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.wx-availability-slider:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 3px;
+  border-radius: 9999px;
+}
+
+/* Track container */
+.wx-slider-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 9999px;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Size: Header */
+.wx-availability-slider.size-header .wx-slider-track {
+  width: 144px;
+  height: 38px;
+  padding: 3px;
+}
+
+/* Size: Card (Home geofence area) */
+.wx-availability-slider.size-card .wx-slider-track {
+  width: 172px;
+  height: 46px;
+  padding: 4px;
+}
+
+/* Size: Settings */
+.wx-availability-slider.size-settings .wx-slider-track {
+  width: 146px;
+  height: 40px;
+  padding: 3px;
+}
+
+/* OFFLINE STATE */
+.wx-availability-slider.is-offline .wx-slider-track {
+  background: #181c24;
+  border: 1px solid #2e3544;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* ONLINE STATE */
+.wx-availability-slider.is-online .wx-slider-track {
+  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
+  border: 1px solid #10b981;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25);
+}
+
+/* Background pulse glow when online */
+.wx-slider-bg-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 75% 50%, rgba(255, 255, 255, 0.25), transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.wx-availability-slider.is-online .wx-slider-bg-glow {
+  opacity: 1;
+}
+
+/* Text Labels */
+.wx-slider-label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  user-select: none;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.35s cubic-bezier(0.34, 1.25, 0.64, 1);
+  white-space: nowrap;
+}
+
+/* Size: Header label */
+.wx-availability-slider.size-header .wx-slider-label {
+  font-size: 11px;
+}
+.wx-availability-slider.size-card .wx-slider-label {
+  font-size: 12.5px;
+}
+.wx-availability-slider.size-settings .wx-slider-label {
+  font-size: 11px;
+}
+
+/* ONLINE Label (positioned to left of thumb when online) */
+.wx-slider-label.on-text {
+  left: 14px;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.wx-availability-slider.size-card .wx-slider-label.on-text {
+  left: 18px;
+}
+.wx-availability-slider.is-offline .wx-slider-label.on-text {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.wx-availability-slider.is-online .wx-slider-label.on-text {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* OFFLINE Label (positioned to right of thumb when offline) */
+.wx-slider-label.off-text {
+  right: 14px;
+  color: #94a3b8;
+}
+.wx-availability-slider.size-card .wx-slider-label.off-text {
+  right: 18px;
+}
+.wx-availability-slider.is-offline .wx-slider-label.off-text {
+  opacity: 1;
+  transform: translateX(0);
+}
+.wx-availability-slider.is-online .wx-slider-label.off-text {
+  opacity: 0;
+  transform: translateX(10px);
+}
+
+/* Indicator dots */
+.wx-beacon-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff;
+  animation: wx-beacon-glow 1.6s ease-in-out infinite;
+}
+@keyframes wx-beacon-glow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.wx-offline-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+/* Sliding Knob / Thumb */
+.wx-slider-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28), 0 0 1px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform 0.36s cubic-bezier(0.34, 1.45, 0.64, 1),
+              background 0.2s ease,
+              box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+/* Size: Header thumb */
+.wx-availability-slider.size-header .wx-slider-thumb {
+  width: 32px;
+  height: 32px;
+  top: 3px;
+  left: 3px;
+}
+.wx-availability-slider.size-header.is-offline .wx-slider-thumb {
+  transform: translateX(0);
+}
+.wx-availability-slider.size-header.is-online .wx-slider-thumb {
+  transform: translateX(106px); /* 144 - 32 - 6 = 106px */
+}
+
+/* Size: Card thumb */
+.wx-availability-slider.size-card .wx-slider-thumb {
+  width: 38px;
+  height: 38px;
+  top: 4px;
+  left: 4px;
+}
+.wx-availability-slider.size-card.is-offline .wx-slider-thumb {
+  transform: translateX(0);
+}
+.wx-availability-slider.size-card.is-online .wx-slider-thumb {
+  transform: translateX(126px); /* 172 - 38 - 8 = 126px */
+}
+
+/* Size: Settings thumb */
+.wx-availability-slider.size-settings .wx-slider-thumb {
+  width: 34px;
+  height: 34px;
+  top: 3px;
+  left: 3px;
+}
+.wx-availability-slider.size-settings.is-offline .wx-slider-thumb {
+  transform: translateX(0);
+}
+.wx-availability-slider.size-settings.is-online .wx-slider-thumb {
+  transform: translateX(106px); /* 146 - 34 - 6 = 106px */
+}
+
+/* Thumb icons */
+.wx-slider-thumb-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.wx-thumb-online {
+  color: #059669;
+}
+.wx-thumb-offline {
+  color: #64748b;
+}
+
+.wx-availability-slider:hover .wx-thumb-offline {
+  color: #475569;
+}
+.wx-availability-slider:hover .wx-thumb-online {
+  transform: scale(1.08);
+}
+
+/* Saving spinner */
+.wx-slider-spinner {
+  color: #059669;
+  animation: wx-spin 0.8s linear infinite;
+}
+@keyframes wx-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Partner badge & ID styles */
+.wx-worker-id-pill {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #e6be75;
+  background: rgba(230, 190, 117, 0.12);
+  border: 1px solid rgba(230, 190, 117, 0.25);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-top: 3px;
+  letter-spacing: 0.04em;
+}
+
+.wx-partner-id-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 2px 7px;
+  margin-left: 4px;
+}
+
+/* Responsive adjustment for mobile header */
+@media (max-width: 520px) {
+  .wx-availability-slider.size-header .wx-slider-track {
+    width: 126px;
+    height: 34px;
+    padding: 2px;
+  }
+  .wx-availability-slider.size-header .wx-slider-thumb {
+    width: 28px;
+    height: 28px;
+    top: 3px;
+    left: 3px;
+  }
+  .wx-availability-slider.size-header.is-online .wx-slider-thumb {
+    transform: translateX(92px); /* 126 - 28 - 6 = 92px */
+  }
+  .wx-availability-slider.size-header .wx-slider-label {
+    font-size: 9.5px;
+  }
+  .wx-availability-slider.size-header .wx-slider-label.on-text {
+    left: 10px;
+  }
+  .wx-availability-slider.size-header .wx-slider-label.off-text {
+    right: 10px;
+  }
+}

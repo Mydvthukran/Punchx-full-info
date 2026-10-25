@@ -27,6 +27,8 @@ export type AppScreen =
 export interface WorkerApplication {
   id: string;
   uid: string;
+  workerId?: string;
+  partnerId?: string;
   legalName: string;
   dob?: string;
   birthdate?: string;
@@ -63,6 +65,8 @@ export interface UserProfile {
   dob?: string;
   birthdate?: string;
   isProfileCompleted?: boolean;
+  workerId?: string;
+  partnerId?: string;
   address?: string;
   streetAddress?: string;
   landmark?: string;
@@ -111,6 +115,8 @@ export interface Worker {
   categories?: string[];
   rating: number;
   reviewsCount: number;
+  workerId?: string;
+  partnerId?: string;
   avatar: string;
   proBadge: 'PRO' | 'TOP' | 'VET' | 'AUTHORIZED';
   price: number;

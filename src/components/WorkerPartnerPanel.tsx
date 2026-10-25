@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus, Timer, Package, Camera, Pencil, Save, Loader2, BarChart3, LineChart } from 'lucide-react';
+import { Home, Wallet, ClipboardList, UserRound, Bell, Settings, LogOut, Menu, X, MapPin, Phone, Navigation, CheckCircle2, Clock3, CircleAlert, TrendingUp, CalendarDays, Star, ShieldCheck, Gift, LifeBuoy, ChevronRight, Search, Banknote, BriefcaseBusiness, Zap, MoreHorizontal, SlidersHorizontal, Route, MessageCircle, GraduationCap, Plus, Timer, Package, Camera, Pencil, Save, Loader2, BarChart3, LineChart, Power } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { auth, db } from '../lib/firebase';
 import { OrderRecord } from '../types';
@@ -7,6 +7,7 @@ import { collection, doc, onSnapshot, runTransaction, updateDoc, setDoc, query a
 import PUNCHX_LOGO from '../assets/logo';
 import { getAccurateCurrentPosition, reverseGeocodeCoords, buildPunchXCustomerAreaLabels, isServiceAreaMatch, fetchGoogleMapsConfig, GoogleMapsConfig } from '../lib/location';
 import { APIProvider, Map as GoogleMap, useMap } from '@vis.gl/react-google-maps';
+import { getOrDeriveWorkerId, syncWorkerId } from '../lib/workerId';
 import './worker-partner-panel.css';
 
 type Tab = 'home'|'orders'|'schedule'|'earnings'|'performance'|'training'|'inventory'|'profile'|'notifications'|'incentives'|'support'|'settings';
@@ -33,6 +34,59 @@ const isInstantOrderRecord=(o:OrderRecord)=>Boolean(o.isInstantOrder)||o.booking
 interface WorkerPartnerPanelProps {
   onTransition?: (screen: any) => void;
   showNotification?: (message: string) => void;
+}
+
+
+function WorkerAvailabilitySlider({
+  online,
+  onToggle,
+  saving = false,
+  size = 'header',
+  ariaLabel
+}: {
+  online: boolean;
+  onToggle: () => void;
+  saving?: boolean;
+  size?: 'header' | 'card' | 'settings';
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={online}
+      aria-label={ariaLabel || (online ? 'You are ONLINE. Click to slide OFFLINE' : 'You are OFFLINE. Click to slide ONLINE')}
+      disabled={saving}
+      onClick={onToggle}
+      className={`wx-availability-slider size-${size} ${online ? 'is-online' : 'is-offline'} ${saving ? 'is-saving' : ''}`}
+      title={online ? 'ONLINE — Click to slide OFFLINE' : 'OFFLINE — Click to slide ONLINE'}
+    >
+      <span className="wx-slider-track">
+        <span className="wx-slider-bg-glow" aria-hidden="true" />
+        <span className="wx-slider-label on-text">
+          <span className="wx-beacon-dot" />
+          ONLINE
+        </span>
+        <span className="wx-slider-label off-text">
+          <span className="wx-offline-dot" />
+          OFFLINE
+        </span>
+        <span className="wx-slider-thumb">
+          {saving ? (
+            <Loader2 className="wx-slider-spinner animate-spin" size={size === 'card' ? 16 : 13} />
+          ) : online ? (
+            <span className="wx-slider-thumb-icon wx-thumb-online">
+              <CheckCircle2 size={size === 'card' ? 16 : 13} />
+            </span>
+          ) : (
+            <span className="wx-slider-thumb-icon wx-thumb-offline">
+              <Power size={size === 'card' ? 14 : 12} />
+            </span>
+          )}
+        </span>
+      </span>
+    </button>
+  );
 }
 
 export default function WorkerPartnerPanel({ onTransition, showNotification }: WorkerPartnerPanelProps) {
@@ -301,7 +355,7 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
  return <div className="wx-app">
   <aside className={'wx-sidebar '+(mobile?'open':'')}>
    <div className="wx-brand"><div className="wx-logo"><img src={PUNCHX_LOGO} alt="PunchX" /></div><div><b>PunchX</b><span>PARTNER PANEL</span></div><button className="wx-close" onClick={()=>setMobile(false)}><X/></button></div>
-   <div className="wx-worker-mini"><div className="wx-avatar">{String(name||"P").slice(0,2).toUpperCase()}</div><div><b>{name}</b><span>{userProfile?.uid||"Partner ID unavailable"}</span></div><i className={online?'online':''}></i></div>
+   <div className="wx-worker-mini"><div className="wx-avatar">{String(name||"P").slice(0,2).toUpperCase()}</div><div><b>{name}</b><span className="wx-worker-id-pill" title="Official PunchX Partner ID">{workerId}</span></div><i className={online?'online':''}></i></div>
    
    <nav aria-label="Professional workspace">
     {menuGroups.map(function(group:any){return <div className="wx-nav-group" key={group.label}>
@@ -312,7 +366,7 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
    <button className="wx-logout" onClick={handleLogout} disabled={loggingOut} aria-busy={loggingOut}><LogOut size={18}/>{loggingOut?'Logging out…':'Logout'}</button>
   </aside>
   <div className="wx-main">
-   <header className="wx-header"><div className="wx-header-left"><button className="wx-menu" onClick={()=>setMobile(true)} aria-label="Open partner menu"><Menu/></button><div className="wx-mobile-brand"><img src={PUNCHX_LOGO} alt="PunchX" /></div></div><div className="wx-header-title"><span className="wx-eyebrow">PUNCHX / PARTNER OPERATIONS</span><h1>{tab==='home'?'Good evening, '+name+' 👋':menu.find(function(m:any){return m[0]===tab})?.[1]}</h1></div><div className="wx-head-actions"><button type="button" className={'wx-status wx-online-toggle '+(online?'online':'offline')+(availabilitySaving?' is-saving':'')} onClick={()=>persistAvailability(!online)} disabled={availabilitySaving} aria-busy={availabilitySaving} aria-label={online?'Go Off and stop receiving new bookings':'Come Online and start receiving bookings'}><i aria-hidden="true"></i><span>{availabilitySaving?'SAVING…':online?'Go Off':'Come Online'}</span></button><button className="wx-bell" onClick={()=>nav('notifications')} aria-label="Notifications"><Bell size={20}/></button><button className="wx-profile-chip" onClick={()=>nav('profile')} aria-label="Open profile"><span>{String(name||"P").slice(0,2).toUpperCase()}</span><strong>{name}</strong><ChevronRight size={15}/></button></div></header>
+   <header className="wx-header"><div className="wx-header-left"><button className="wx-menu" onClick={()=>setMobile(true)} aria-label="Open partner menu"><Menu/></button><div className="wx-mobile-brand"><img src={PUNCHX_LOGO} alt="PunchX" /></div></div><div className="wx-header-title"><span className="wx-eyebrow">PUNCHX / PARTNER OPERATIONS</span><h1>{tab==='home'?'Good evening, '+name+' 👋':menu.find(function(m:any){return m[0]===tab})?.[1]}</h1></div><div className="wx-head-actions"><WorkerAvailabilitySlider online={online} onToggle={()=>persistAvailability(!online)} saving={availabilitySaving} size="header" /><button className="wx-bell" onClick={()=>nav('notifications')} aria-label="Notifications"><Bell size={20}/></button><button className="wx-profile-chip" onClick={()=>nav('profile')} aria-label="Open profile"><span>{String(name||"P").slice(0,2).toUpperCase()}</span><strong>{name}</strong><ChevronRight size={15}/></button></div></header>
    <main className="wx-content">
     {tab==='home'&&<HomeView area={geo?.area||userProfile?.area||workerArea} geo={geo} geoLoading={geoLoading} geoError={geoError} online={online} toggleOnline={()=>persistAvailability(!online)} today={today} completed={completed} pending={pendingCount} cancelled={cancelled} todayEarn={todayEarn} orders={orders} open={setSelected} advance={advance} action={action} nav={nav} serviceAreas={workerServiceAreas} mapsConfig={mapsConfig} availabilitySaving={availabilitySaving}/>}
     {tab==='orders'&&<OrdersView filtered={filtered} filter={filter} setFilter={setFilter} query={query} setQuery={setQuery} onOpen={setSelected}/>}
@@ -456,7 +510,7 @@ function HomeView(p:any){
    </div>
    <div className="wx-geofence-actions">
     <span className={'wx-live-location '+(p.geo?'ready':'')}>{p.geo?'LIVE':'LOCATION NEEDED'}</span>
-    <button className={'wx-online-toggle '+(p.online?'online':'offline')} onClick={p.toggleOnline} disabled={p.availabilitySaving} aria-busy={p.availabilitySaving}><i></i>{p.availabilitySaving?'Saving…':p.online?'Go Off':'Come Online'}</button>
+    <WorkerAvailabilitySlider online={p.online} onToggle={p.toggleOnline} saving={p.availabilitySaving} size="card" />
     <small>{p.online?'Online: eligible for instant / SOS requests.':'Offline: instant / SOS requests are not offered; later bookings remain visible.'}</small>
    </div>
   </section>
@@ -783,7 +837,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification,onTransiti
      </div>
      <div className="wx-profile-hero-copy">
        <h2>{source.name||'Name unavailable'}</h2>
-       <p>{source.workerSkill||categories.join(', ')||application?.skill||'Professional service not configured'} · Partner ID {source.uid||'unavailable'}</p>
+       <p>{source.workerSkill||categories.join(', ')||application?.skill||'Professional service not configured'} · Partner ID <span className="wx-partner-id-badge">{source.workerId||source.partnerId||workerId}</span></p>
        <div className="wx-profile-meta">
          <span><Star size={15} fill="currentColor"/> {source.workerRating?Number(source.workerRating).toFixed(1):'—'}</span>
          <span>{source.workerCompletedJobs??application?.completedJobs??'—'} completed jobs</span>
@@ -820,6 +874,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification,onTransiti
        <span>Custom skill <b>{source.customSkill||'—'}</b></span>
        <span>Experience <b>{source.workerExperience||'—'}</b></span>
        <span>Visiting / inspection fee range <b>{source.minimumVisitingFee!=null&&source.maximumVisitingFee!=null?`${money(Number(source.minimumVisitingFee))} – ${money(Number(source.maximumVisitingFee))}`:source.visitingFee!=null?money(Number(source.visitingFee)):'—'}</b></span>
+       <span>Partner ID <b>{source.workerId||source.partnerId||workerId}</b></span>
        <span>Partner status <b>{source.status||'—'}</b></span>
        <span>Application ID <b>{source.applicationId||application?.id||'—'}</b></span>
        <span>Terms accepted <b>{source.termsAccepted===true?'Yes':source.termsAccepted===false?'No':'—'}</b></span>
@@ -884,7 +939,7 @@ function ProfileView({userProfile,uid,refreshProfile,showNotification,onTransiti
 function NotificationsView({orders}:{orders:Order[]}){const recent=orders.slice(0,20);return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">UPDATES</span><h2>Notifications</h2><p>Only live booking events are shown here.</p></div></div><section className="wx-card wx-notes">{recent.map(o=><div key={o.id}><div className="wx-note-icon"><ClipboardList/></div><div><b>Booking #{o.id}</b><p>{o.service} · {statusLabel[o.status]||o.status} · {o.customer}</p><small>{o.date}{o.time?' · '+o.time:''}</small></div><ChevronRight/></div>)}{!recent.length&&<div className="wx-empty"><Bell/><b>No notifications</b><span>New PunchX booking events will appear here.</span></div>}</section></div>}
 function IncentivesView(){return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">EARN MORE</span><h2>Incentives & bonuses</h2><p>Only verified PunchX campaigns are displayed.</p></div></div><section className="wx-card"><div className="wx-empty"><Gift/><b>No active incentives available</b><span>No verified incentive campaign is available for this account.</span></div></section></div>}
 function SupportView({nav}:{nav:(t:Tab)=>void}){const cards=[['Order issue','Open Orders and inspect a live booking',ClipboardList,'orders'],['Payment issue','Open Earnings for verified payout records',Banknote,'earnings'],['Customer report','Use a live order to review customer details',CircleAlert,'orders'],['Technical issue','Open Settings and location controls',Settings,'settings'],['Email support','punchxservice@gmail.com',MessageCircle,'mail'],['Emergency assistance','Use verified PunchX support channels',LifeBuoy,'support']];return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">PARTNER CARE</span><h2>Help & support</h2><p>Order, payment, customer and technical support.</p></div><a className="wx-primary" href="mailto:punchxservice@gmail.com"><LifeBuoy size={16}/> Contact support</a></div><div className="wx-support-grid">{cards.map(function(x:any){var I=x[2];return <button className="wx-card wx-support-card" key={x[0]} onClick={()=>x[3]==='mail'?window.location.href='mailto:punchxservice@gmail.com':nav(x[3])}><I/><div><b>{x[0]}</b><span>{x[1]}</span></div><ChevronRight/></button>})}</div></div>}
-function SettingsView(p:any){const nav=p.nav as (t:Tab)=>void;return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">CONTROL CENTER</span><h2>Settings</h2><p>Account, notifications, privacy and availability.</p></div></div>{[['Account','Edit your personal profile and account details','profile'],['Notifications','Review live PunchX booking events','notifications'],['Privacy & location','Review location permissions and live service-zone status','home'],['App preferences','Language, theme and privacy documents','privacy'],['Account status','Deactivation is handled through verified PunchX support','support']].map(function(x:any){return <section className="wx-card wx-setting" key={x[0]}><div><b>{x[0]}</b><span>{x[1]}</span></div><button className={x[0]==='Account status'?'wx-secondary':'wx-secondary'} onClick={()=>x[2]==='privacy'?p.onTransition?.('privacy-policy'):nav(x[2])}>Open</button></section>})}<section className="wx-card wx-setting"><div><b>Availability</b><span>{p.online?'Online — eligible for new orders':'Offline — no new orders'}</span></div><button className={'wx-toggle-btn '+(p.online?'on':'')} onClick={()=>p.persistAvailability(!p.online)} disabled={p.availabilitySaving} aria-busy={p.availabilitySaving}>{p.availabilitySaving?'Saving…':p.online?'Go offline':'Come online'}</button></section></div>}
+function SettingsView(p:any){const nav=p.nav as (t:Tab)=>void;return <div className="wx-stack"><div className="wx-page-intro"><div><span className="wx-section-label">CONTROL CENTER</span><h2>Settings</h2><p>Account, notifications, privacy and availability.</p></div></div>{[['Account','Edit your personal profile and account details','profile'],['Notifications','Review live PunchX booking events','notifications'],['Privacy & location','Review location permissions and live service-zone status','home'],['App preferences','Language, theme and privacy documents','privacy'],['Account status','Deactivation is handled through verified PunchX support','support']].map(function(x:any){return <section className="wx-card wx-setting" key={x[0]}><div><b>{x[0]}</b><span>{x[1]}</span></div><button className={x[0]==='Account status'?'wx-secondary':'wx-secondary'} onClick={()=>x[2]==='privacy'?p.onTransition?.('privacy-policy'):nav(x[2])}>Open</button></section>})}<section className="wx-card wx-setting"><div><b>Availability</b><span>{p.online?'Online — eligible for new orders':'Offline — no new orders'}</span></div><WorkerAvailabilitySlider online={p.online} onToggle={()=>p.persistAvailability(!p.online)} saving={p.availabilitySaving} size="settings" /></section></div>}
 
 function OrderModal(p:any){var o=p.order;return <div className="wx-overlay"><div className="wx-modal wx-order-modal"><button className="wx-modal-x" onClick={p.close}><X/></button><div className="wx-modal-top"><span className={'wx-badge '+o.status.toLowerCase()}>{labels[o.status]}</span><span>ORDER #{o.id}</span></div><div className="wx-customer"><div className="wx-avatar large">{o.avatar}</div><div><h2>{o.customer}</h2><p>{o.service}</p></div></div><div className="wx-modal-grid"><div><MapPin/><span>Address</span><b>{o.address}</b><small>{o.distance!==null?o.distance+" km away":"Distance unavailable"}</small></div><div><CalendarDays/><span>Booking</span><b>{o.date} · {o.time}</b><small>{o.duration}</small></div><div><Banknote/><span>Customer total</span><b>{o.price!==null?money(o.price):'Unavailable'}</b><small>Payment: {o.payment}</small></div><div><Wallet/><span>Your earning</span><b>{o.earning!==null?money(o.earning):'Payout unavailable'}</b><small>Verified professional payout only</small></div></div><div className="wx-status-line">{['ACCEPTED','TRAVELLING','ARRIVED','SERVICE_STARTED','COMPLETED'].map(function(s,i){return <React.Fragment key={s}><span className={['ACCEPTED','TRAVELLING','ARRIVED','SERVICE_STARTED','COMPLETED'].indexOf(o.status)>=i?'done':''}>{i+1}</span>{i<4&&<i/>}</React.Fragment>})}</div><div className="wx-status-labels"><span>Accepted</span><span>Travel</span><span>Arrived</span><span>Service</span><span>Done</span></div>
 {(o.raw?.issueDescription||o.raw?.serviceProof||o.raw?.additionalWorkRequests?.length||o.raw?.warrantyClaimStatus)&&<section className="wx-job-detail-card">

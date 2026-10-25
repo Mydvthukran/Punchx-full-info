@@ -13,6 +13,7 @@ import {
 import ServiceCategoryModal from './ServiceCategoryModal';
 import DobPicker from './DobPicker';
 import { PUNCHX_50_CATEGORIES, normalizeCategorySelection } from '../data/categories';
+import { generateWorkerId } from '../lib/workerId';
 
 interface WorkerSignupProps {
   onTransition: (target: AppScreen) => void;
@@ -252,9 +253,14 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
 
     const appId = `APP-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const assignedWorkerId = generateWorkerId();
+    try { localStorage.setItem('punchx_worker_id', assignedWorkerId); } catch {}
+
     const application: WorkerApplication = {
       id: appId,
       uid: applicantUid,
+      workerId: assignedWorkerId,
+      partnerId: assignedWorkerId,
       legalName: legalName.trim(),
       dob: dob.trim(),
       birthdate: dob.trim(),
@@ -290,6 +296,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
           setDoc(doc(db, 'workerApplications', applicantUid), application, { merge: true }),
           setDoc(doc(db, 'users', applicantUid), {
             uid: applicantUid,
+            workerId: assignedWorkerId,
+            partnerId: assignedWorkerId,
             name: legalName.trim(),
             legalName: legalName.trim(),
             dob: dob.trim(),
