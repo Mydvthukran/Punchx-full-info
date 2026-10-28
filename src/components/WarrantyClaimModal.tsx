@@ -127,12 +127,12 @@ export default function WarrantyClaimModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-[#0b1325] border border-[#c5a059]/40 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+          className="bg-[#0b1325] border border-[#c5a059]/40 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92dvh] pb-[max(12px,env(safe-area-inset-bottom))]"
         >
           {/* Header */}
           <div className="p-5 bg-[#0f1b33] border-b border-zinc-800 flex justify-between items-center text-left">
@@ -154,7 +154,7 @@ export default function WarrantyClaimModal({
           </div>
 
           {/* Body Form */}
-          <form onSubmit={handleSubmitClaim} className="p-6 overflow-y-auto space-y-4 text-left font-sans">
+          <form onSubmit={handleSubmitClaim} className="p-4 sm:p-6 overflow-y-auto min-h-0 space-y-4 text-left font-sans">
             {error && (
               <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-red-300 text-xs flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
@@ -280,18 +280,18 @@ export default function WarrantyClaimModal({
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="w-1/3 py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-xl font-bold text-xs uppercase cursor-pointer"
+                className="sm:w-1/3 py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-xl font-bold text-xs uppercase cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-2/3 py-3 bg-[#c5a059] hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                className="sm:w-2/3 flex-1 py-3 bg-[#c5a059] hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <span>Submitting Claim...</span>

@@ -19,6 +19,7 @@ type Order = { id:string; customer:string; service:string; address:string; dista
 
 const labels:Record<Status,string> = {NEW:'New',ACCEPTED:'Accepted',TRAVELLING:'Travelling',ARRIVED:'Arrived',SERVICE_STARTED:'Service started',COMPLETED:'Completed',CANCELLED:'Cancelled'};
 const pending=(s?:string)=>!s || ['Pending','PAID','DISPATCHING'].includes(s);
+const statusText = (s: string) => labels[s as Status] || s;
 const money=(n:number)=>new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(n);
 const moneyOrUnavailable=(n:number|null|undefined)=>n==null?'Unavailable':money(n);
 const recordDate=(o:Order)=>parseDate(o.raw?.completedAt||o.raw?.createdAt||o.date);
@@ -179,9 +180,9 @@ export default function WorkerPartnerPanel({ onTransition, showNotification }: W
    },function(){if(!cancelled)setGeoError('Live location permission is unavailable.');},{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
    return function(){cancelled=true;if(watchId!==null)navigator.geolocation.clearWatch(watchId);};
  },[uid]);
- const workerCategories=useMemo(function(){
-   const raw=userProfile?.workerCategories || userProfile?.categories || [];
-   return Array.from(new Set([...(Array.isArray(raw)?raw:[]),userProfile?.workerSkill,userProfile?.skill].map(normalise).filter(Boolean)));
+ const workerCategories = useMemo<string[]>(function(){
+   const raw = userProfile?.workerCategories || userProfile?.categories || [];
+   return Array.from<string>(new Set([...(Array.isArray(raw)?raw:[]),userProfile?.workerSkill,userProfile?.skill].map(normalise).filter(Boolean)));
  },[userProfile]);
  const workerArea=normalise(userProfile?.area);
  const workerSector=normalise(userProfile?.sector);

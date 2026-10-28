@@ -88,11 +88,11 @@ export default function WorkerSafetyStoreModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#07122a] border border-[#c5a059]/40 rounded-3xl max-w-xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-[#07122a] border border-[#c5a059]/40 rounded-3xl max-w-xl w-full max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header */}
-        <div className="p-5 bg-[#0a1736] border-b border-zinc-800 flex justify-between items-center">
+        <div className="p-4 sm:p-5 bg-[#0a1736] border-b border-zinc-800 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40">
               <ShoppingBag className="w-5 h-5" />
@@ -115,7 +115,7 @@ export default function WorkerSafetyStoreModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 min-h-0 flex-1">
           {isOrdered ? (
             <div className="text-center py-8 space-y-4">
               <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto">
@@ -140,12 +140,12 @@ export default function WorkerSafetyStoreModal({
             </div>
           ) : (
             <>
-              <div className="p-3.5 rounded-2xl bg-[#0e1f42] border border-[#c5a059]/30 flex items-center justify-between text-xs">
+              <div className="p-3.5 rounded-2xl bg-[#0e1f42] border border-[#c5a059]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2 text-zinc-300">
-                  <Truck className="w-4 h-4 text-emerald-400" />
+                  <Truck className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>Free doorstep delivery for verified partner specialists</span>
                 </div>
-                <span className="text-[#e9c176] font-mono font-bold">SUBSIDIZED RATES</span>
+                <span className="text-[#e9c176] font-mono font-bold shrink-0">SUBSIDIZED RATES</span>
               </div>
 
               <div className="space-y-3">

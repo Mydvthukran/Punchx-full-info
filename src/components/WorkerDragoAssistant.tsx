@@ -124,15 +124,15 @@ ${text}`;
         type="button"
         aria-label="Open DRAGO professional assistant"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-white shadow-xl ring-2 ring-indigo-200 hover:bg-slate-800"
+        className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-6 right-4 md:right-6 z-40 flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-white shadow-xl ring-2 ring-indigo-200 hover:bg-slate-800 transition-all"
       >
         <Sparkles size={18} />
         <span className="font-semibold">DRAGO</span>
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end bg-black/30 p-3 md:items-center md:p-6">
-          <div className="flex h-[min(720px,90vh)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
+        <div className="fixed inset-0 z-[120] flex items-end justify-center sm:justify-end bg-black/40 p-2 sm:p-4 md:items-center md:p-6 pb-[calc(10px+env(safe-area-inset-bottom))]">
+          <div className="flex h-[min(640px,88dvh)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200">
             <div className="flex items-center justify-between border-b bg-slate-900 px-4 py-4 text-white">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl bg-white/10 p-2"><Sparkles size={18} /></div>

@@ -58,11 +58,11 @@ export default function EnterpriseInquiryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#09152e] border border-[#c5a059]/40 rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl relative">
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-[#09152e] border border-[#c5a059]/40 rounded-3xl max-w-xl w-full max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl relative">
         
         {/* Header */}
-        <div className="p-6 bg-[#0c1b3b] border-b border-zinc-800 flex justify-between items-center">
+        <div className="p-4 sm:p-6 bg-[#0c1b3b] border-b border-zinc-800 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40">
               <Building2 className="w-5 h-5" />
@@ -71,7 +71,7 @@ export default function EnterpriseInquiryModal({
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#c5a059] font-bold">
                 ENTERPRISE & SOCIETY SOLUTIONS
               </span>
-              <h3 className="text-lg font-bold text-white leading-tight">
+              <h3 className="text-base sm:text-lg font-bold text-white leading-tight">
                 Corporate & Society AMC Plans
               </h3>
             </div>
@@ -85,7 +85,7 @@ export default function EnterpriseInquiryModal({
         </div>
 
         {/* Modal Content */}
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-5 overflow-y-auto min-h-0 flex-1">
           {submitted ? (
             <div className="text-center py-8 space-y-4">
               <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto">
@@ -189,18 +189,18 @@ export default function EnterpriseInquiryModal({
                 </div>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-3">
+              <div className="pt-3 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs font-mono text-zinc-400 hover:text-white cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-mono text-zinc-400 hover:text-white cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl bg-[#c5a059] hover:bg-[#e9c176] text-black font-bold text-xs transition-all shadow-lg flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 rounded-xl bg-[#c5a059] hover:bg-[#e9c176] text-black font-bold text-xs transition-all shadow-lg flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{isSubmitting ? 'Sending...' : 'Request Custom AMC Proposal'}</span>

@@ -877,17 +877,17 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       {/* FULL TERMS & CONDITIONS / PRIVACY POLICY MODAL */}
       <AnimatePresence>
         {showTermsModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#11192e] border-2 border-[#c5a059] rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[80vh] flex flex-col justify-between space-y-4 shadow-2xl"
+              className="bg-[#11192e] border-2 border-[#c5a059] rounded-3xl p-4 sm:p-8 max-w-2xl w-full max-h-[92dvh] flex flex-col justify-between space-y-4 shadow-2xl pb-[max(16px,env(safe-area-inset-bottom))]"
             >
               <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-6 h-6 text-[#c5a059]" />
-                  <h3 className="font-extrabold text-lg text-white">PunchX Authority Worker Terms & Privacy Policy</h3>
+                  <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-[#c5a059] shrink-0" />
+                  <h3 className="font-extrabold text-sm sm:text-lg text-white">PunchX Authority Worker Terms & Privacy Policy</h3>
                 </div>
                 <button
                   onClick={() => setShowTermsModal(false)}

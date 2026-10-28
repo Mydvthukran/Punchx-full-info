@@ -187,38 +187,7 @@ export default function CitizenHomeCatalog({
   return (
     <div className="punchx-citizen-shell min-h-screen bg-[#f5f2eb] pb-24 text-[#171813]">
       <style>{".punchx-citizen-shell .px-page-enter{animation:px-page-enter .42s cubic-bezier(.2,.7,.2,1) both}.punchx-citizen-shell .px-service-card{position:relative;overflow:hidden;isolation:isolate;border-color:#e5dfd1!important;box-shadow:0 7px 20px rgba(35,33,26,.045)}.punchx-citizen-shell .px-service-card:after{content:'';position:absolute;inset:0;background:linear-gradient(145deg,rgba(255,255,255,.22),transparent 46%);opacity:0;transition:opacity .3s ease;pointer-events:none}.punchx-citizen-shell .px-service-card:hover:after{opacity:1}.punchx-citizen-shell .px-service-photo{transition:transform .65s cubic-bezier(.2,.7,.2,1),filter .4s ease}.punchx-citizen-shell .px-service-card:hover .px-service-photo{transform:scale(1.08);filter:saturate(1.08)}.punchx-citizen-shell .px-tab-panel{animation:px-page-enter .38s cubic-bezier(.2,.7,.2,1) both}.punchx-citizen-shell .px-order-card{animation:px-page-enter .4s cubic-bezier(.2,.7,.2,1) both;transition:transform .25s ease,box-shadow .25s ease}.punchx-citizen-shell .px-order-card:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(35,33,26,.09)}.punchx-citizen-shell .px-premium-hero h1{color:#fff!important;text-shadow:0 2px 24px rgba(0,0,0,.3)}.punchx-citizen-shell .px-premium-hero p{color:rgba(255,255,255,.82)!important}@keyframes px-page-enter{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:translate3d(0,0,0)}}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell .px-page-enter,.punchx-citizen-shell .px-tab-panel,.punchx-citizen-shell .px-order-card{animation:none!important}.punchx-citizen-shell .px-service-photo,.punchx-citizen-shell .px-order-card{transition:none!important}}.punchx-citizen-shell{background-image:radial-gradient(ellipse at 10% 0%,rgba(199,169,163,.18),transparent 30%),radial-gradient(ellipse at 100% 35%,rgba(158,129,137,.08),transparent 30%)}.punchx-citizen-shell .px-premium-hero{box-shadow:0 24px 65px rgba(28,29,23,.2)}.punchx-citizen-shell .px-photo-card{transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s ease}.punchx-citizen-shell .px-photo-card:hover{transform:translateY(-5px);box-shadow:0 18px 35px rgba(27,29,22,.13)}.punchx-citizen-shell .px-shine{position:relative;isolation:isolate;overflow:hidden}.punchx-citizen-shell .px-shine:after{content:'';position:absolute;inset:-30% auto -30% -70%;width:38%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:px-home-shine 6.5s ease-in-out infinite;pointer-events:none}@keyframes px-home-shine{0%,58%{left:-70%}100%{left:140%}}@keyframes px-home-glow{0%,100%{opacity:.28;transform:scale(.96)}50%{opacity:.65;transform:scale(1.05)}}.punchx-citizen-shell main>section{animation:px-section-arrive .58s cubic-bezier(.22,1,.36,1) both}.punchx-citizen-shell main>section:nth-of-type(2){animation-delay:.06s}.punchx-citizen-shell main>section:nth-of-type(3){animation-delay:.12s}.punchx-citizen-shell main>section:nth-of-type(4){animation-delay:.18s}@keyframes px-section-arrive{from{opacity:0;transform:translate3d(0,16px,0)}to{opacity:1;transform:translate3d(0,0,0)}}.punchx-citizen-shell button,.punchx-citizen-shell a,[role=button]{transition:transform .22s cubic-bezier(.2,.7,.2,1),box-shadow .25s ease,background-color .25s ease,border-color .25s ease,filter .25s ease}.punchx-citizen-shell button:active,.punchx-citizen-shell a:active,.punchx-citizen-shell [role=button]:active{transform:scale(.975)}.punchx-citizen-shell button:focus-visible,.punchx-citizen-shell a:focus-visible{outline:2px solid #9E8189;outline-offset:3px}.punchx-citizen-shell .px-service-card,.punchx-citizen-shell .px-photo-card,.punchx-citizen-shell .px-order-card{will-change:transform;transform-origin:center bottom}.punchx-citizen-shell .px-service-card:hover,.punchx-citizen-shell .px-photo-card:hover,.punchx-citizen-shell .px-order-card:hover{box-shadow:0 18px 38px rgba(62,50,57,.13)}.punchx-citizen-shell .px-premium-hero{transform:translateZ(0);background-size:140% 140%;animation:px-hero-breathe 12s ease-in-out infinite alternate}.punchx-citizen-shell .px-premium-hero:focus-within{box-shadow:0 0 0 3px rgba(199,169,163,.25),0 22px 54px rgba(62,50,57,.18)}@keyframes px-hero-breathe{from{background-position:0% 50%}to{background-position:100% 50%}}.punchx-citizen-shell .px-glow{animation:px-home-glow 7s ease-in-out infinite}@media(prefers-reduced-motion:reduce){.punchx-citizen-shell *,.punchx-citizen-shell *:before,.punchx-citizen-shell *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"}</style>
-      {/* ── HEADER ── */}
-      <header className="sticky top-0 z-40 border-b border-[#e5dfd1] bg-[#f8f6f0]/90 backdrop-blur-2xl shadow-[0_5px_24px_rgba(30,28,22,.035)]">
-        <div className="mx-auto flex min-h-[62px] max-w-5xl items-center gap-3 px-4 py-2">
-          <img src={PUNCHX_LOGO} alt="PUNCHX" className="h-9 w-9 rounded-xl object-cover ring-1 ring-[#c4a568]/50 shadow-sm" />
-          <span className="text-lg font-black tracking-[-.06em] text-[#24251f]">PUNCHX</span>
 
-          <button
-            onClick={() => onTransition('customer-setup')}
-            className="ml-1 flex min-w-0 max-w-[50%] items-center gap-1.5 rounded-xl border border-[#e5dfd1] bg-[#FFFCF8]/70 px-2.5 py-1.5 text-left transition-colors hover:bg-[#f2ead8]"
-          >
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#6B5560]" />
-            <span className="min-w-0">
-              <span className="block text-[9px] font-bold uppercase tracking-wider text-gray-400">
-                Service area
-              </span>
-              <span className="block truncate text-xs font-bold text-gray-800">{area}</span>
-            </span>
-            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#6B5560]" />}
-          </button>
-
-          <button
-            onClick={onOpenProfile}
-            aria-label="Open profile"
-            className="ml-auto flex h-9 items-center gap-2 rounded-xl border border-[#e5dfd1] bg-[#FFFCF8] px-3 text-[#343329] shadow-sm transition-colors hover:bg-[#f2ead8]"
-          >
-            <UserRound className="h-4 w-4" />
-            <span className="hidden max-w-24 truncate text-xs font-semibold sm:block">
-              {citizenName || 'Profile'}
-            </span>
-          </button>
-        </div>
-      </header>
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6">
         {activeTab === 'home' && (
@@ -292,19 +261,25 @@ export default function CitizenHomeCatalog({
         <section aria-label="Featured advertising" className="pt-3">
           <div className="px-shine relative overflow-hidden rounded-[1.6rem] border border-[#C7A9A3]/50 p-4 text-white shadow-[0_16px_38px_rgba(62,50,57,.12)] sm:p-5" style={{backgroundImage:"linear-gradient(125deg,#3E3239 0%,#6B5560 54%,#9E8189 100%)"}}>
             <div className="px-glow absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#c4a568]/20 blur-2xl" />
-            <div className="relative flex items-center gap-3 sm:gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#c4a568] text-[#171813] shadow-sm">
-                <Megaphone className="h-5 w-5" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:block">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#c4a568] text-[#171813] shadow-sm">
+                  <Megaphone className="h-5 w-5" />
+                </div>
+                <div className="sm:hidden">
+                  <span className="rounded-full bg-emerald-300/15 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-200/30">₹0 PLATFORM FEE</span>
+                  <span className="ml-2 text-[10px] font-semibold text-[#E8D2C4]">SPOTLIGHT</span>
+                </div>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="hidden sm:flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-emerald-300/15 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-200/30">₹0 PLATFORM FEE</span>
                   <span className="text-[10px] font-semibold text-[#E8D2C4]">PUNCHX SPOTLIGHT</span>
                 </div>
                 <h2 className="mt-1 text-base font-extrabold leading-5 text-[#F7EFE7] sm:text-lg">Your first booking, platform-fee free.</h2>
                 <p className="mt-1 text-xs leading-5 text-[#E8D2C4]">Welcome to PUNCHX! Pay no platform charge on your first booking. Visiting fees and product/material costs may still apply.</p>
               </div>
-              <button type="button" onClick={() => { setQuery(''); setSearchOpen(true); }} className="relative shrink-0 rounded-xl bg-[#c4a568] px-3 py-2.5 text-xs font-extrabold text-[#171813] shadow-sm transition hover:bg-[#d8c18d] sm:px-4">Explore <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => { setQuery(''); setSearchOpen(true); }} className="relative shrink-0 w-full sm:w-auto text-center rounded-xl bg-[#c4a568] px-3.5 py-2.5 text-xs font-extrabold text-[#171813] shadow-sm transition hover:bg-[#d8c18d] sm:px-4">Explore <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></button>
             </div>
           </div>
         </section>
@@ -528,7 +503,7 @@ export default function CitizenHomeCatalog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[130] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[130] bg-black/40 backdrop-blur-sm flex items-start justify-center p-2.5 sm:p-4 overflow-y-auto"
             onMouseDown={e => { if (e.currentTarget === e.target) setSearchOpen(false); }}
           >
             <motion.div
@@ -536,11 +511,11 @@ export default function CitizenHomeCatalog({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.96 }}
               transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
-              className="mx-auto mt-12 sm:mt-16 flex max-h-[85vh] w-[calc(100%-20px)] max-w-3xl
+              className="mx-auto mt-4 sm:mt-16 flex max-h-[min(650px,88dvh)] w-full max-w-3xl
                          flex-col overflow-hidden rounded-3xl bg-[#FFFCF8] shadow-2xl ring-1 ring-black/5"
             >
               {/* Search input */}
-              <div className="flex items-center gap-3 border-b border-[#E8D2C4] px-5 py-4">
+              <div className="flex items-center gap-3 border-b border-[#E8D2C4] px-4 sm:px-5 py-3.5 sm:py-4">
                 <Search className="h-5 w-5 text-[#6B5560] shrink-0" />
                 <input
                   ref={searchInputRef}
@@ -564,9 +539,9 @@ export default function CitizenHomeCatalog({
               </div>
 
               {/* Results */}
-              <div className="overflow-y-auto p-4 sm:p-5">
+              <div className="overflow-y-auto p-3.5 sm:p-5">
                 {matches.length ? (
-                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
+                  <div className="grid grid-cols-2 min-[440px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
                     {matches.map((cat, i) => {
                                             return (
                         <motion.button

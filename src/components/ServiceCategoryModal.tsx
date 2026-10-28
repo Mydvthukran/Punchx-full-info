@@ -127,7 +127,8 @@ export default function ServiceCategoryModal({
 
   const handleCitizenSelect = (name: string) => {
     if (name === 'Other Service') {
-      setShowCustomInput(true);
+      onSelectCategory?.(name);
+      onClose();
       return;
     }
     const category = findCatalogCategory(name);
@@ -195,12 +196,15 @@ export default function ServiceCategoryModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 backdrop-blur-md sm:p-4 md:p-6">
+      <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/85 p-2 backdrop-blur-md sm:p-4 md:p-6">
         <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="service-category-modal-title"
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[#c5a059]/40 bg-[#0b1428] shadow-2xl"
+          className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-[#c5a059]/40 bg-[#0b1428] shadow-2xl pb-[max(12px,env(safe-area-inset-bottom))]"
         >
           <header className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-[#070e1d] p-4 sm:p-6">
             <div className="min-w-0">
@@ -209,7 +213,7 @@ export default function ServiceCategoryModal({
                 {catalogCategory ? 'PUNCHX SERVICE CATALOGUE' : mode === 'worker' ? 'WORKER SERVICE SELECTION' : 'CITIZEN INSTANT BOOKING'}
                 <span className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-zinc-400">{PUNCHX_50_CATEGORIES.length} Categories</span>
               </div>
-              <h2 className="mt-1 truncate text-xl font-black text-white sm:text-2xl">
+              <h2 id="service-category-modal-title" className="mt-1 truncate text-xl font-black text-white sm:text-2xl">
                 {catalogCategory ? catalogCategory.name : titleOverride || (mode === 'worker' ? 'What service do you provide?' : 'What service do you need?')}
               </h2>
               <p className="mt-1 text-xs text-zinc-400">
@@ -294,7 +298,7 @@ export default function ServiceCategoryModal({
                 )}
               </div>
               
-              <footer className="flex flex-col items-center justify-between gap-3 border-t border-zinc-800 bg-[#070e1d] p-4 sm:flex-row sm:p-5"><div className="flex items-center gap-2 text-xs text-zinc-400"><Sparkles className="h-4 w-4 text-[#c5a059]" />{mode === 'worker' ? `${workerSelectedList.length} categories selected` : 'Select a main service to open its full catalogue.'}</div><div className="flex w-full gap-2 sm:w-auto"><button onClick={onClose} className="w-1/2 rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-zinc-300 sm:w-auto">Cancel</button>{mode === 'worker' && <button disabled={!workerSelectedList.length} onClick={saveWorkerCategories} className="flex w-1/2 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c5a059] to-[#e9c176] px-6 py-2.5 text-xs font-extrabold uppercase text-black disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"><CheckCircle2 className="h-4 w-4" /> Save Services</button>}</div></footer>
+              <footer className="flex flex-col items-center justify-between gap-3 border-t border-zinc-800 bg-[#070e1d] p-4 sm:flex-row sm:p-5"><div className="flex items-center gap-2 text-xs text-zinc-400"><Sparkles className="h-4 w-4 text-[#c5a059]" />{mode === 'worker' ? `${workerSelectedList.length} categories selected` : 'Select a main service to open its full catalogue.'}</div><div className="flex w-full flex-col-reverse min-[380px]:flex-row gap-2 sm:w-auto"><button onClick={onClose} className="w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-zinc-300 sm:w-auto">Cancel</button>{mode === 'worker' && <button disabled={!workerSelectedList.length} onClick={saveWorkerCategories} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#c5a059] to-[#e9c176] px-6 py-2.5 text-xs font-extrabold uppercase text-black disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"><CheckCircle2 className="h-4 w-4" /> Save Services</button>}</div></footer>
             </>
           )}
         </motion.div>

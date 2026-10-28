@@ -20,10 +20,14 @@ try {
       initializeApp({
         credential: cert(serviceAccount)
       });
-    } else {
+      console.log("Firebase Admin initialized with FIREBASE_SERVICE_ACCOUNT.");
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       initializeApp({
         credential: applicationDefault()
       });
+      console.log("Firebase Admin initialized with GOOGLE_APPLICATION_CREDENTIALS.");
+    } else {
+      console.log("No Firebase Admin credentials provided; utilizing in-memory database fallback.");
     }
   }
 } catch (error) {
@@ -47,6 +51,7 @@ import {
   getOrderTrackingStatus,
 } from "./src/backend/trackingService.js";
 import { OrderRecord, OrderStatus } from "./src/types.js";
+import { adminRouter, platformSettings } from "./src/backend/routes/adminBridgeRoutes.js";
 
 // ─── Firebase Auth Middleware ───
 export const requireFirebaseUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -162,8 +167,7 @@ const ALLOWED_ORIGINS = [
 
 async function startServer() {
   const app = express();
-
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // ─── Security Middleware ───
 
@@ -184,17 +188,8 @@ async function startServer() {
       }
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
-  }));
-
-  // Rate Limiting: 100 requests per 15 minutes per IP
-  app.use("/api/", rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, error: "Too many requests, please try again later." },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With", "x-admin-key", "X-Admin-Key"],
   }));
 
   // Body size limits to prevent DoS via large payloads & capture rawBody for webhook HMAC verification
@@ -205,6 +200,20 @@ async function startServer() {
     },
   }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+  // ─── ADMIN COMMAND CENTER BRIDGE (DUAL-REPO SECURE INTEGRATION) ───
+  // Exposes authenticated management bridge for Admin-dashboard-punchx on port 5173
+  // Mounted BEFORE consumer rate limiter so admin operations & 30s health polling are uninterrupted
+  app.use("/api/admin", adminRouter);
+
+  // Rate Limiting: 100 requests per 15 minutes per IP for general consumer endpoints
+  app.use("/api/", rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: "Too many requests, please try again later." },
+  }));
 
   // Health check
   app.get("/api/health", async (req, res) => {

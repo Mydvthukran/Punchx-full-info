@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ShoppingCart, X, Plus, Minus, Trash2, ArrowRight, Package } from 'lucide-react';
 
 type CartLine = {
@@ -78,7 +79,7 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
         <span className="hidden text-xs font-extrabold sm:inline">Cart</span>
         <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#7358d7] px-1 text-[9px] font-black text-white">{count > 99 ? '99+' : count}</span>
       </button>
-      {open && (
+      {open && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[9990] flex h-[100dvh] w-screen items-stretch justify-center overflow-hidden bg-[#101828]/60 p-0" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setOpen(false); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="punchx-cart-title" className="relative flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-2xl">
             <header className="flex shrink-0 items-center justify-between border-b border-[#ececf2] bg-white px-5 py-4 pt-[max(16px,env(safe-area-inset-top))] sm:px-8 sm:py-6">
@@ -129,7 +130,8 @@ export default function CitizenCartButton({ onCheckout }: CitizenCartButtonProps
               </>
             )}
           </section>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

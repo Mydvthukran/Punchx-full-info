@@ -37,19 +37,19 @@ export default function InvoiceReceiptModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-white text-zinc-900 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-white text-zinc-900 rounded-3xl max-w-2xl w-full max-h-[92dvh] overflow-y-auto shadow-2xl relative">
         
         {/* Top Control Bar (Hidden during print) */}
-        <div className="p-4 bg-zinc-100 border-b border-zinc-200 flex justify-between items-center print:hidden rounded-t-3xl">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#c5a059]" />
-            <span className="font-mono text-xs font-bold text-zinc-700">TAX INVOICE & WARRANTY CERTIFICATE</span>
+        <div className="p-3 sm:p-4 bg-zinc-100 border-b border-zinc-200 flex flex-wrap justify-between items-center gap-2 print:hidden rounded-t-3xl">
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText className="w-4 h-4 text-[#c5a059] shrink-0" />
+            <span className="font-mono text-xs font-bold text-zinc-700 truncate">TAX INVOICE & WARRANTY CERTIFICATE</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handlePrint}
-              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow"
+              className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print / Save PDF</span>
@@ -64,13 +64,13 @@ export default function InvoiceReceiptModal({
         </div>
 
         {/* Printable Tax Invoice Sheet */}
-        <div id="printable-invoice" className="p-8 space-y-6 bg-white">
+        <div id="printable-invoice" className="p-4 sm:p-8 space-y-5 sm:space-y-6 bg-white overflow-x-hidden">
           
           {/* Header */}
-          <div className="flex justify-between items-start pb-6 border-b border-zinc-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-5 sm:pb-6 border-b border-zinc-200">
             <div className="space-y-1">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-full bg-zinc-900 border border-[#c5a059] flex items-center justify-center p-1">
+                <div className="w-10 h-10 rounded-full bg-zinc-900 border border-[#c5a059] flex items-center justify-center p-1 shrink-0">
                   <img src={PUNCHX_LOGO} alt="PunchX" className="w-full h-full object-contain" />
                 </div>
                 <div>
@@ -85,7 +85,7 @@ export default function InvoiceReceiptModal({
               </p>
             </div>
 
-            <div className="text-right font-mono">
+            <div className="sm:text-right font-mono">
               <span className="inline-block px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 text-xs font-bold mb-1">
                 PAID & COMPLETED
               </span>
@@ -96,7 +96,7 @@ export default function InvoiceReceiptModal({
           </div>
 
           {/* Billed To / Service Technician Details */}
-          <div className="grid grid-cols-2 gap-6 p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-xs">
             <div>
               <span className="font-mono font-bold text-zinc-400 uppercase text-[10px] block mb-1">CUSTOMER DETAILS</span>
               <div className="font-bold text-zinc-900">{order.customerName || 'Verified Citizen'}</div>
@@ -116,8 +116,8 @@ export default function InvoiceReceiptModal({
           </div>
 
           {/* Itemized Table */}
-          <div>
-            <table className="w-full text-xs text-left">
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full text-xs text-left min-w-[320px]">
               <thead>
                 <tr className="border-b-2 border-zinc-200 font-mono text-zinc-500 text-[11px]">
                   <th className="py-2.5">DESCRIPTION OF SERVICE</th>
@@ -147,12 +147,12 @@ export default function InvoiceReceiptModal({
           </div>
 
           {/* Total & Summary */}
-          <div className="pt-4 border-t-2 border-zinc-900 flex justify-between items-center">
+          <div className="pt-4 border-t-2 border-zinc-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
               <Award className="w-4 h-4 text-[#c5a059]" />
               <span>30-Day PunchX Revisit Warranty Activated</span>
             </div>
-            <div className="text-right">
+            <div className="sm:text-right">
               <span className="text-xs text-zinc-500 font-mono block">TOTAL AMOUNT PAID</span>
               <span className="text-2xl font-black text-zinc-900 font-mono">₹{total}</span>
             </div>

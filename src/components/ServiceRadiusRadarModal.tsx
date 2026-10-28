@@ -178,13 +178,13 @@ export default function ServiceRadiusRadarModal({
         </div>
 
         {/* Main Content Area: Map Canvas & List Panels */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-hidden min-h-[420px]">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-y-auto md:overflow-hidden min-h-0">
           
           {/* Left / Center: Interactive GPS Radar Map View (7 cols) */}
-          <div className="md:col-span-7 bg-[#050b18] relative flex items-center justify-center p-4 overflow-hidden border-b md:border-b-0 md:border-r border-zinc-800">
+          <div className="md:col-span-7 bg-[#050b18] relative flex items-center justify-center p-3 sm:p-4 overflow-hidden border-b md:border-b-0 md:border-r border-zinc-800 shrink-0">
             
             {/* Visual Radar Rings & Crosshairs */}
-            <div className="relative w-full aspect-square max-w-[380px] max-h-[380px] flex items-center justify-center">
+            <div className="relative w-full aspect-square max-w-[290px] sm:max-w-[380px] max-h-[380px] flex items-center justify-center my-1 sm:my-2">
               
               {/* No circular geofence: the overlay describes locality coverage only. */}
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 rounded-full border border-[#c5a059]/40 bg-[#07122a]/90 px-3 py-1 text-[9px] font-mono font-bold text-[#e9c176] whitespace-nowrap">NAMED AREAS · NOT TO SCALE</div>
@@ -287,7 +287,7 @@ export default function ServiceRadiusRadarModal({
           </div>
 
           {/* Right: Item List & Details Card (5 cols) */}
-          <div className="md:col-span-5 bg-[#0b1325] flex flex-col justify-between overflow-y-auto max-h-[460px] p-4 border-t md:border-t-0">
+          <div className="md:col-span-5 bg-[#0b1325] flex flex-col justify-between overflow-y-auto md:max-h-[460px] p-4 border-t md:border-t-0 shrink-0">
             
             {selectedItem ? (
               /* Selected Provider or Order Detailed Card */

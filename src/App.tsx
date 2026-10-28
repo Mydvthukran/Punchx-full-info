@@ -1,6 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { calculateAuthoritativeQuote } from './backend/pricingService';
 import Splash from './components/Splash';
 import Auth from './components/Auth';
 import DragoAssistant from './components/DragoAssistant';
@@ -336,13 +335,27 @@ function AppMain() {
 
   const handleApplyPromoCode = (code: string) => {
     const upper = code.trim().toUpperCase();
-    const quote = calculateAuthoritativeQuote({ couponCode: upper });
-    if (quote.couponValid) {
+    const couponMessages: Record<string, string> = {
+      FIRST50: '50% Welcome Discount applied (Max ₹100)',
+      PUNCHX100: 'Flat ₹100 Discount applied',
+      SAVE20: '20% Special Savings applied (Max ₹150)',
+      FREESHIP: 'Platform convenience fee waived',
+      WELCOME10: '10% Welcome Discount applied',
+      ELITE20: '20% Elite Savings applied',
+      PUNCHX20: '20% PunchX Discount applied',
+      FIRST20: '20% First Order Discount applied',
+      WELCOME20: '20% Welcome Discount applied',
+      BONUS20: '20% Bonus applied',
+      DISCOUNT20: '20% Discount applied',
+    };
+    if (couponMessages[upper]) {
       if (hasUsedBonus) { showToast('⚠️ First-order promo coupon has already been redeemed on an earlier order.'); return; }
       setPromoApplied(true); setHasClaimedBonus(true);
       try { localStorage.setItem('punchx_first_order_coupon_claimed', 'true'); localStorage.setItem('punchx_active_coupon_applied', 'true'); } catch {}
-      showToast(`✓ ${quote.couponMessage || 'Coupon applied!'}`);
-    } else showToast(`⚠️ ${quote.couponMessage || 'Invalid coupon code.'}`);
+      showToast(`✓ ${couponMessages[upper]}`);
+    } else {
+      showToast('⚠️ Invalid or expired coupon code.');
+    }
   };
 
   const handleTransition = (target: AppScreen) => {
@@ -509,8 +522,12 @@ export default function App() {
   return (
     <AuthProvider>
       <AppMain />
-      <Analytics />
-      <SpeedInsights />
+      {import.meta.env.PROD && (
+        <>
+          <Analytics />
+          <SpeedInsights />
+        </>
+      )}
     </AuthProvider>
   );
 }

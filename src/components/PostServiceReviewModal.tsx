@@ -126,12 +126,12 @@ export default function PostServiceReviewModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="w-full max-w-lg bg-[#0e172a] border border-[#c5a059]/40 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          className="w-full max-w-lg bg-[#0e172a] border border-[#c5a059]/40 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] pb-[max(12px,env(safe-area-inset-bottom))]"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-[#11192e] to-[#07122a] p-5 border-b border-[#c5a059]/25 flex justify-between items-start relative">
@@ -154,7 +154,7 @@ export default function PostServiceReviewModal({
           </div>
 
           {/* Form Body */}
-          <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-5 custom-scrollbar text-left font-sans">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto min-h-0 space-y-4 sm:space-y-5 custom-scrollbar text-left font-sans">
             
             {/* Star Rating Section */}
             <div className="bg-[#121c33] border border-[#c5a059]/30 p-4 rounded-2xl text-center space-y-2">
@@ -201,7 +201,7 @@ export default function PostServiceReviewModal({
                 <span className="text-[11px] text-zinc-400 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-[#e9c176]" /> Punctuality & Timeliness:
                 </span>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
                   {['On Time', 'Slight Delay', 'Delayed'].map((opt) => (
                     <button
                       key={opt}
@@ -224,13 +224,13 @@ export default function PostServiceReviewModal({
                 <span className="text-[11px] text-zinc-400 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-[#e9c176]" /> Professional Behavior & Soft Skills:
                 </span>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
                   {['Polite & Soft-Spoken', 'Uniform & ID Worn', 'Respectful Manners'].map((opt) => (
                     <button
                       key={opt}
                       type="button"
                       onClick={() => setProfessionalism(opt)}
-                      className={`py-2 px-1 text-[11px] font-bold rounded-xl border transition-all cursor-pointer truncate ${
+                      className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
                         professionalism === opt
                           ? 'bg-[#c5a059] text-black border-[#ffdea5]'
                           : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700'
@@ -247,13 +247,13 @@ export default function PostServiceReviewModal({
                 <span className="text-[11px] text-zinc-400 flex items-center gap-1.5">
                   <SparkleIcon className="w-3.5 h-3.5 text-[#e9c176]" /> Workmanship & Cleanliness:
                 </span>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
                   {['Spotless Cleanup', 'Tidy Setup', 'Needs Cleanup'].map((opt) => (
                     <button
                       key={opt}
                       type="button"
                       onClick={() => setCleanliness(opt)}
-                      className={`py-2 px-1 text-[11px] font-bold rounded-xl border transition-all cursor-pointer truncate ${
+                      className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
                         cleanliness === opt
                           ? 'bg-[#c5a059] text-black border-[#ffdea5]'
                           : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700'
@@ -314,7 +314,7 @@ export default function PostServiceReviewModal({
             </div>
 
             {/* Footer Buttons */}
-            <div className="pt-2 flex items-center justify-end gap-3 border-t border-zinc-850">
+            <div className="pt-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2.5 sm:gap-3 border-t border-zinc-850">
               <button
                 type="button"
                 onClick={onClose}
@@ -326,7 +326,7 @@ export default function PostServiceReviewModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-2.5 bg-gradient-to-r from-[#c5a059] to-[#e9c176] hover:brightness-110 active:scale-95 text-black font-extrabold text-xs uppercase tracking-widest rounded-xl shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 bg-gradient-to-r from-[#c5a059] to-[#e9c176] hover:brightness-110 active:scale-95 text-black font-extrabold text-xs uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>

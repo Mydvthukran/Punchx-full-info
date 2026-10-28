@@ -377,8 +377,8 @@ export default function WorkerDashboard({ onTransition, showNotification }: Work
       <WorkerDragoAssistant jobs={jobs} selectedJob={selected} />
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-6" onClick={() => setSelected(null)}>
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 md:rounded-3xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 md:items-center md:p-6" onClick={() => setSelected(null)}>
+          <div className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(20px,env(safe-area-inset-bottom))] md:rounded-3xl md:pb-5" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div><h2 className="text-xl font-bold">{selected.category || 'Service Job'}</h2><p className="text-sm text-slate-500">Booking #{selected.id.slice(0, 10)}</p></div>
               <button onClick={() => setSelected(null)} className="rounded-full bg-slate-100 p-2"><XCircle size={20} /></button>

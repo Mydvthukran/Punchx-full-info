@@ -173,7 +173,7 @@ export default function DobPicker({
 
       {/* Popover Calendar Widget */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 z-50 w-full max-w-[320px] bg-[#0c1938] border border-[#c5a059]/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md">
+        <div className="absolute top-full left-0 mt-2 z-[70] w-full max-w-[min(320px,calc(100vw-32px))] bg-[#0c1938] border border-[#c5a059]/40 rounded-2xl p-3 sm:p-4 shadow-2xl backdrop-blur-md">
           {/* Header Controls: Month & Year Selectors */}
           <div className="flex items-center justify-between gap-1.5 mb-3">
             <button

@@ -134,7 +134,7 @@ export default function WebsiteFooter({ onTransition, onSelectCategory, showNoti
 
   function MotionRefund() {
     return (
-      <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#101525] p-5 shadow-2xl">
+      <div className="w-full max-w-xl max-h-[92dvh] overflow-y-auto rounded-3xl border border-white/10 bg-[#101525] p-4 sm:p-5 shadow-2xl pb-[max(16px,env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div className="flex items-center gap-2 text-sm font-black"><Gift className="h-4 w-4 text-[#b9adff]" /> Refund & warranty</div>
           <button onClick={() => setRefundOpen(false)} className="rounded-xl bg-white/5 p-2 text-white/70 hover:bg-white/10"><X className="h-4 w-4" /></button>

@@ -61,12 +61,13 @@ const CATEGORY_TO_ID: Record<string, string> = {
   'moving': 'moving',
 };
 
-const PLATFORM_FEE = 29;
-const GST_RATE = 0.18; // 18% GST
-const DEFAULT_COMMISSION_RATE = 0.15; // 15% platform commission
-const EMERGENCY_SURCHARGE_AMOUNT = 99;
+import { platformSettings } from './routes/adminBridgeRoutes.js';
 
 export function calculateAuthoritativeQuote(request: PricingQuoteRequest): PricingQuoteResult {
+  const currentPlatformFee = platformSettings.convenienceFee ?? 29;
+  const currentEmergencySurcharge = platformSettings.emergencySurcharge ?? 99;
+  const currentCommissionRate = platformSettings.defaultCommissionRate ?? 0.15;
+  const currentGstRate = platformSettings.gstRate ?? 0.18;
   // 1. Determine base visiting fee
   let serviceKey = (request.serviceId || '').toLowerCase().trim();
   if (!serviceKey && request.category) {
@@ -82,7 +83,7 @@ export function calculateAuthoritativeQuote(request: PricingQuoteRequest): Prici
     }
   }
 
-  const emergencySurcharge = request.isEmergency ? EMERGENCY_SURCHARGE_AMOUNT : 0;
+  const emergencySurcharge = request.isEmergency ? currentEmergencySurcharge : 0;
   const subtotalBeforeDiscount = baseVisitingFee + emergencySurcharge;
 
   // 2. Validate Coupon Server-Side
@@ -120,7 +121,7 @@ export function calculateAuthoritativeQuote(request: PricingQuoteRequest): Prici
         break;
 
       case 'FREESHIP':
-        discountApplied = PLATFORM_FEE;
+        discountApplied = currentPlatformFee;
         couponValid = true;
         couponUsed = 'FREESHIP';
         couponMessage = 'Platform convenience fee waived';
@@ -144,18 +145,18 @@ export function calculateAuthoritativeQuote(request: PricingQuoteRequest): Prici
   const subtotalAfterDiscount = subtotalBeforeDiscount - discountApplied;
 
   // 3. Platform Fee
-  const customerPlatformFee = request.waivePlatformFee === true || rawCoupon === 'FREESHIP' ? 0 : PLATFORM_FEE;
+  const customerPlatformFee = request.waivePlatformFee === true || rawCoupon === 'FREESHIP' ? 0 : currentPlatformFee;
 
   // 4. GST Calculation (18% on discounted services + convenience fee)
   const taxableAmount = subtotalAfterDiscount + customerPlatformFee;
-  const gstAmount = Math.round(taxableAmount * GST_RATE * 100) / 100;
+  const gstAmount = Math.round(taxableAmount * currentGstRate * 100) / 100;
 
   // 5. Total Customer Charge
   const totalAmountToPay = Math.round(taxableAmount + gstAmount);
 
   // 6. Professional Payout & Platform Commission
   // Worker earns (1 - commissionRate) of base fee + 100% of emergency surcharge
-  const commissionRate = DEFAULT_COMMISSION_RATE;
+  const commissionRate = currentCommissionRate;
   const platformCommission = Math.round(baseVisitingFee * commissionRate);
   const professionalPayout = Math.max(0, (baseVisitingFee - platformCommission) + emergencySurcharge);
 
