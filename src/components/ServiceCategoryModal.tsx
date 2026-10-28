@@ -127,7 +127,8 @@ export default function ServiceCategoryModal({
 
   const handleCitizenSelect = (name: string) => {
     if (name === 'Other Service') {
-      setShowCustomInput(true);
+      onSelectCategory?.(name);
+      onClose();
       return;
     }
     const category = findCatalogCategory(name);

@@ -23,7 +23,7 @@ interface CitizenHomeRedesignProps {
 const serviceImages: Record<string, string> = {
   Electrician:'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=900&q=85',
   Plumber:'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=900&q=85',
-  Carpenter:'https://images.unsplash.com/photo-1601058268499-e52658b5b3e5?auto=format&fit=crop&w=900&q=85',
+  Carpenter:'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=900&q=85',
   Painter:'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=900&q=85',
   Mason:'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=900&q=85',
   Welder:'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=900&q=85',

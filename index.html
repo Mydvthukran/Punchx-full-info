@@ -36,6 +36,8 @@
         "@context": "https://schema.org",
         "@graph": [
           {"@type":"Organization","@id":"https://www.punchxapp.co.in/#organization","name":"PunchX","url":"https://www.punchxapp.co.in/","description":"A marketplace connecting customers with local service professionals for home services and repairs in supported areas.","email":"punchxservice@gmail.com","founder":[{"@id":"https://www.punchxapp.co.in/founder#rimil-das"},{"@id":"https://www.punchxapp.co.in/founder#abhradip-ghosh"}]},
+          {"@type":"WebSite","@id":"https://www.punchxapp.co.in/#website","name":"PunchX","url":"https://www.punchxapp.co.in/","publisher":{"@id":"https://www.punchxapp.co.in/#organization"},"inLanguage":"en-IN"},
+          {"@type":"Service","@id":"https://www.punchxapp.co.in/#local-services","name":"Local home and everyday services","provider":{"@id":"https://www.punchxapp.co.in/#organization"},"serviceType":["Electrician Services","Plumbing Services","Home Cleaning","AC & Appliance Repair","Pest Control","Beauty & Salon at Home","Carpenter & Handyman","Painting & Home Improvement","Cook & Home Assistance","Home Care & Physiotherapy"]},
           {"@type":"Person","@id":"https://www.punchxapp.co.in/founder#rimil-das","name":"Rimil Das","jobTitle":"Founder & COO","url":"https://www.punchxapp.co.in/founder","sameAs":["https://www.linkedin.com/in/rimil-das-a0537a3ba/"],"worksFor":{"@id":"https://www.punchxapp.co.in/#organization"}},
           {"@type":"Person","@id":"https://www.punchxapp.co.in/founder#abhradip-ghosh","name":"Abhradip Ghosh","jobTitle":"Co-Founder & CEO","url":"https://www.punchxapp.co.in/founder","sameAs":["https://www.linkedin.com/in/abhradip-ghosh-858383404/"],"worksFor":{"@id":"https://www.punchxapp.co.in/#organization"}}
         ]
@@ -56,12 +58,26 @@
       .static-cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 20px;border-radius:12px;background:#4f46e5;color:#fff!important;font-weight:750;text-decoration:none;margin:8px 10px 8px 0}
       .static-cta-secondary{background:#fff;color:#242936!important;border:1px solid #d9dce5}
       .static-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
-      .static-card{padding:14px;border:1px solid #e0e3eb;border-radius:16px;background:#fff;overflow:hidden}.static-card img{display:block;width:100%;height:145px;object-fit:cover;border-radius:10px;margin-bottom:12px}.static-card h3{margin:0 0 6px}.static-card p{margin:0;font-size:14px}
+      .static-card{padding:14px;border:1px solid #e0e3eb;border-radius:16px;background:#fff;overflow:hidden}.static-card img{display:block;width:100%;height:145px;object-fit:cover;border-radius:10px;margin-bottom:12px;background:#f0f2f5}.static-card h3{margin:0 0 6px}.static-card p{margin:0;font-size:14px}
       #static-seo-fallback h2{font-size:26px;line-height:1.2;letter-spacing:-.025em;margin:0 0 14px}
       #static-seo-fallback section{padding:26px 0}
       #static-seo-fallback p{color:#515866}
       .static-note{padding:14px 16px;background:#fff;border-left:4px solid #4f46e5;border-radius:8px}
       .static-footer{border-top:1px solid #dfe2e9;margin-top:24px;padding-top:20px;display:flex;gap:18px;flex-wrap:wrap}
+      @media(max-width:640px){
+        #static-seo-fallback{padding:16px 14px 44px}
+        .static-hero{padding:24px 0 20px}
+        .static-hero h1{font-size:28px;line-height:1.15;margin-bottom:12px}
+        .static-hero p{font-size:15px;line-height:1.5}
+        .static-cta{display:flex;width:100%;box-sizing:border-box;margin:6px 0}
+        .static-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+        .static-card{padding:10px;border-radius:12px}
+        .static-card img{height:105px;margin-bottom:8px}
+        .static-card h3{font-size:13px;line-height:1.25}
+        .static-card p{font-size:11px;line-height:1.35;color:#606775}
+        .static-header{padding:4px 0 16px}
+        .static-nav{gap:10px 14px;font-size:13px}
+      }
       html.js-enabled #root{min-height:100vh}
       html:not(.js-enabled) #root{display:none}
       html.js-enabled #initial-loader{display:none}
@@ -132,7 +148,7 @@
           <article class="static-card"><img src="https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&amp;fit=crop&amp;w=900&amp;q=85" alt="Technician servicing household equipment" loading="lazy" /><h3>AC &amp; Appliance Repair</h3><p>AC servicing, refrigerator, washing machine and appliance repair.</p></article>
           <article class="static-card"><img src="https://willixai.com/assets/pest-control-3PLWX0ZE.jpg" alt="Pest-control service for a home" loading="lazy" /><h3>Pest Control</h3><p>Treatment options for cockroaches, ants, mosquitoes and rodents.</p></article>
           <article class="static-card"><img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&amp;fit=crop&amp;w=900&amp;q=85" alt="Beauty professional providing salon care" loading="lazy" /><h3>Beauty &amp; Salon at Home</h3><p>Facials, waxing, threading, manicure, pedicure and grooming.</p></article>
-          <article class="static-card"><img src="https://images.unsplash.com/photo-1601058268499-e52658b5b3e5?auto=format&amp;fit=crop&amp;w=900&amp;q=85" alt="Carpenter working on furniture" loading="lazy" /><h3>Carpenter &amp; Handyman</h3><p>Furniture fixes, shelves, doors, cabinet fittings and small repairs.</p></article>
+          <article class="static-card"><img src="https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&amp;fit=crop&amp;w=900&amp;q=85" alt="Carpenter working on furniture" loading="lazy" /><h3>Carpenter &amp; Handyman</h3><p>Furniture fixes, shelves, doors, cabinet fittings and small repairs.</p></article>
           <article class="static-card"><img src="https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&amp;fit=crop&amp;w=900&amp;q=85" alt="Painter finishing an interior wall" loading="lazy" /><h3>Painting &amp; Home Improvement</h3><p>Wall painting, touch-ups, waterproofing and small renovations.</p></article>
           <article class="static-card"><img src="https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&amp;fit=crop&amp;w=900&amp;q=85" alt="Cook preparing food in a home kitchen" loading="lazy" /><h3>Cook &amp; Home Assistance</h3><p>Meal preparation, scheduled cooking and routine household assistance.</p></article>
           <article class="static-card"><img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&amp;fit=crop&amp;w=900&amp;q=85" alt="Health professional helping with home care" loading="lazy" /><h3>Home Care &amp; Physiotherapy</h3><p>Mobility support, elderly assistance and visits by qualified physiotherapists.</p></article>

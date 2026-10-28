@@ -69,7 +69,7 @@ const PUNCHX_CATEGORIES: ServiceCategoryItem[] = [
     shortDesc: 'Furniture and door repairs, shelves, cabinet fittings, locks and minor household fixes.',
     iconName: 'Hammer',
     basePrice: 249,
-    imageUrl: 'https://images.unsplash.com/photo-1601058268499-e52658b5b3e5?auto=format&fit=crop&w=1200&q=85',
+    imageUrl: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1200&q=85',
     keywords: ['carpenter','carpentry','handyman','wood','furniture','door','table','chair','cabinet','hinge','bed','shelf','locksmith','lock','window','glass','welder','welding','metal','fabrication','drilling','assembly']
   },
   {

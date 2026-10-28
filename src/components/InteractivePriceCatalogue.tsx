@@ -171,7 +171,7 @@ export default function InteractivePriceCatalogue({ onTransition, onSelectCatego
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-[#7c8090]" />
             </div>
-            <div className="mt-5 space-y-2">
+            <div className="mt-5 hidden space-y-2 lg:block">
               {serviceCategories.map(category => (
                 <button key={category.id} onClick={() => { setSelectedCategoryId(category.id); setQuery(''); setSelectedProduct(null); setSelectedService(null); }} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-bold transition ${selectedCategoryId === category.id ? 'bg-[#eeeaff] text-[#5b48bf]' : 'text-[#626779] hover:bg-[#f5f6fb] hover:text-[#202331]'}`}>
                   <span className="pr-2">{category.name}</span><span className="text-[10px] opacity-60">{category.subcategories.reduce((sum, sub) => sum + sub.items.length, 0)}</span>

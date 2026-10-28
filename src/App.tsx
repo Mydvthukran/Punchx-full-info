@@ -522,8 +522,12 @@ export default function App() {
   return (
     <AuthProvider>
       <AppMain />
-      <Analytics />
-      <SpeedInsights />
+      {import.meta.env.PROD && (
+        <>
+          <Analytics />
+          <SpeedInsights />
+        </>
+      )}
     </AuthProvider>
   );
 }
