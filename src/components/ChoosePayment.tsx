@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, CreditCard, Lock, ShieldCheck, Wallet, X } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { calculatePunchXPricing, formatINR } from '../config/punchxCommerce';
@@ -18,13 +18,36 @@ function getCustomerReferenceId(uid:string){
 
 export default function ChoosePayment({onTransition,selectedWorker,onOrderFinalized,showNotification}:ChoosePaymentProps){
   const [pending]=useState<PendingBooking>(load);
+  const [isFirstBooking,setIsFirstBooking]=useState<boolean|null>(null);
   const [method,setMethod]=useState<'cod'|'online'>('cod');
+
+  useEffect(()=>{
+    let cancelled=false;
+    const checkWelcomeOffer=async()=>{
+      const user=auth.currentUser;
+      if(!user){if(!cancelled)setIsFirstBooking(false);return;}
+      try{
+        const token=await user.getIdToken();
+        const backendBase=String(import.meta.env.VITE_BACKEND_URL||'').replace(/\/$/,'');
+        const response=await fetch(`${backendBase}/api/orders`,{headers:{Authorization:`Bearer ${token}`}});
+        if(!response.ok)throw new Error('Could not verify booking history');
+        const result=await response.json();
+        if(!cancelled)setIsFirstBooking(Array.isArray(result.orders)&&result.orders.length===0);
+      }catch{
+        if(!cancelled)setIsFirstBooking(false);
+      }
+    };
+    checkWelcomeOffer();
+    return()=>{cancelled=true;};
+  },[]);
   const [submitting,setSubmitting]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
   const [orderId,setOrderId]=useState('');
   const [credentials,setCredentials]=useState<{customerId:string;startOtp:string}|null>(null);
   const pricing=useMemo(()=>typeof pending.price==='number'?calculatePunchXPricing(pending.price):null,[pending.price]);
-  const total=Number(pending.customerTotal ?? (pricing?.customerTotal ?? pending.price ?? 0))+Number(pending.warrantyFee||0);
+  const visitingFee = pricing?.visitingFee || 59;
+  const platformFee = isFirstBooking === true ? 0 : (pricing?.customerPlatformFee ?? 10);
+  const total = visitingFee + platformFee;
 
   const loadRazorpay=()=>new Promise<boolean>(resolve=>{
     if((window as any).Razorpay){resolve(true);return;}
@@ -60,12 +83,12 @@ export default function ChoosePayment({onTransition,selectedWorker,onOrderFinali
           category:pending.category||'Home Services',
           serviceId:pending.serviceId||null,serviceName:pending.serviceName,
           description:pending.description||'',note:pending.note||'',
-          serviceItems:(Array.isArray(pending.cart)?pending.cart:[]).map((item)=>({id:item.id||item.serviceId||'',serviceId:item.serviceId||null,serviceName:item.serviceName||'',category:item.category||pending.category||'',subcategory:item.subcategory||'',description:item.description||'',price:Number(item.price||0),duration:item.duration||'',quantity:Number(item.quantity||1)})),
-          price:pending.price??null,visitingFee:pending.price??null,totalAmountToPay:total,
-          customerPlatformFee:pricing?.customerPlatformFee??0,
-          warrantyFee:Number(pending.warrantyFee||0),
-          hasWarrantyGuarantee:Boolean(pending.hasWarrantyGuarantee),
-          warrantyExpiryDate:pending.hasWarrantyGuarantee?new Date(Date.now()+30*86400000).toISOString():null,
+          serviceItems:(Array.isArray(pending.cart)?pending.cart:[]).map((item)=>({id:item.id||item.serviceId||'',serviceId:item.serviceId||null,serviceName:item.serviceName||'',category:item.category||pending.category||'',subcategory:item.subcategory||'',description:item.description||'',price:0,duration:item.duration||'',quantity:Number(item.quantity||1)})),
+          price:null,visitingFee, totalAmountToPay:total,
+          customerPlatformFee:platformFee,
+          warrantyFee:0,
+          hasWarrantyGuarantee:false,
+          warrantyExpiryDate:null,
           residentialAddress:pending.residentialAddress||null,
           addressCoordinates:pending.addressCoordinates||null,
           geofenceArea:pending.geofenceArea||'',
@@ -104,11 +127,11 @@ export default function ChoosePayment({onTransition,selectedWorker,onOrderFinali
     if(!key){showNotification?.('Online payment needs VITE_RAZORPAY_KEY_ID in the production environment. COD remains available.');return;}
     const loaded=await loadRazorpay();if(!loaded){showNotification?.('Payment gateway could not load. Please try again or choose COD.');return;}
     const Razorpay=(window as any).Razorpay;
-    const options={key,amount:Math.round(total*100),currency:'INR',name:'PUNCHX',description:pending.serviceName,prefill:{name:auth.currentUser?.displayName||'PUNCHX Customer',email:auth.currentUser?.email||''},theme:{color:'#2563eb'},handler:(response:any)=>finalize(response?.razorpay_payment_id)};
+    const options={key,amount:Math.round(total*100),currency:'INR',name:'PUNCHX',description:pending.serviceName,prefill:{name:auth.currentUser?.displayName||'PUNCHX Customer',email:auth.currentUser?.email||''},theme:{color:'#B99A62'},handler:(response:any)=>finalize(response?.razorpay_payment_id)};
     new Razorpay(options).open();
   };
 
   if(confirmed&&credentials)return <div className="min-h-screen bg-[#f7faff] px-4 py-10 text-[#0f172a]"><div className="mx-auto max-w-lg rounded-3xl border border-[#dbeafe] bg-white p-7 text-center shadow-xl"><div className="mx-auto flex h-24 w-24 animate-[pulse_2s_ease-in-out_infinite] items-center justify-center rounded-full bg-[#eaf3ff]"><CheckCircle2 className="h-12 w-12 text-[#2563eb]"/></div><h1 className="mt-6 text-3xl font-black">Booking confirmed</h1><p className="mt-2 text-sm text-[#64748b]">Your PUNCHX booking is now in the tracking system.</p><div className="mt-5 rounded-2xl bg-[#f8fbff] p-4 text-left"><div className="text-sm font-black">{pending.serviceName}</div><div className="mt-1 text-xs text-[#64748b]">{pending.date} · {pending.time}</div><div className="mt-1 text-xs text-[#64748b]">{pending.address}</div><div className="mt-3 grid grid-cols-2 gap-2"><div className="rounded-xl bg-white p-3"><div className="text-[9px] font-black uppercase text-[#64748b]">Customer ID</div><div className="mt-1 font-black text-[#2563eb]">{credentials.customerId}</div></div><div className="rounded-xl bg-white p-3"><div className="text-[9px] font-black uppercase text-[#64748b]">Service Start Code</div><div className="mt-1 font-black text-[#2563eb]">{credentials.startOtp||"Provided securely by PUNCHX"}</div></div></div><div className="mt-3 text-xs font-bold">Booking ID: {orderId}</div><div className="mt-1 text-xs text-[#64748b]">Live tracking becomes active when the professional is marked out for work.</div></div><button onClick={()=>onTransition('tracking')} className="mt-6 w-full rounded-2xl bg-[#2563eb] py-4 text-sm font-black text-white">Track booking</button></div></div>;
 
-  return <div id="payment-screen-container" className="min-h-screen bg-[#f7faff] pb-24 text-[#0f172a]"><header className="sticky top-0 z-40 border-b border-[#dbeafe] bg-white/95 px-4 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-2xl items-center gap-3"><button onClick={()=>{if(window.history.state?.screen==='payment'&&window.history.length>1)window.history.back();else onTransition('booking');}} aria-label="Back to cart" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dbeafe]"><X className="h-5 w-5 rotate-45"/></button><div><div className="text-[10px] font-black uppercase tracking-wider text-[#2563eb]">PUNCHX</div><h1 className="text-lg font-black">Payment gateway</h1></div></div></header><main className="punchx-citizen-main mx-auto max-w-2xl space-y-4 px-4 py-5 sm:px-6 sm:py-8"><section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#2563eb]"><ShieldCheck className="h-4 w-4"/> Secure checkout</div><h2 className="mt-3 text-2xl font-black">{pending.serviceName||'PUNCHX booking'}</h2><div className="mt-4 space-y-2 text-sm"><div className="flex justify-between"><span className="text-[#64748b]">Product price</span><span className="font-bold">{formatINR(pricing?.serviceValue??pending.price??0)}</span></div><div className="flex justify-between"><span className="text-[#64748b]">Visiting fee</span><span className="font-bold">{pricing?.visitingFee && pricing.visitingFee > 0 ? formatINR(pricing.visitingFee) : 'Free'}</span></div><div className="flex justify-between"><span className="text-[#64748b]">PUNCHX platform fee</span><span className="font-bold">{formatINR(pricing?.customerPlatformFee??0)}</span></div><div className="flex justify-between"><span className="text-[#64748b]">GST (18%)</span><span className="font-bold">{formatINR(pricing?.gstAmount??0)}</span></div>{pending.warrantyFee&&<div className="flex justify-between"><span className="text-[#64748b]">Extended warranty</span><span className="font-bold">₹{pending.warrantyFee}</span></div>}<div className="flex justify-between border-t border-[#e5eefb] pt-3"><span className="font-black">Total</span><span className="font-black text-[#2563eb]">{formatINR(total)}</span></div></div></section><section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><h3 className="font-black">Choose payment method</h3><button onClick={()=>setMethod('cod')} className={`mt-4 flex w-full items-center gap-3 rounded-2xl border p-4 text-left ${method==='cod'?'border-[#2563eb] bg-[#eef6ff]':'border-[#dbeafe]'}`}><Wallet className="h-5 w-5 text-[#2563eb]"/><div className="flex-1"><div className="font-black">Cash on Delivery / Service</div><div className="text-xs text-[#64748b]">Pay the professional according to the final invoice.</div></div>{method==='cod'&&<CheckCircle2 className="h-5 w-5 text-[#2563eb]"/>}</button><button onClick={()=>setMethod('online')} className={`mt-3 flex w-full items-center gap-3 rounded-2xl border p-4 text-left ${method==='online'?'border-[#2563eb] bg-[#eef6ff]':'border-[#dbeafe]'}`}><CreditCard className="h-5 w-5 text-[#2563eb]"/><div className="flex-1"><div className="font-black">Online payment</div><div className="text-xs text-[#64748b]">Razorpay checkout opens when VITE_RAZORPAY_KEY_ID is configured.</div></div>{method==='online'&&<CheckCircle2 className="h-5 w-5 text-[#2563eb]"/>}</button></section><button onClick={()=>method==='online'?payOnline():finalize()} disabled={submitting} className="w-full rounded-2xl bg-[#2563eb] py-4 text-sm font-black text-white disabled:opacity-50">{submitting?'Processing…':method==='online'?'Pay securely':'Confirm COD booking'}</button><p className="text-center text-[10px] text-[#64748b]">Payment and booking records are saved only after successful gateway/COD confirmation.</p></main></div>;
+  return <div id="payment-screen-container" className="min-h-screen bg-[#f7faff] pb-24 text-[#0f172a]"><header className="sticky top-0 z-40 border-b border-[#dbeafe] bg-white/95 px-4 py-3 backdrop-blur-xl"><div className="mx-auto flex max-w-2xl items-center gap-3"><button onClick={()=>{if(window.history.state?.screen==='payment'&&window.history.length>1)window.history.back();else onTransition('booking');}} aria-label="Back to cart" className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dbeafe]"><X className="h-5 w-5 rotate-45"/></button><div><div className="text-[10px] font-black uppercase tracking-wider text-[#2563eb]">PUNCHX</div><h1 className="text-lg font-black">Payment gateway</h1></div></div></header><main className="punchx-citizen-main mx-auto max-w-2xl space-y-4 px-4 py-5 sm:px-6 sm:py-8"><section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#2563eb]"><ShieldCheck className="h-4 w-4"/> Secure checkout</div><h2 className="mt-3 text-2xl font-black">Payment details</h2><div className="mt-4 space-y-3 text-sm"><div className="flex justify-between"><span className="text-[#64748b]">Visiting fee</span><span className="font-bold">{formatINR(visitingFee)}</span></div><div className="flex justify-between"><span className="text-[#64748b]">PUNCHX platform charges</span><span className={isFirstBooking===true?"font-bold text-emerald-600":"font-bold"}>{isFirstBooking===true?'FREE':formatINR(platformFee)}</span></div>{isFirstBooking===true&&<p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">Welcome to PUNCHX! Your first booking has no platform charge.</p>}<div className="flex justify-between border-t border-[#e5eefb] pt-3"><span className="font-black">Total payable now</span><span className="font-black text-[#2563eb]">{formatINR(total)}</span></div><p className="text-xs leading-5 text-[#64748b]">Product/material costs are not included in this pricing. The worker will charge separately for products according to the quality you choose. Please confirm the product and its price with the worker before purchase.</p></div></section><section className="rounded-3xl border border-[#dbeafe] bg-white p-5 shadow-sm"><h3 className="font-black">Choose payment method</h3><button onClick={()=>setMethod('cod')} className={`mt-4 flex w-full items-center gap-3 rounded-2xl border p-4 text-left ${method==='cod'?'border-[#2563eb] bg-[#eef6ff]':'border-[#dbeafe]'}`}><Wallet className="h-5 w-5 text-[#2563eb]"/><div className="flex-1"><div className="font-black">Cash on Delivery / Service</div><div className="text-xs text-[#64748b]">Pay the professional according to the final invoice.</div></div>{method==='cod'&&<CheckCircle2 className="h-5 w-5 text-[#2563eb]"/>}</button><button onClick={()=>setMethod('online')} className={`mt-3 flex w-full items-center gap-3 rounded-2xl border p-4 text-left ${method==='online'?'border-[#2563eb] bg-[#eef6ff]':'border-[#dbeafe]'}`}><CreditCard className="h-5 w-5 text-[#2563eb]"/><div className="flex-1"><div className="font-black">Online payment</div><div className="text-xs text-[#64748b]">Razorpay checkout opens when VITE_RAZORPAY_KEY_ID is configured.</div></div>{method==='online'&&<CheckCircle2 className="h-5 w-5 text-[#2563eb]"/>}</button></section><button onClick={()=>method==='online'?payOnline():finalize()} disabled={submitting||isFirstBooking===null} className="w-full rounded-2xl bg-[#2563eb] py-4 text-sm font-black text-white disabled:opacity-50">{submitting?'Processing…':isFirstBooking===null?'Checking welcome offer…':method==='online'?'Pay securely':'Confirm COD booking'}</button><p className="text-center text-[10px] text-[#64748b]">Payment and booking records are saved only after successful gateway/COD confirmation.</p></main></div>;
 }

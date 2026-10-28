@@ -37,6 +37,7 @@ const PHOTO_LIBRARY = {
   pest: 'https://willixai.com/assets/pest-control-3PLWX0ZE.jpg',
   garden: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=85',
   cook: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=1200&q=85',
+  physio: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=85',
   baker: 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=1200&q=85',
   caterer: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=1200&q=85',
   tiffin: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=1200&q=85',
@@ -60,6 +61,7 @@ const PHOTO_LIBRARY = {
 
 const photoFor = (term: string): string => {
   const t = term.toLowerCase();
+  if (t.includes('physio') || t.includes('physiotherap') || t.includes('home care') || t.includes('elderly') || t.includes('rehabilitation') || t.includes('nursing') || t.includes('caregiver')) return PHOTO_LIBRARY.physio;
   // Exact appliance/service intent first, then broader trade intent.
   if (t.includes('ac ') || t.startsWith('ac') || t.includes('air conditioner') || t.includes('hvac')) return PHOTO_LIBRARY.ac;
   if (t.includes('refrigerator') || t.includes('fridge')) return PHOTO_LIBRARY.refrigerator;

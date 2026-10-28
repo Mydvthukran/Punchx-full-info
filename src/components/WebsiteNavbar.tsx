@@ -26,7 +26,7 @@ interface WebsiteNavbarProps {
   hasActiveBooking?: boolean;
 }
 
-const QUICK_CATEGORIES = PUNCHX_50_CATEGORIES.slice(0, 8);
+const QUICK_CATEGORIES = PUNCHX_50_CATEGORIES;
 
 export default function WebsiteNavbar({
   currentScreen,
@@ -133,12 +133,12 @@ export default function WebsiteNavbar({
                   >
                     <div className="mb-2 flex items-center justify-between rounded-2xl bg-[#f7f5ff] px-3 py-2">
                       <div className="flex items-center gap-2 text-xs font-black text-[#2d2d34]"><Grid2X2 className="h-4 w-4 text-[#7358d7]" /> Quick services</div>
-                      <button onClick={() => { setServicesOpen(false); setCategoryModalOpen(true); }} className="text-[10px] font-extrabold text-[#7358d7]">Browse all 50</button>
+                      <button onClick={() => { setServicesOpen(false); setCategoryModalOpen(true); }} className="text-[10px] font-extrabold text-[#7358d7]">Browse all 10</button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {QUICK_CATEGORIES.map(cat => (
                         <button key={cat.id} onClick={() => chooseCategory(cat.name)} className="group flex items-start gap-2 rounded-2xl border border-black/5 bg-[#fbfbfc] p-2.5 text-left transition hover:-translate-y-0.5 hover:bg-[#f4f1ff]">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eee9ff] text-[#7358d7]"><Wrench className="h-4 w-4" /></div>
+                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-[#eee9ff]"><img src={cat.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" /></div>
                           <div className="min-w-0"><div className="truncate text-[11px] font-black text-[#252830]">{cat.name}</div><div className="mt-0.5 line-clamp-2 text-[9px] leading-3.5 text-[#8a8e97]">{cat.shortDesc}</div></div>
                         </button>
                       ))}

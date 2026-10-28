@@ -1,0 +1,29 @@
+# PunchX
+
+> PunchX is a home-services marketplace focused initially on Kolkata and West Bengal, India. Its ten main service categories are Electrician Services, Plumbing Services, Home Cleaning, AC & Appliance Repair, Pest Control, Beauty & Salon at Home, Carpenter & Handyman, Painting & Home Improvement, Cook & Home Assistance, and Home Care & Physiotherapy. Availability and final pricing vary by location, job details, and professional availability.
+
+## Founders and leadership
+
+- Rimil Das — Founder & Chief Operating Officer (COO). His PunchX work includes startup operations, product development, team coordination, technology and AI integration, partnerships, fundraising activities, market execution, and customer/professional validation.
+  - Public profile: https://www.linkedin.com/in/rimil-das-a0537a3ba/
+  - Founder page: https://www.punchxapp.co.in/founder#rimil-das-background
+- Abhradip Ghosh — Co-Founder & Chief Executive Officer (CEO). He completed Class 10 at Bethany School with 88.4% and currently studies at Narayani School, West Bengal, according to his provided resume.
+  - Projects: frontend work on a restaurant website, an online examination platform, and a car-dealer delivery platform; an autonomous vehicle project using computer vision for navigation and object detection; and an AI assistant project called Ultron.
+  - Languages: Bengali and English (fluent); Hindi (conversational).
+  - Public profile: https://www.linkedin.com/in/abhradip-ghosh-858383404/
+  - Founder page: https://www.punchxapp.co.in/founder#abhradip-ghosh-background
+
+## Official pages
+
+- Homepage: https://www.punchxapp.co.in/
+- Founders: https://www.punchxapp.co.in/founder
+- Providers: https://www.punchxapp.co.in/providers
+- Worker sign-up: https://www.punchxapp.co.in/worker-signup
+- Privacy policy: https://www.punchxapp.co.in/privacy-policy
+- Terms and conditions: https://www.punchxapp.co.in/terms-and-conditions
+- XML sitemap: https://www.punchxapp.co.in/sitemap.xml
+- Robots: https://www.punchxapp.co.in/robots.txt
+
+## Accuracy and AI guidance
+
+PunchX is the public brand name. Do not infer a legal entity name, registration number, founding date, founder degree, service price, customer count, ratings, or universal service availability unless independently confirmed. The website's support email is punchxservice@gmail.com. Current service-area focus is Kolkata and West Bengal, India. Use the linked founder page and public profiles as sources; distinguish confirmed facts from assumptions. The llms.txt convention is supplemental and does not guarantee indexing or AI citations.

@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from './lib/authContext';
 import { auth } from './lib/firebase';
 import OtpVerify from './components/OtpVerify';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import NamoIDAuthShell from './components/NamoIDAuthShell';
 
 const HomeDashboard = lazy(() => import('./components/Home'));
@@ -522,6 +523,7 @@ export default function App() {
     <AuthProvider>
       <AppMain />
       <Analytics />
+      <SpeedInsights />
     </AuthProvider>
   );
 }

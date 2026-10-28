@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import ServiceCategoryModal from './ServiceCategoryModal';
 import DobPicker from './DobPicker';
-import { PUNCHX_50_CATEGORIES } from '../data/categories';
+import { PUNCHX_50_CATEGORIES, normalizeCategorySelection } from '../data/categories';
+import { generateWorkerId } from '../lib/workerId';
 
 interface WorkerSignupProps {
   onTransition: (target: AppScreen) => void;
@@ -37,8 +38,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
   const [isLocating, setIsLocating] = useState(false);
 
   // 3. Trade & Technical Skills
-  const [primaryService, setPrimaryService] = useState('Electrician');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Electrician']);
+  const [primaryService, setPrimaryService] = useState('Electrician Services');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['Electrician Services']);
   const [customSkill, setCustomSkill] = useState('');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
@@ -84,8 +85,11 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     if (storedProfile?.area) setArea(storedProfile.area);
     if (storedProfile?.city) setCity(storedProfile.city);
     if (storedProfile?.sector) setSector(storedProfile.sector);
-    if (storedProfile?.workerSkill) setPrimaryService(storedProfile.workerSkill);
-    if (storedProfile?.workerCategories?.length) setSelectedCategories(storedProfile.workerCategories);
+    const savedCategories = normalizeCategorySelection(storedProfile?.workerCategories || storedProfile?.workerSkill);
+    if (savedCategories.length) {
+      setSelectedCategories(savedCategories);
+      setPrimaryService(normalizeCategorySelection(storedProfile?.workerSkill)[0] || savedCategories[0]);
+    }
     if (storedProfile?.customSkill) setCustomSkill(storedProfile.customSkill);
     if (storedProfile?.workerExperience) setExperienceYears(storedProfile.workerExperience);
     if (storedProfile?.minimumVisitingFee) setMinimumVisitingFee(storedProfile.minimumVisitingFee);
@@ -166,16 +170,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
     }
   };
 
-  const quickCategories = [
-    'Electrician',
-    'Plumber',
-    'AC Technician',
-    'Carpenter',
-    'Painter',
-    'CCTV Technician',
-    'Solar Technician',
-    'Mechanic'
-  ];
+  const quickCategories = PUNCHX_50_CATEGORIES.map((category) => category.name);
 
   const toggleCategory = (catName: string) => {
     if (selectedCategories.includes(catName)) {
@@ -223,15 +218,14 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
       return;
     }
 
-    const primaryTrade = primaryService || selectedCategories[0] || customSkill.trim() || 'General Specialist';
+    const primaryTrade = primaryService || selectedCategories[0] || 'Electrician Services';
     const allCategories = Array.from(new Set([
       ...(primaryService ? [primaryService] : []),
       ...selectedCategories,
-      ...(customSkill.trim() ? [customSkill.trim()] : [])
-    ]));
+    ])).filter((name) => PUNCHX_50_CATEGORIES.some((category) => category.name === name));
 
-    if (allCategories.length === 0 && !customSkill.trim()) {
-      setErrorMsg('Please select at least one service category or enter a custom skill.');
+    if (allCategories.length === 0) {
+      setErrorMsg('Please select at least one of the ten available service categories.');
       return;
     }
     if (!experienceYears.trim()) {
@@ -259,9 +253,14 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
 
     const appId = `APP-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const assignedWorkerId = generateWorkerId();
+    try { localStorage.setItem('punchx_worker_id', assignedWorkerId); } catch {}
+
     const application: WorkerApplication = {
       id: appId,
       uid: applicantUid,
+      workerId: assignedWorkerId,
+      partnerId: assignedWorkerId,
       legalName: legalName.trim(),
       dob: dob.trim(),
       birthdate: dob.trim(),
@@ -297,6 +296,8 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
           setDoc(doc(db, 'workerApplications', applicantUid), application, { merge: true }),
           setDoc(doc(db, 'users', applicantUid), {
             uid: applicantUid,
+            workerId: assignedWorkerId,
+            partnerId: assignedWorkerId,
             name: legalName.trim(),
             legalName: legalName.trim(),
             dob: dob.trim(),
@@ -643,21 +644,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
                 }}
                 className="w-full bg-[#07122a] border border-zinc-800 focus:border-[#c5a059] rounded-xl px-4 py-3 text-xs text-white outline-none cursor-pointer"
               >
-                <option value="Electrician">Electrician</option>
-                <option value="Plumber">Plumber</option>
-                <option value="AC Technician">AC Technician</option>
-                <option value="Carpenter">Carpenter</option>
-                <option value="Painter">Painter</option>
-                <option value="CCTV Technician">CCTV Technician</option>
-                <option value="Solar Technician">Solar Technician</option>
-                <option value="Appliance Repair">Appliance Repair</option>
-                <option value="Mechanic">Mechanic</option>
-                <option value="Mason / Civil Worker">Mason / Civil Worker</option>
-                <option value="Welder">Welder</option>
-                <option value="Locksmith">Locksmith</option>
-                <option value="Pest Control Specialist">Pest Control Specialist</option>
-                <option value="Cleaning Expert">Cleaning Expert</option>
-                <option value="General Specialist">General Specialist</option>
+                {PUNCHX_50_CATEGORIES.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
               </select>
             </div>
 
@@ -679,7 +666,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
                   className="px-3.5 py-2 bg-[#c5a059] hover:bg-[#e9c176] text-black font-mono font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow transition-all self-start sm:self-auto"
                 >
                   <Search className="w-3.5 h-3.5" />
-                  <span>Search 50 Categories Modal</span>
+                  <span>Choose from 10 categories</span>
                 </button>
               </div>
 
@@ -711,6 +698,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {quickCategories.map((cat) => {
                     const isSelected = selectedCategories.includes(cat);
+                    const categoryData = PUNCHX_50_CATEGORIES.find((category) => category.name === cat);
                     return (
                       <button
                         key={cat}
@@ -722,7 +710,7 @@ export default function WorkerSignup({ onTransition, showNotification, setWorker
                             : 'bg-[#07122a] text-zinc-300 border-zinc-800 hover:border-[#c5a059]/40'
                         }`}
                       >
-                        <span className="truncate">{cat}</span>
+                        <span className="flex min-w-0 items-center gap-2 truncate"><img src={categoryData?.imageUrl} alt="" loading="lazy" className="h-8 w-8 shrink-0 rounded-lg object-cover" /><span className="truncate">{cat}</span></span>
                         {isSelected ? (
                           <CheckCircle2 className="w-3.5 h-3.5 text-black flex-shrink-0" />
                         ) : (

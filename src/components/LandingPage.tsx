@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { AppScreen } from '../types';
+import { PUNCHX_50_CATEGORIES } from '../data/categories';
 
 interface Category {
   id: string;
   name: string;
-  icon: string;
+  imageUrl: string;
   price: number;
   keywords: string[];
 }
@@ -21,14 +22,13 @@ interface LandingPageProps {
   showNotification: (message: string) => void;
 }
 
-const categories: Category[] = [
-  { id: 'electrical', name: 'Electrical Work', icon: '⚡', price: 149, keywords: ['electrician', 'fan', 'switch', 'socket', 'wiring', 'light', 'bulb', 'repair'] },
-  { id: 'plumbing', name: 'Plumbing', icon: '🚰', price: 149, keywords: ['plumber', 'tap', 'leakage', 'pipe', 'sink', 'bathroom', 'drainage', 'water'] },
-  { id: 'ac-appliance', name: 'AC & Appliance Repair', icon: '❄️', price: 299, keywords: ['ac', 'air conditioner', 'refrigerator', 'washing machine', 'microwave', 'cooler', 'appliance'] },
-  { id: 'cleaning', name: 'Home Cleaning', icon: '🧹', price: 499, keywords: ['cleaning', 'cleaner', 'deep clean', 'sofa', 'bathroom', 'kitchen', 'floor'] },
-  { id: 'carpentry', name: 'Carpentry', icon: '🔨', price: 199, keywords: ['carpenter', 'furniture', 'door', 'bed', 'table', 'chair', 'wood', 'drilling'] },
-  { id: 'painting', name: 'Painting', icon: '🎨', price: 999, keywords: ['painter', 'paint', 'wall', 'room', 'house', 'interior', 'exterior'] },
-];
+const categories: Category[] = PUNCHX_50_CATEGORIES.map((category) => ({
+  id: category.id,
+  name: category.name,
+  imageUrl: category.imageUrl,
+  price: category.basePrice,
+  keywords: category.keywords,
+}));
 
 const locations: Location[] = [
   { id: 'kolkata', name: 'Kolkata', type: 'city' },
@@ -180,10 +180,10 @@ export default function LandingPage({ onTransition, onSelectCategory, showNotifi
         <section id="services" className="bg-white py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-10"><p className="text-sm font-black uppercase tracking-wider text-orange-500">Popular Services</p><h2 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">What do you need help with?</h2><p className="mt-3 max-w-2xl text-slate-600">Choose a service category or search for a specific job.</p></div>
-            <div id="category-grid" className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+            <div id="category-grid" className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
               {filteredCategories.map((category) => (
                 <button key={category.id} type="button" data-category={category.id} onClick={() => selectCategory(category)} className="category-card rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl">
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-3xl">{category.icon}</div>
+                  <div className="mb-4 h-28 overflow-hidden rounded-xl bg-orange-50"><img src={category.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"/></div>
                   <h3 className="font-bold text-slate-950">{category.name}</h3>
                   <p className="mt-2 text-xs font-semibold text-slate-500">Starting at ₹{category.price}</p>
                 </button>

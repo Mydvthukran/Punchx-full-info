@@ -17,7 +17,7 @@ import {
 } from '../lib/location';
 import ServiceCategoryModal from './ServiceCategoryModal';
 import DobPicker from './DobPicker';
-import { PUNCHX_50_CATEGORIES } from '../data/categories';
+import { PUNCHX_50_CATEGORIES, normalizeCategorySelection } from '../data/categories';
 
 interface WorkerLocationSetupProps {
   onTransition: (target: AppScreen) => void;
@@ -62,10 +62,10 @@ export default function WorkerLocationSetup({
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
     if (workerApplication?.categories && workerApplication.categories.length > 0) {
-      return workerApplication.categories;
+      return normalizeCategorySelection(workerApplication.categories);
     }
     if (workerApplication?.skill) {
-      return [workerApplication.skill];
+      return normalizeCategorySelection(workerApplication.skill);
     }
     return [];
   });
@@ -83,14 +83,7 @@ export default function WorkerLocationSetup({
   const [coverageMessage, setCoverageMessage] = useState('Location will be resolved from your real address or GPS.');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  const quickCategories = [
-    'Electrician',
-    'Plumber',
-    'AC Technician',
-    'Carpenter',
-    'Mechanic',
-    'Cleaner/Housekeeper'
-  ];
+  const quickCategories = PUNCHX_50_CATEGORIES.map((category) => category.name);
 
   // Query backend for location sector and telemetry (Customer details remain strictly hidden for privacy)
   const resolveWorkerLocationFromBackend = useCallback(async (
@@ -433,6 +426,7 @@ export default function WorkerLocationSetup({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {quickCategories.map((cat) => {
                   const isSelected = selectedCategories.includes(cat);
+                  const categoryData = PUNCHX_50_CATEGORIES.find((category) => category.name === cat);
                   return (
                     <button
                       key={cat}
@@ -452,7 +446,7 @@ export default function WorkerLocationSetup({
                           : 'bg-[#07122a] text-zinc-300 border-zinc-800 hover:border-zinc-700'
                       }`}
                     >
-                      <span className="truncate">{cat}</span>
+                      <span className="flex min-w-0 items-center gap-2 truncate"><img src={categoryData?.imageUrl} alt="" loading="lazy" className="h-8 w-8 shrink-0 rounded-lg object-cover" /><span className="truncate">{cat}</span></span>
                       {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-black flex-shrink-0" />}
                     </button>
                   );

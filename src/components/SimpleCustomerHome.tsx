@@ -93,7 +93,7 @@ export default function SimpleCustomerHome({ onTransition, onSelectCategory, cit
         </section>
 
         <section className="pt-7">
-          <div className="flex items-end justify-between"><div><div className="text-[11px] font-bold uppercase tracking-[.16em] text-[#2563eb]">Complete catalogue</div><h2 className="mt-1 text-2xl font-black">All 50 services</h2><p className="mt-1 text-xs text-[#64748b]">Main service → facility → exact work → available professional</p></div><span className="text-xs font-bold text-[#2563eb]">{categories.length} shown</span></div>
+          <div className="flex items-end justify-between"><div><div className="text-[11px] font-bold uppercase tracking-[.16em] text-[#2563eb]">Complete catalogue</div><h2 className="mt-1 text-2xl font-black">All 10 service categories</h2><p className="mt-1 text-xs text-[#64748b]">Main service → facility → exact work → available professional</p></div><span className="text-xs font-bold text-[#2563eb]">{categories.length} shown</span></div>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {categories.map(category => {
               const catalog = serviceCategories.find(item => item.id === category.id);

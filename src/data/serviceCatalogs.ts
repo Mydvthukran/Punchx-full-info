@@ -49,6 +49,11 @@ const SERVICE_WORKS: Record<string, readonly WorkGroup[]> = {
   ...SERVICE_WORKS_3,
   ...SERVICE_WORKS_4,
   ...SERVICE_WORKS_5,
+  'home-care-physiotherapy': [
+    ['Physiotherapy at Home', ['Initial physiotherapy assessment', 'Mobility and flexibility exercises', 'Post-surgery recovery visit', 'Pain and movement consultation', 'Follow-up physiotherapy session']],
+    ['Elderly & Daily Care', ['Elderly companion visit', 'Daily living assistance', 'Walking and mobility support', 'Caregiver relief visit']],
+    ['Recovery Support', ['Home exercise guidance', 'Balance and coordination practice', 'Recovery progress review']],
+  ],
 };
 
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -71,12 +76,13 @@ const durationFor = (name: string) => {
 };
 
 const WORK_ALIASES: Record<string, string[]> = {
-  'appliance-repair-technician': ['appliance-repair-technician', 'refrigerator-technician', 'washing-machine-technician'],
+  'ac-technician': ['ac-technician', 'appliance-repair-technician', 'refrigerator-technician', 'washing-machine-technician', 'electronics-repair-technician', 'ro-water-purifier-technician'],
+  'cleaner-housekeeper': ['cleaner-housekeeper', 'upholstery-sofa-cleaner', 'home-disinfection'],
+  carpenter: ['carpenter', 'locksmith', 'glass-glazier-worker', 'welder', 'fabricator'],
+  painter: ['painter', 'house-painter', 'mason', 'tile-marble-installer', 'waterproofing-specialist', 'pop-false-ceiling-worker'],
+  cook: ['cook', 'domestic-help', 'caterer', 'tiffin-home-food-provider'],
+  'home-care-physiotherapy': ['home-care-physiotherapy'],
   beautician: ['beautician', 'hair-stylist', 'barber'],
-  'laundry-dry-cleaner': ['laundry-dry-cleaner', 'ironing-worker'],
-  painter: ['painter', 'house-painter'],
-  mason: ['mason', 'tile-marble-installer'],
-  welder: ['welder', 'fabricator'],
 };
 
 const buildCategory = (category: typeof PUNCHX_50_CATEGORIES[number]): ServiceCategory => {
@@ -91,7 +97,7 @@ const buildCategory = (category: typeof PUNCHX_50_CATEGORIES[number]): ServiceCa
     id: category.id,
     name: category.name,
     description: category.shortDesc,
-    image: serviceImage(category.name, category.shortDesc),
+    image: category.imageUrl || serviceImage(category.name, category.shortDesc),
     subcategories: groups.map(([name, itemNames], subIndex) => {
       const subId = `${category.id}-${slug(name)}`;
       return {

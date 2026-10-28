@@ -13,7 +13,7 @@ interface WebsiteFooterProps {
 export default function WebsiteFooter({ onTransition, onSelectCategory, showNotification }: WebsiteFooterProps) {
   const [refundOpen, setRefundOpen] = useState(false);
 
-  const serviceLinks = PUNCHX_50_CATEGORIES.slice(0, 8);
+  const serviceLinks = PUNCHX_50_CATEGORIES;
 
   const jump = (category: string) => {
     onSelectCategory?.(category);
@@ -50,6 +50,18 @@ export default function WebsiteFooter({ onTransition, onSelectCategory, showNoti
               <div><div className="text-xl font-black tracking-[-0.03em]">PunchX</div><div className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/45">Customer × professional network</div></div>
             </div>
             <p className="mt-4 max-w-md text-xs leading-6 text-white/60">A service marketplace being built to help customers discover local professionals, understand booking details, and stay connected throughout the service journey.</p>
+            <a
+              href="/founder"
+              onClick={(event) => {
+                event.preventDefault();
+                onTransition('founder');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              aria-label="Meet PunchX founders Rimil Das and Abhradip Ghosh"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#b9adff]/30 bg-[#7358d7]/15 px-4 py-3 text-xs font-extrabold text-[#d7d0ff] transition hover:border-[#b9adff]/60 hover:bg-[#7358d7]/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b9adff]"
+            >
+              Meet the founders <ArrowRight className="h-4 w-4" />
+            </a>
             <div className="mt-5 flex flex-wrap gap-2">
               {['Local service options', 'Booking details', 'Service status'].map(x => <span key={x} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[9px] font-bold text-white/70">{x}</span>)}
             </div>
@@ -59,7 +71,7 @@ export default function WebsiteFooter({ onTransition, onSelectCategory, showNoti
             <button onClick={() => onTransition('catalogue')} className="mb-4 flex w-full items-center justify-between rounded-xl border border-[#b9adff]/25 bg-[#7358d7]/15 px-3 py-3 text-left text-xs font-extrabold text-[#d7d0ff] transition hover:bg-[#7358d7]/25">Browse interactive price catalogue <ArrowRight className="h-4 w-4" /></button>
             <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#b9adff]">Explore services</div>
             <div className="mt-4 space-y-2">
-              {serviceLinks.map(cat => <button key={cat.id} onClick={() => jump(cat.name)} className="group flex w-full items-center justify-between rounded-xl px-2 py-2 text-left text-[11px] font-bold text-white/65 hover:bg-white/5 hover:text-white"><span className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7358d7]/10 text-[#b9adff]"><Wrench className="h-3.5 w-3.5" /></span>{cat.name}</span><ChevronRight className="h-3.5 w-3.5 text-white/25 transition group-hover:translate-x-0.5" /></button>)}
+              {serviceLinks.map(cat => <button key={cat.id} onClick={() => jump(cat.name)} className="group flex w-full items-center justify-between rounded-xl px-2 py-2 text-left text-[11px] font-bold text-white/65 hover:bg-white/5 hover:text-white"><span className="flex items-center gap-2"><span className="h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-white/10"><img src={cat.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" /></span>{cat.name}</span><ChevronRight className="h-3.5 w-3.5 text-white/25 transition group-hover:translate-x-0.5" /></button>)}
             </div>
           </div>
 
