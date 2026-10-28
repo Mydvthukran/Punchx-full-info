@@ -67,11 +67,11 @@ export default function WorkerAcademyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#07122a] border border-[#c5a059]/40 rounded-3xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-[#07122a] border border-[#c5a059]/40 rounded-3xl max-w-2xl w-full max-h-[92dvh] flex flex-col overflow-hidden shadow-2xl">
         
         {/* Header */}
-        <div className="p-5 bg-[#0a1736] border-b border-zinc-800 flex justify-between items-center">
+        <div className="p-4 sm:p-5 bg-[#0a1736] border-b border-zinc-800 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#c5a059]/20 text-[#e9c176] border border-[#c5a059]/40">
               <BookOpen className="w-5 h-5" />
@@ -94,8 +94,8 @@ export default function WorkerAcademyModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-4">
-          <div className="p-4 rounded-2xl bg-[#0d1c3e] border border-[#c5a059]/30 flex items-center justify-between">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 min-h-0 flex-1">
+          <div className="p-4 rounded-2xl bg-[#0d1c3e] border border-[#c5a059]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Award className="w-4 h-4 text-[#e9c176]" />
@@ -106,7 +106,7 @@ export default function WorkerAcademyModal({
               </p>
             </div>
 
-            <div className="text-right font-mono">
+            <div className="sm:text-right font-mono shrink-0">
               <span className="text-xl font-bold text-[#e9c176]">
                 {Object.values(completedModules).filter(Boolean).length} / {courses.length}
               </span>
@@ -145,7 +145,7 @@ export default function WorkerAcademyModal({
                       {course.desc}
                     </p>
 
-                    <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-3 pt-1">
+                    <div className="text-[10px] font-mono text-zinc-500 flex flex-wrap items-center gap-x-2 gap-y-1 pt-1">
                       <span>⏱️ {course.duration}</span>
                       <span>•</span>
                       <span>📚 {course.modules} Interactive Lessons</span>

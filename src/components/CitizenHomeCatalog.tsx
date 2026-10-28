@@ -503,7 +503,7 @@ export default function CitizenHomeCatalog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[130] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[130] bg-black/40 backdrop-blur-sm flex items-start justify-center p-2.5 sm:p-4 overflow-y-auto"
             onMouseDown={e => { if (e.currentTarget === e.target) setSearchOpen(false); }}
           >
             <motion.div
@@ -511,11 +511,11 @@ export default function CitizenHomeCatalog({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.96 }}
               transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
-              className="mx-auto mt-12 sm:mt-16 flex max-h-[85vh] w-[calc(100%-20px)] max-w-3xl
+              className="mx-auto mt-4 sm:mt-16 flex max-h-[min(650px,88dvh)] w-full max-w-3xl
                          flex-col overflow-hidden rounded-3xl bg-[#FFFCF8] shadow-2xl ring-1 ring-black/5"
             >
               {/* Search input */}
-              <div className="flex items-center gap-3 border-b border-[#E8D2C4] px-5 py-4">
+              <div className="flex items-center gap-3 border-b border-[#E8D2C4] px-4 sm:px-5 py-3.5 sm:py-4">
                 <Search className="h-5 w-5 text-[#6B5560] shrink-0" />
                 <input
                   ref={searchInputRef}
@@ -539,9 +539,9 @@ export default function CitizenHomeCatalog({
               </div>
 
               {/* Results */}
-              <div className="overflow-y-auto p-4 sm:p-5">
+              <div className="overflow-y-auto p-3.5 sm:p-5">
                 {matches.length ? (
-                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 md:grid-cols-5">
+                  <div className="grid grid-cols-2 min-[440px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5">
                     {matches.map((cat, i) => {
                                             return (
                         <motion.button

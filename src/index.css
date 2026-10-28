@@ -181,10 +181,10 @@ table { max-width:100%; }
   #root > * { min-width:0; max-width:100%; }
   main,header,footer,section,article,aside,nav,form { min-width:0; max-width:100%; }
   .overflow-x-auto { max-width:100%; overscroll-behavior-x:contain; }
-  [role="dialog"], [aria-modal="true"] {
-    width:min(100% - 24px, 560px);
-    max-width:calc(100vw - 24px);
-    max-height:calc(100dvh - 24px);
+  [role="dialog"]:not(.fixed.inset-0), [aria-modal="true"]:not(.fixed.inset-0) {
+    box-sizing:border-box;
+    max-width:calc(100vw - 20px);
+    max-height:calc(100dvh - 20px);
     overflow-y:auto;
     overscroll-behavior:contain;
   }
@@ -233,11 +233,10 @@ body { overflow-x:hidden; }
   #punchx-website-navbar img { max-width:100%; }
   #punchx-website-navbar button { overflow-wrap:anywhere; }
   [data-radix-popper-content-wrapper] { max-width:calc(100vw - 16px) !important; }
-  [role="dialog"], [aria-modal="true"] {
+  [role="dialog"]:not(.fixed.inset-0), [aria-modal="true"]:not(.fixed.inset-0) {
     box-sizing:border-box !important;
-    left:auto;
-    right:auto;
     max-width:calc(100vw - 16px) !important;
+    max-height:calc(100dvh - 20px) !important;
     overflow-x:hidden;
     overflow-y:auto;
   }
@@ -380,10 +379,9 @@ input, textarea, select { min-width:0; max-width:100%; }
   #payment-screen-container main { padding-left:12px; padding-right:12px; }
   #citizen-account-bar { overflow-wrap:anywhere; }
   #citizen-account-bar button { max-width:100%; }
-  #root [role="dialog"][aria-modal="true"] {
-    width:calc(100vw - 24px) !important;
-    max-width:calc(100vw - 24px) !important;
-    max-height:calc(100dvh - 24px);
+  #root [role="dialog"][aria-modal="true"]:not(.fixed.inset-0) {
+    max-width:calc(100vw - 20px) !important;
+    max-height:calc(100dvh - 20px);
     overflow-y:auto;
     overflow-x:clip;
   }
@@ -397,7 +395,7 @@ input, textarea, select { min-width:0; max-width:100%; }
   #punchx-website-navbar > div { padding-left:8px; padding-right:8px; }
   #punchx-website-navbar button { padding-left:8px; padding-right:8px; }
   #citizen-account-bar { padding:12px; }
-  #root [role="dialog"][aria-modal="true"] { width:calc(100vw - 16px) !important; max-width:calc(100vw - 16px) !important; }
+  #root [role="dialog"][aria-modal="true"]:not(.fixed.inset-0) { max-width:calc(100vw - 16px) !important; }
 }
 
 
@@ -410,7 +408,7 @@ input, textarea, select { min-width:0; max-width:100%; }
   overflow-wrap:anywhere;
 }
 #global-prestige-toast p{min-width:0;overflow-wrap:anywhere;word-break:normal}
-[role="dialog"],[aria-modal="true"]{box-sizing:border-box;min-width:0;max-width:calc(100vw - 24px)}
+[role="dialog"]:not(.fixed.inset-0),[aria-modal="true"]:not(.fixed.inset-0){box-sizing:border-box;min-width:0;max-width:calc(100vw - 20px)}
 @media(max-width:767px){
   html,body,#root{width:100%;min-width:0;max-width:100%;overflow-x:clip}
   #root main,#root header,#root footer,#root section,#root article,#root form{min-width:0;max-width:100%}
@@ -425,15 +423,26 @@ input, textarea, select { min-width:0; max-width:100%; }
     gap:8px;
   }
   #global-prestige-toast p{font-size:12px;line-height:1.45}
-  [role="dialog"],[aria-modal="true"]{
-    width:calc(100vw - 20px)!important;
-    max-width:calc(100vw - 20px)!important;
+  .fixed.inset-0 {
+    width:100vw !important;
+    max-width:100vw !important;
+    height:100% !important;
+    max-height:100dvh !important;
+    inset:0 !important;
+    margin:0 !important;
+  }
+  [role="dialog"]:not(.fixed.inset-0),[aria-modal="true"]:not(.fixed.inset-0){
+    max-width:calc(100vw - 16px)!important;
     max-height:calc(100dvh - 20px)!important;
     overflow-x:clip!important;
     overflow-y:auto!important;
     overscroll-behavior:contain;
-    margin-left:auto;
-    margin-right:auto;
+  }
+  .fixed.items-end > [role="dialog"],
+  .fixed.items-end > [aria-modal="true"] {
+    width:100% !important;
+    max-width:100vw !important;
+    margin:0 !important;
   }
   [data-radix-popper-content-wrapper]{
     box-sizing:border-box;
@@ -462,7 +471,7 @@ input, textarea, select { min-width:0; max-width:100%; }
 }
 @media(max-width:359px){
   #global-prestige-toast{left:8px;right:8px;max-width:calc(100vw - 16px);padding:10px}
-  [role="dialog"],[aria-modal="true"]{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important}
+  [role="dialog"]:not(.fixed.inset-0),[aria-modal="true"]:not(.fixed.inset-0){max-width:calc(100vw - 12px)!important}
 }
 
 

@@ -67,7 +67,7 @@ img[alt="PunchX Logo"] {
 }
 
 /* Make check/success icons feel responsive without creating continuous motion. */
-#providers-list-root svg.text-\\[\\#0f7a4a\\],
+#providers-list-root svg[class*="text-[#0f7a4a]"],
 #providers-list-root svg[class*="text-green-"],
 #providers-list-root svg[class*="text-emerald-"] {
   animation:punchx-check-pop .28s ease-out both;
@@ -117,7 +117,7 @@ img[alt="PunchX Logo"] {
   .punchx-service-page.service-category-ac-technician .punchx-category-hero-media::before,
   #global-prestige-toast,
   #providers-list-root article > div + div,
-  #providers-list-root svg.text-\\[\\#0f7a4a\\],
+  #providers-list-root svg[class*="text-[#0f7a4a]"],
   #providers-list-root svg[class*="text-green-"],
   #providers-list-root svg[class*="text-emerald-"] { animation:none !important; }
   .punchx-service-page section:hover img { transform:none; }

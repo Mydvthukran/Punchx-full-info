@@ -125,12 +125,12 @@ export default function ArrivalQualityModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-[#0b1325] border border-[#c5a059]/40 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+          className="bg-[#0b1325] border border-[#c5a059]/40 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[92dvh] pb-[max(12px,env(safe-area-inset-bottom))]"
         >
           {/* Header */}
           <div className="p-5 bg-[#0f1b33] border-b border-zinc-800 flex justify-between items-center text-left">
@@ -199,7 +199,7 @@ export default function ArrivalQualityModal({
             </div>
           ) : (
             /* Questions Form */
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5 text-left font-sans">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto min-h-0 space-y-4 sm:space-y-5 text-left font-sans">
               <div className="bg-[#c5a059]/10 border border-[#c5a059]/30 rounded-2xl p-3 text-xs text-zinc-300">
                 <span className="font-bold text-[#e9c176] block mb-0.5">🛡️ PunchX High-Quality Guarantee</span>
                 If the technician arrives with incomplete tools, broken equipment, or unprofessional behavior, you get an <strong className="text-emerald-400">instant 10% discount</strong> and our operations manager is alerted immediately.
@@ -210,30 +210,30 @@ export default function ArrivalQualityModal({
                 <label className="text-xs font-bold text-white uppercase tracking-wider block">
                   1. Did the technician bring the correct tools/equipment?
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => setCorrectEquipment(true)}
-                    className={`py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                    className={`py-3 px-3 sm:px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
                       correctEquipment === true
                         ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-md'
                         : 'bg-[#07122a] border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
-                    <ThumbsUp className="w-4 h-4" />
+                    <ThumbsUp className="w-4 h-4 shrink-0" />
                     <span>Yes, Complete Tools</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setCorrectEquipment(false)}
-                    className={`py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                    className={`py-3 px-3 sm:px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
                       correctEquipment === false
                         ? 'bg-red-500/20 border-red-500 text-red-400 shadow-md'
                         : 'bg-[#07122a] border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
-                    <ThumbsDown className="w-4 h-4" />
+                    <ThumbsDown className="w-4 h-4 shrink-0" />
                     <span>No, Missing Tools</span>
                   </button>
                 </div>
@@ -244,30 +244,30 @@ export default function ArrivalQualityModal({
                 <label className="text-xs font-bold text-white uppercase tracking-wider block">
                   2. Is the equipment in proper working condition?
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => setEquipmentWorking(true)}
-                    className={`py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                    className={`py-3 px-3 sm:px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
                       equipmentWorking === true
                         ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-md'
                         : 'bg-[#07122a] border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
-                    <ThumbsUp className="w-4 h-4" />
+                    <ThumbsUp className="w-4 h-4 shrink-0" />
                     <span>Yes, Working Fine</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setEquipmentWorking(false)}
-                    className={`py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                    className={`py-3 px-3 sm:px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
                       equipmentWorking === false
                         ? 'bg-red-500/20 border-red-500 text-red-400 shadow-md'
                         : 'bg-[#07122a] border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
-                    <ThumbsDown className="w-4 h-4" />
+                    <ThumbsDown className="w-4 h-4 shrink-0" />
                     <span>No, Broken / Faulty</span>
                   </button>
                 </div>
@@ -278,7 +278,7 @@ export default function ArrivalQualityModal({
                 <label className="text-xs font-bold text-white uppercase tracking-wider block">
                   3. Technician Demeanour & Professionalism:
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => setBehaviourRating('EXCELLENT')}
@@ -331,20 +331,20 @@ export default function ArrivalQualityModal({
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col-reverse min-[420px]:flex-row gap-2.5 sm:gap-3 pt-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-1/3 py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-xl font-bold text-xs uppercase cursor-pointer"
+                  className="min-[420px]:w-1/3 py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-xl font-bold text-xs uppercase cursor-pointer"
                 >
                   Skip Check
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-2/3 py-3 bg-[#c5a059] hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                  className="min-[420px]:w-2/3 flex-1 py-3 bg-[#c5a059] hover:brightness-110 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? 'Verifying...' : 'Submit Arrival Quality Check'}
+                  {isSubmitting ? 'Verifying...' : 'Submit Arrival Check'}
                 </button>
               </div>
             </form>

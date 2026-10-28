@@ -1154,13 +1154,13 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-[#0c1525] border border-[#c5a059]/30 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[520px]"
+              className="w-full max-w-md bg-[#0c1525] border border-[#c5a059]/30 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[min(540px,92dvh)] h-[540px]"
             >
               {/* Chat Header */}
               <div className="p-4 bg-[#101b33] border-b border-zinc-800 flex items-center justify-between">
@@ -1275,13 +1275,13 @@ export default function LiveTracking({ onTransition, bookingTime }: LiveTracking
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[130] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[130] bg-black/80 flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-sm bg-[#0c1525] border border-red-900/40 rounded-3xl p-6 shadow-2xl space-y-4 text-left"
+              className="w-full max-w-sm bg-[#0c1525] border border-red-900/40 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-left max-h-[92dvh] overflow-y-auto pb-[max(16px,env(safe-area-inset-bottom))]"
             >
               {isCancelling ? (
                 <div className="py-8 text-center space-y-4">

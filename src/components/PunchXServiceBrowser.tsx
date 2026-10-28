@@ -1063,8 +1063,8 @@ export default function PunchXServiceBrowser({ open, onClose, onSelectCategory, 
   const title = level === 'categories' ? 'All 10 PUNCHX service categories' : level === 'subcategories' ? selectedCategory?.name || 'Services' : selectedSubcategory?.name || 'Select a service';
   const countText = level === 'categories' ? `${PUNCHX_50_CATEGORIES.length} main categories` : level === 'subcategories' ? `${subcategories.length} service groups` : `${services.length} service options`;
 
-  return <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-5" role="dialog" aria-modal="true">
-    <div className="flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-[28px] bg-white text-[#17191d] sm:max-w-5xl sm:rounded-[28px]">
+  return <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-5">
+    <div role="dialog" aria-modal="true" className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] bg-white text-[#17191d] sm:max-w-5xl sm:rounded-[28px] pb-[max(12px,env(safe-area-inset-bottom))]">
       <header className="border-b border-black/5 bg-white px-4 py-3 sm:px-6">
         <div className="flex items-center gap-3">
           {level !== 'categories' && <button onClick={() => { if (level === 'services') { if (selectedCategory?.id === 'beautician') { setSelectedSubcategory(beautyGender ? { id: 'beauty-' + beautyGender + '-root', name: beautyGender === 'female' ? 'Women’s Salon & Spa' : 'Men’s Salon & Massage', services: [] } : null); setDetailTab('services'); setBeautyProductAdded(null); } else { setSelectedSubcategory(null); } setLevel('subcategories'); } else if (selectedCategory?.id === 'beautician' && beautyGender) { setBeautyGender(null); setSelectedSubcategory(null); setLevel('subcategories'); } else { setLevel('categories'); setSelectedCategory(null); setSelectedBranch(null); } }} className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5f6f8]"><ArrowLeft className="h-5 w-5"/></button>}

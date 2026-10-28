@@ -104,13 +104,13 @@ export default function NotificationCenterModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2 }}
-          className="bg-[#0b162c] border-2 border-[#c5a059]/40 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-white"
+          className="bg-[#0b162c] border-2 border-[#c5a059]/40 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[92dvh] pb-[max(12px,env(safe-area-inset-bottom))] overflow-hidden text-white"
         >
           {/* Header */}
           <div className="p-4 sm:p-5 border-b border-zinc-800 bg-[#07122a] flex items-center justify-between">
@@ -140,8 +140,8 @@ export default function NotificationCenterModal({
           </div>
 
           {/* Preferences Row */}
-          <div className="px-4 py-2.5 bg-[#07122a] border-b border-zinc-800 flex items-center justify-between text-xs font-mono">
-            <div className="flex items-center gap-3">
+          <div className="px-3 sm:px-4 py-2.5 bg-[#07122a] border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 onClick={handleToggleSound}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
@@ -151,7 +151,7 @@ export default function NotificationCenterModal({
                 }`}
               >
                 {prefs.soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                <span>Sound Chime: {prefs.soundEnabled ? 'ON' : 'OFF'}</span>
+                <span>Sound: {prefs.soundEnabled ? 'ON' : 'OFF'}</span>
               </button>
 
               <button
@@ -170,7 +170,7 @@ export default function NotificationCenterModal({
             {notifications.length > 0 && (
               <button
                 onClick={handleClearAll}
-                className="text-zinc-500 hover:text-rose-400 flex items-center gap-1 transition-colors cursor-pointer"
+                className="text-zinc-500 hover:text-rose-400 flex items-center gap-1 transition-colors cursor-pointer ml-auto"
               >
                 <Trash2 className="w-3 h-3" />
                 <span>Clear</span>
