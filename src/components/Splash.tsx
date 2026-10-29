@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, Sparkles, Wrench, Home, Zap, Droplets, Hammer, Wind, Settings2, ArrowUpRight } from 'lucide-react';
 import { AppScreen } from '../types';
-import PUNCHX_LOGO from '../assets/logo';
+const PUNCHX_LOGO = '/favicon.svg';
 
 interface SplashProps {
   onTransition: (target: AppScreen) => void;
