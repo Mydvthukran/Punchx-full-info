@@ -38,7 +38,22 @@ const AuthCallback = lazy(() => import('./components/AuthCallback'));
 
 function AppMain() {
   // Keep the static, crawlable landing visible until React has committed its first screen.
-  useEffect(() => { document.documentElement.classList.add('app-mounted'); }, []);
+  useEffect(() => {
+    document.documentElement.classList.add('app-mounted');
+    // Idle prefetching for critical next screens to make transitions instant
+    const prefetchKeyRoutes = () => {
+      import('./components/Home');
+      import('./components/PanelSelect');
+      import('./components/ProvidersList');
+    };
+    if (typeof window !== 'undefined') {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(prefetchKeyRoutes, { timeout: 2000 });
+      } else {
+        setTimeout(prefetchKeyRoutes, 1500);
+      }
+    }
+  }, []);
   const { currentUser, userProfile, isLoadingProfile } = useAuth();
   // Native app wrappers pass a role-specific query parameter so each APK opens its own login.
   const urlPunchxAppMode = new URLSearchParams(window.location.search).get('punchxApp')?.toLowerCase();
